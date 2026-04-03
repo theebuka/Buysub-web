@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { verifyPayment } from '@/lib/api';
 
-export default function VerifyPage() {
+function VerifyContent() {
   const searchParams = useSearchParams();
   const reference = searchParams.get('reference');
   const [status, setStatus] = useState<'loading' | 'success' | 'failed'>('loading');
@@ -139,5 +139,25 @@ export default function VerifyPage() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function VerifyPage() {
+  return (
+    <Suspense fallback={
+      <div style={{
+        minHeight: '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        fontFamily: 'Inter, system-ui, sans-serif',
+        background: 'var(--bs-bg-base)',
+        color: 'var(--bs-text-primary)',
+      }}>
+        <div style={{ fontSize: 48 }}>⏳</div>
+      </div>
+    }>
+      <VerifyContent />
+    </Suspense>
   );
 }
