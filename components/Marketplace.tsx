@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { getProducts, getAutoApplyDiscounts as fetchAutoApplyAPI, validateDiscount as validateDiscountAPI, createWhatsAppOrder, createOrder, initPaystackPayment } from "@/lib/api";
 import { PERIODS, TAB_ORDER, FX, CART_STORAGE_KEY, LOGO_DEV_TOKEN, WHATSAPP_NUMBER, Product, CartItem, AppliedDiscount, DiscountRecord, format, discountPct, isInStock, hasCategory, getCategoryList, cartKey, isValidEmail, norm, isItemEligible, getEligibleSubtotal, calcDiscountAmount } from "@/lib/constants";
 import { useReferral } from '@/lib/useReferral'
+import { useShopAds, ShopBanner, ShopSidebar, SponsoredProductCard, ReferralBanner, interleaveAds } from '@/components/ShopAds'
 
 /* ===============================================================
    HOOKS
@@ -18,8 +19,6 @@ const useWindowWidth = () => {
     }, [])
     return width
 }
-
-const { referralCode, affiliateInfo, clearReferral } = useReferral()
 
 /* ===============================================================
    HELPERS
@@ -49,6 +48,9 @@ const fetchAutoApplyCodes = async (): Promise<any[]> => {
 }
 
 export default function Marketplace() {
+    const { referralCode, affiliateInfo, clearReferral } = useReferral()
+    const { bannerAds, sidebarAds, sponsoredCards } = useShopAds()
+
     const width = useWindowWidth()
     const isMobile = width < 640
     const isTablet = width >= 640 && width < 1024
@@ -308,6 +310,7 @@ export default function Marketplace() {
                 currency,
                 fx_rate: fxRate,
                 payment_method: 'whatsapp',
+                referral_code: referralCode || undefined,
             })
             if (res.ok && res.data?.whatsapp_url) {
                 window.open(res.data.whatsapp_url, "_blank", "noopener,noreferrer")
@@ -353,6 +356,7 @@ export default function Marketplace() {
                 currency,
                 fx_rate: fxRate,
                 payment_method: 'paystack',
+                referral_code: referralCode || undefined,
             })
             if (!orderRes.ok || !orderRes.data?.order_id) {
                 setEmailError(orderRes.error || "Failed to create order.")
@@ -1039,8 +1043,29 @@ export default function Marketplace() {
                 )}
             </div>
 
+            {/* ── Referral Banner ── */}
+            {affiliateInfo && (
+                <ReferralBanner
+                    storeName={affiliateInfo.store_name}
+                    referralCode={affiliateInfo.referral_code}
+                    onClear={clearReferral}
+                />
+            )}
+
+            {/* ── Shop Banner Ad ── */}
+            <ShopBanner ads={bannerAds} />
+
+            {/* ── Main content: product grid + optional sidebar ── */}
+            <div style={{ display: "flex", gap: 16 }}>
+
+            {/* ── Sidebar Ads (desktop only) ── */}
+            {!isMobile && sidebarAds.length > 0 && (
+                <ShopSidebar ads={sidebarAds} />
+            )}
+
             <div
                 style={{
+                    flex: 1,
                     display: "grid",
                     gridTemplateColumns: `repeat(${gridCols}, 1fr)`,
                     gap: isMobile ? 12 : 16,
@@ -1075,7 +1100,18 @@ export default function Marketplace() {
                     ))}
 
                 {!loading &&
-                    visible.map((p) => {
+                    interleaveAds(visible, sponsoredCards, 8).map((item, _idx) => {
+                        if (item._isAd) {
+                            return (
+                                <SponsoredProductCard
+                                    key={`ad-${item.ad.id}`}
+                                    ad={item.ad}
+                                    isMobile={isMobile}
+                                    cardStyle={cardStyle(isMobile)}
+                                />
+                            )
+                        }
+                        const p = item;
                         const price = (p as any)[cfg.field]
                         const monthly = p.price_1m
                         const discount = discountPct(monthly, price, cfg.months)
@@ -1352,6 +1388,8 @@ export default function Marketplace() {
                     })}
             </div>
 
+            </div>{/* ── end flex wrapper (grid + sidebar) ── */}
+
             {visible.length < filtered.length && (
                 <div style={{ marginTop: 32, textAlign: "center" }}>
                     <button
@@ -1569,887 +1607,159 @@ export default function Marketplace() {
                                     )}
 
                                     {Object.entries(cartItems).map(
-                                        ([
-                                            key,
-                                            { product, qty, itemPeriod },
-                                        ]) => {
+                                        ([key, { product, qty, itemPeriod }]) => {
                                             const itemCfg = PERIODS[itemPeriod]
-                                            const linePrice =
-                                                (product as any)[itemCfg.field]
-                                            const lineTotal = linePrice
-                                                ? linePrice * fxRate * qty
-                                                : 0
-                                            const isOutright =
-                                                product.billing_type ===
-                                                "one_time"
-                                            const eligible = activeDiscount
-                                                ? isItemEligible(
-                                                      {
-                                                          product,
-                                                          qty,
-                                                          itemPeriod,
-                                                      },
-                                                      activeDiscount
-                                                  )
-                                                : true
+                                            const linePrice = (product as any)[itemCfg.field]
+                                            const lineTotal = linePrice ? linePrice * fxRate * qty : 0
+                                            const isOutright = product.billing_type === "one_time"
+                                            const eligible = activeDiscount ? isItemEligible({ product, qty, itemPeriod }, activeDiscount) : true
                                             return (
                                                 <div
                                                     key={key}
                                                     style={{
-                                                        background:
-                                                            "var(--bs-bg-elevated)",
+                                                        background: "var(--bs-bg-elevated)",
                                                         borderRadius: 14,
                                                         padding: "14px 16px",
                                                         display: "flex",
                                                         gap: 12,
                                                         alignItems: "center",
-                                                        opacity:
-                                                            !eligible &&
-                                                            activeDiscount
-                                                                ? 0.7
-                                                                : 1,
+                                                        opacity: !eligible && activeDiscount ? 0.7 : 1,
                                                     }}
                                                 >
                                                     {product.image_url ? (
-                                                        <img
-                                                            src={
-                                                                product.image_url
-                                                            }
-                                                            style={{
-                                                                width: 44,
-                                                                height: 44,
-                                                                borderRadius: 10,
-                                                                flexShrink: 0,
-                                                                objectFit:
-                                                                    "contain",
-                                                                background:
-                                                                    "var(--bs-bg-elevated)",
-                                                                padding: 4,
-                                                                boxSizing:
-                                                                    "border-box",
-                                                            }}
-                                                            alt=""
-                                                        />
+                                                        <img src={product.image_url} style={{ width: 44, height: 44, borderRadius: 10, flexShrink: 0, objectFit: "contain", background: "var(--bs-bg-elevated)", padding: 4, boxSizing: "border-box" }} alt="" />
                                                     ) : (
-                                                        <ProductLogo
-                                                            product={product}
-                                                            size={44}
-                                                        />
+                                                        <ProductLogo product={product} size={44} />
                                                     )}
-                                                    <div
-                                                        style={{
-                                                            flex: 1,
-                                                            minWidth: 0,
-                                                        }}
-                                                    >
-                                                        <div
-                                                            style={{
-                                                                fontSize: 13,
-                                                                fontWeight: 600,
-                                                                marginBottom: 3,
-                                                                overflow:
-                                                                    "hidden",
-                                                                textOverflow:
-                                                                    "ellipsis",
-                                                                whiteSpace:
-                                                                    "nowrap",
-                                                            }}
-                                                        >
-                                                            {
-                                                                product.name
-                                                            }
-                                                        </div>
-                                                        <div
-                                                            style={{
-                                                                display: "flex",
-                                                                gap: 6,
-                                                                alignItems:
-                                                                    "center",
-                                                                flexWrap:
-                                                                    "wrap",
-                                                            }}
-                                                        >
-                                                            <span
-                                                                style={{
-                                                                    fontSize: 11,
-                                                                    background:
-                                                                        "var(--bs-bg-muted)",
-                                                                    borderRadius: 4,
-                                                                    padding:
-                                                                        "2px 6px",
-                                                                    color: "var(--bs-text-secondary)",
-                                                                }}
-                                                            >
-                                                                {itemCfg.name}
-                                                            </span>
-                                                            <span
-                                                                style={{
-                                                                    fontSize: 12,
-                                                                    color: "var(--bs-text-secondary)",
-                                                                }}
-                                                            >
-                                                                {format(
-                                                                    linePrice *
-                                                                        fxRate,
-                                                                    currency
-                                                                )}
-                                                                {!isOutright &&
-                                                                    ` ${itemCfg.label}`}
-                                                            </span>
-                                                            {!eligible &&
-                                                                activeDiscount && (
-                                                                    <span
-                                                                        style={{
-                                                                            fontSize: 10,
-                                                                            color: "var(--bs-text-muted)",
-                                                                            fontStyle:
-                                                                                "italic",
-                                                                        }}
-                                                                    >
-                                                                        promo
-                                                                        not
-                                                                        applicable
-                                                                    </span>
-                                                                )}
+                                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                                        <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{product.name}</div>
+                                                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
+                                                            <span style={{ fontSize: 11, background: "var(--bs-bg-muted)", borderRadius: 4, padding: "2px 6px", color: "var(--bs-text-secondary)" }}>{itemCfg.name}</span>
+                                                            <span style={{ fontSize: 12, color: "var(--bs-text-secondary)" }}>{format(linePrice * fxRate, currency)}{!isOutright && ` ${itemCfg.label}`}</span>
+                                                            {!eligible && activeDiscount && (<span style={{ fontSize: 10, color: "var(--bs-text-muted)", fontStyle: "italic" }}>promo not applicable</span>)}
                                                         </div>
                                                     </div>
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            alignItems:
-                                                                "center",
-                                                            gap: 6,
-                                                            flexShrink: 0,
-                                                        }}
-                                                    >
-                                                        <DrawerQtyBtn
-                                                            onClick={() =>
-                                                                updateQty(
-                                                                    key,
-                                                                    qty - 1
-                                                                )
-                                                            }
-                                                        >
-                                                            −
-                                                        </DrawerQtyBtn>
-                                                        <span
-                                                            style={{
-                                                                width: 20,
-                                                                textAlign:
-                                                                    "center",
-                                                                fontSize: 13,
-                                                                fontWeight: 600,
-                                                            }}
-                                                        >
-                                                            {qty}
-                                                        </span>
-                                                        <DrawerQtyBtn
-                                                            onClick={() =>
-                                                                updateQty(
-                                                                    key,
-                                                                    qty + 1
-                                                                )
-                                                            }
-                                                        >
-                                                            +
-                                                        </DrawerQtyBtn>
+                                                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                                                        <DrawerQtyBtn onClick={() => updateQty(key, qty - 1)}>−</DrawerQtyBtn>
+                                                        <span style={{ width: 20, textAlign: "center", fontSize: 13, fontWeight: 600 }}>{qty}</span>
+                                                        <DrawerQtyBtn onClick={() => updateQty(key, qty + 1)}>+</DrawerQtyBtn>
                                                     </div>
-                                                    <div
-                                                        style={{
-                                                            fontSize: 14,
-                                                            fontWeight: 700,
-                                                            marginLeft: 4,
-                                                            flexShrink: 0,
-                                                            minWidth: 68,
-                                                            textAlign: "right",
-                                                        }}
-                                                    >
-                                                        {format(
-                                                            lineTotal,
-                                                            currency
-                                                        )}
-                                                    </div>
+                                                    <div style={{ fontSize: 14, fontWeight: 700, marginLeft: 4, flexShrink: 0, minWidth: 68, textAlign: "right" }}>{format(lineTotal, currency)}</div>
                                                 </div>
                                             )
                                         }
                                     )}
                                 </div>
 
-                                <div
-                                    style={{
-                                        padding: "20px 24px",
-                                        borderTop: "1px solid #1C1C1F",
-                                        flexShrink: 0,
-                                    }}
-                                >
+                                <div style={{ padding: "20px 24px", borderTop: "1px solid #1C1C1F", flexShrink: 0 }}>
                                     {discountInvalidatedMsg && (
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "flex-start",
-                                                gap: 10,
-                                                background:
-                                                    "rgba(var(--bs-error-rgb), 0.08)",
-                                                border: "1px solid rgba(248,113,113,0.2)",
-                                                borderRadius: 10,
-                                                padding: "10px 14px",
-                                                marginBottom: 14,
-                                            }}
-                                        >
-                                            <span
-                                                style={{
-                                                    fontSize: 14,
-                                                    flexShrink: 0,
-                                                }}
-                                            >
-                                                ⚠️
-                                            </span>
-                                            <div
-                                                style={{
-                                                    fontSize: 12,
-                                                    color: "#FCA5A5",
-                                                    lineHeight: 1.5,
-                                                }}
-                                            >
-                                                {discountInvalidatedMsg}
-                                            </div>
-                                            <button
-                                                onClick={() =>
-                                                    setDiscountInvalidatedMsg(
-                                                        ""
-                                                    )
-                                                }
-                                                style={{
-                                                    background: "transparent",
-                                                    border: "none",
-                                                    color: "var(--bs-text-muted)",
-                                                    cursor: "pointer",
-                                                    fontSize: 16,
-                                                    lineHeight: 1,
-                                                    padding: 0,
-                                                    flexShrink: 0,
-                                                }}
-                                            >
-                                                ×
-                                            </button>
+                                        <div style={{ display: "flex", alignItems: "flex-start", gap: 10, background: "rgba(var(--bs-error-rgb), 0.08)", border: "1px solid rgba(248,113,113,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 14 }}>
+                                            <span style={{ fontSize: 14, flexShrink: 0 }}>⚠️</span>
+                                            <div style={{ fontSize: 12, color: "#FCA5A5", lineHeight: 1.5 }}>{discountInvalidatedMsg}</div>
+                                            <button onClick={() => setDiscountInvalidatedMsg("")} style={{ background: "transparent", border: "none", color: "var(--bs-text-muted)", cursor: "pointer", fontSize: 16, lineHeight: 1, padding: 0, flexShrink: 0 }}>×</button>
                                         </div>
                                     )}
 
                                     {autoDiscount?.is_exclusive ? (
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                background:
-                                                    "rgba(var(--bs-accent-rgb), 0.08)",
-                                                border: "1px solid rgba(124,92,255,0.25)",
-                                                borderRadius: 10,
-                                                padding: "10px 14px",
-                                                marginBottom: 16,
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: 8,
-                                                }}
-                                            >
-                                                <span style={{ fontSize: 14 }}>
-                                                    🎉
-                                                </span>
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(var(--bs-accent-rgb), 0.08)", border: "1px solid rgba(124,92,255,0.25)", borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                <span style={{ fontSize: 14 }}>🎉</span>
                                                 <div>
-                                                    <div
-                                                        style={{
-                                                            fontSize: 13,
-                                                            fontWeight: 600,
-                                                            color: "var(--bs-text-primary)",
-                                                        }}
-                                                    >
-                                                        Promotion applied
-                                                    </div>
-                                                    <div
-                                                        style={{
-                                                            fontSize: 12,
-                                                            color: "var(--bs-text-secondary)",
-                                                        }}
-                                                    >
-                                                        {autoDiscount.display}
-                                                        {partialDiscount &&
-                                                            " · selected items"}
-                                                    </div>
+                                                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--bs-text-primary)" }}>Promotion applied</div>
+                                                    <div style={{ fontSize: 12, color: "var(--bs-text-secondary)" }}>{autoDiscount.display}{partialDiscount && " · selected items"}</div>
                                                 </div>
                                             </div>
                                         </div>
                                     ) : !appliedDiscount ? (
                                         <div style={{ marginBottom: 16 }}>
                                             {autoDiscount && (
-                                                <div
-                                                    style={{
-                                                        display: "flex",
-                                                        alignItems: "center",
-                                                        gap: 8,
-                                                        background:
-                                                            "rgba(var(--bs-success-rgb), 0.06)",
-                                                        border: "1px solid rgba(34,197,94,0.15)",
-                                                        borderRadius: 8,
-                                                        padding: "8px 12px",
-                                                        marginBottom: 10,
-                                                    }}
-                                                >
-                                                    <span
-                                                        style={{
-                                                            fontSize: 12,
-                                                            color: "var(--bs-success)",
-                                                        }}
-                                                    >
-                                                        🎉{" "}
-                                                        {autoDiscount.display}{" "}
-                                                        auto-applied
-                                                        {partialDiscount &&
-                                                            " · selected items"}
-                                                    </span>
+                                                <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(var(--bs-success-rgb), 0.06)", border: "1px solid rgba(34,197,94,0.15)", borderRadius: 8, padding: "8px 12px", marginBottom: 10 }}>
+                                                    <span style={{ fontSize: 12, color: "var(--bs-success)" }}>🎉 {autoDiscount.display} auto-applied{partialDiscount && " · selected items"}</span>
                                                 </div>
                                             )}
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    gap: 8,
-                                                }}
-                                            >
-                                                <input
-                                                    className="discount-input"
-                                                    placeholder="Promo code"
-                                                    value={codeInput}
-                                                    onChange={(e) => {
-                                                        setCodeInput(
-                                                            e.target.value.toUpperCase()
-                                                        )
-                                                        setDiscountError("")
-                                                    }}
-                                                    onKeyDown={(e) =>
-                                                        e.key === "Enter" &&
-                                                        applyDiscountCode()
-                                                    }
-                                                    style={{
-                                                        flex: 1,
-                                                        height: 40,
-                                                        padding: "0 14px",
-                                                        borderRadius: 10,
-                                                        background:
-                                                            "var(--bs-bg-input)",
-                                                        border: `1px solid ${discountError ? "var(--bs-error)" : "var(--bs-border-default)"}`,
-                                                        color: "var(--bs-text-primary)",
-                                                        fontSize: 13,
-                                                        boxSizing: "border-box",
-                                                        letterSpacing: "0.05em",
-                                                    }}
-                                                />
-                                                <button
-                                                    onClick={applyDiscountCode}
-                                                    disabled={
-                                                        discountLoading ||
-                                                        !codeInput.trim()
-                                                    }
-                                                    style={{
-                                                        height: 40,
-                                                        padding: "0 16px",
-                                                        borderRadius: 10,
-                                                        background:
-                                                            codeInput.trim()
-                                                                ? "#7C5CFF"
-                                                                : "var(--bs-bg-muted)",
-                                                        border: "none",
-                                                        color: codeInput.trim()
-                                                            ? "#fff"
-                                                            : "var(--bs-text-faint)",
-                                                        cursor: codeInput.trim()
-                                                            ? "pointer"
-                                                            : "not-allowed",
-                                                        fontSize: 13,
-                                                        fontWeight: 600,
-                                                        flexShrink: 0,
-                                                    }}
-                                                >
-                                                    {discountLoading
-                                                        ? "…"
-                                                        : "Apply"}
-                                                </button>
+                                            <div style={{ display: "flex", gap: 8 }}>
+                                                <input className="discount-input" placeholder="Promo code" value={codeInput} onChange={(e) => { setCodeInput(e.target.value.toUpperCase()); setDiscountError("") }} onKeyDown={(e) => e.key === "Enter" && applyDiscountCode()} style={{ flex: 1, height: 40, padding: "0 14px", borderRadius: 10, background: "var(--bs-bg-input)", border: `1px solid ${discountError ? "var(--bs-error)" : "var(--bs-border-default)"}`, color: "var(--bs-text-primary)", fontSize: 13, boxSizing: "border-box", letterSpacing: "0.05em" }} />
+                                                <button onClick={applyDiscountCode} disabled={discountLoading || !codeInput.trim()} style={{ height: 40, padding: "0 16px", borderRadius: 10, background: codeInput.trim() ? "#7C5CFF" : "var(--bs-bg-muted)", border: "none", color: codeInput.trim() ? "#fff" : "var(--bs-text-faint)", cursor: codeInput.trim() ? "pointer" : "not-allowed", fontSize: 13, fontWeight: 600, flexShrink: 0 }}>{discountLoading ? "…" : "Apply"}</button>
                                             </div>
-                                            {discountError && (
-                                                <div
-                                                    style={{
-                                                        fontSize: 12,
-                                                        color: "var(--bs-error)",
-                                                        marginTop: 6,
-                                                    }}
-                                                >
-                                                    {discountError}
-                                                </div>
-                                            )}
+                                            {discountError && (<div style={{ fontSize: 12, color: "var(--bs-error)", marginTop: 6 }}>{discountError}</div>)}
                                         </div>
                                     ) : (
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                alignItems: "center",
-                                                justifyContent: "space-between",
-                                                background:
-                                                    "rgba(var(--bs-success-rgb), 0.08)",
-                                                border: "1px solid rgba(34,197,94,0.2)",
-                                                borderRadius: 10,
-                                                padding: "10px 14px",
-                                                marginBottom: 16,
-                                            }}
-                                        >
-                                            <div
-                                                style={{
-                                                    display: "flex",
-                                                    alignItems: "center",
-                                                    gap: 8,
-                                                }}
-                                            >
-                                                <span
-                                                    style={{
-                                                        fontSize: 11,
-                                                        background:
-                                                            "rgba(var(--bs-success-rgb), 0.2)",
-                                                        borderRadius: 4,
-                                                        padding: "2px 7px",
-                                                        color: "var(--bs-success)",
-                                                        fontWeight: 700,
-                                                        letterSpacing: "0.05em",
-                                                    }}
-                                                >
-                                                    {appliedDiscount.code}
-                                                </span>
-                                                <span
-                                                    style={{
-                                                        fontSize: 13,
-                                                        color: "var(--bs-success)",
-                                                    }}
-                                                >
-                                                    {appliedDiscount.display}
-                                                    {partialDiscount && (
-                                                        <span
-                                                            style={{
-                                                                color: "var(--bs-text-muted)",
-                                                                fontSize: 11,
-                                                            }}
-                                                        >
-                                                            {" "}
-                                                            · selected items
-                                                        </span>
-                                                    )}
-                                                </span>
+                                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(var(--bs-success-rgb), 0.08)", border: "1px solid rgba(34,197,94,0.2)", borderRadius: 10, padding: "10px 14px", marginBottom: 16 }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                                                <span style={{ fontSize: 11, background: "rgba(var(--bs-success-rgb), 0.2)", borderRadius: 4, padding: "2px 7px", color: "var(--bs-success)", fontWeight: 700, letterSpacing: "0.05em" }}>{appliedDiscount.code}</span>
+                                                <span style={{ fontSize: 13, color: "var(--bs-success)" }}>{appliedDiscount.display}{partialDiscount && (<span style={{ color: "var(--bs-text-muted)", fontSize: 11 }}> · selected items</span>)}</span>
                                             </div>
-                                            <button
-                                                onClick={removeManualDiscount}
-                                                style={{
-                                                    background: "transparent",
-                                                    border: "none",
-                                                    color: "var(--bs-text-faint)",
-                                                    cursor: "pointer",
-                                                    fontSize: 18,
-                                                    lineHeight: 1,
-                                                    padding: 0,
-                                                }}
-                                            >
-                                                ×
-                                            </button>
+                                            <button onClick={removeManualDiscount} style={{ background: "transparent", border: "none", color: "var(--bs-text-faint)", cursor: "pointer", fontSize: 18, lineHeight: 1, padding: 0 }}>×</button>
                                         </div>
                                     )}
 
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            flexDirection: "column",
-                                            gap: 8,
-                                            marginBottom: 16,
-                                        }}
-                                    >
-                                        {activeDiscount &&
-                                            discountAmount > 0 && (
-                                                <>
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            justifyContent:
-                                                                "space-between",
-                                                            fontSize: 13,
-                                                            color: "var(--bs-text-secondary)",
-                                                        }}
-                                                    >
-                                                        <span>Subtotal</span>
-                                                        <span>
-                                                            {format(
-                                                                cartSubtotal,
-                                                                currency
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    {partialDiscount && (
-                                                        <div
-                                                            style={{
-                                                                display: "flex",
-                                                                justifyContent:
-                                                                    "space-between",
-                                                                fontSize: 11,
-                                                                color: "var(--bs-text-faint)",
-                                                            }}
-                                                        >
-                                                            <span>
-                                                                Eligible
-                                                                subtotal
-                                                            </span>
-                                                            <span>
-                                                                {format(
-                                                                    eligibleSubtotal,
-                                                                    currency
-                                                                )}
-                                                            </span>
-                                                        </div>
-                                                    )}
-                                                    <div
-                                                        style={{
-                                                            display: "flex",
-                                                            justifyContent:
-                                                                "space-between",
-                                                            fontSize: 13,
-                                                            color: "var(--bs-success)",
-                                                        }}
-                                                    >
-                                                        <span>
-                                                            Discount (
-                                                            {
-                                                                activeDiscount.display
-                                                            }
-                                                            )
-                                                        </span>
-                                                        <span>
-                                                            −
-                                                            {format(
-                                                                discountAmount,
-                                                                currency
-                                                            )}
-                                                        </span>
-                                                    </div>
-                                                    <div
-                                                        style={{
-                                                            height: 1,
-                                                            background:
-                                                                "var(--bs-bg-muted)",
-                                                        }}
-                                                    />
-                                                </>
-                                            )}
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "baseline",
-                                            }}
-                                        >
-                                            <span
-                                                style={{
-                                                    fontSize: 14,
-                                                    color: "var(--bs-text-secondary)",
-                                                }}
-                                            >
-                                                Total
-                                            </span>
-                                            <span
-                                                style={{
-                                                    fontSize: 22,
-                                                    fontWeight: 700,
-                                                }}
-                                            >
-                                                {format(cartTotal, currency)}
-                                            </span>
+                                    <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                                        {activeDiscount && discountAmount > 0 && (
+                                            <>
+                                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--bs-text-secondary)" }}><span>Subtotal</span><span>{format(cartSubtotal, currency)}</span></div>
+                                                {partialDiscount && (<div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--bs-text-faint)" }}><span>Eligible subtotal</span><span>{format(eligibleSubtotal, currency)}</span></div>)}
+                                                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13, color: "var(--bs-success)" }}><span>Discount ({activeDiscount.display})</span><span>−{format(discountAmount, currency)}</span></div>
+                                                <div style={{ height: 1, background: "var(--bs-bg-muted)" }} />
+                                            </>
+                                        )}
+                                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline" }}>
+                                            <span style={{ fontSize: 14, color: "var(--bs-text-secondary)" }}>Total</span>
+                                            <span style={{ fontSize: 22, fontWeight: 700 }}>{format(cartTotal, currency)}</span>
                                         </div>
                                     </div>
 
-                                    <button
-                                        onClick={handleContinueToEmail}
-                                        style={{
-                                            width: "100%",
-                                            height: 52,
-                                            borderRadius: 12,
-                                            background: "#7C5CFF",
-                                            border: "none",
-                                            color: "#fff",
-                                            cursor: "pointer",
-                                            fontSize: 15,
-                                            fontWeight: 700,
-                                        }}
-                                    >
-                                        Continue →
-                                    </button>
+                                    <button onClick={handleContinueToEmail} style={{ width: "100%", height: 52, borderRadius: 12, background: "#7C5CFF", border: "none", color: "#fff", cursor: "pointer", fontSize: 15, fontWeight: 700 }}>Continue →</button>
                                 </div>
                             </>
                         )}
 
                         {drawerStep === "email" && (
                             <>
-                                <div
-                                    className="hide-scrollbar"
-                                    style={{
-                                        flex: 1,
-                                        overflowY: "auto",
-                                        padding: "16px 24px",
-                                        display: "flex",
-                                        flexDirection: "column",
-                                        gap: 8,
-                                    }}
-                                >
-                                    {Object.entries(cartItems).map(
-                                        ([
-                                            key,
-                                            { product, qty, itemPeriod },
-                                        ]) => {
-                                            const itemCfg = PERIODS[itemPeriod]
-                                            const linePrice =
-                                                (product as any)[itemCfg.field]
-                                            const lineTotal = linePrice
-                                                ? linePrice * fxRate * qty
-                                                : 0
-                                            return (
-                                                <div
-                                                    key={key}
-                                                    style={{
-                                                        display: "flex",
-                                                        justifyContent:
-                                                            "space-between",
-                                                        alignItems: "center",
-                                                        padding: "8px 0",
-                                                        borderBottom:
-                                                            "1px solid #1C1C1F",
-                                                        gap: 12,
-                                                    }}
-                                                >
-                                                    <div
-                                                        style={{ minWidth: 0 }}
-                                                    >
-                                                        <div
-                                                            style={{
-                                                                fontSize: 13,
-                                                                fontWeight: 600,
-                                                                overflow:
-                                                                    "hidden",
-                                                                textOverflow:
-                                                                    "ellipsis",
-                                                                whiteSpace:
-                                                                    "nowrap",
-                                                            }}
-                                                        >
-                                                            {
-                                                                product.name
-                                                            }
-                                                        </div>
-                                                        <div
-                                                            style={{
-                                                                fontSize: 11,
-                                                                color: "var(--bs-text-secondary)",
-                                                            }}
-                                                        >
-                                                            ×{qty} ·{" "}
-                                                            {itemCfg.name}
-                                                        </div>
-                                                    </div>
-                                                    <div
-                                                        style={{
-                                                            fontSize: 13,
-                                                            fontWeight: 600,
-                                                            flexShrink: 0,
-                                                        }}
-                                                    >
-                                                        {format(
-                                                            lineTotal,
-                                                            currency
-                                                        )}
-                                                    </div>
+                                <div className="hide-scrollbar" style={{ flex: 1, overflowY: "auto", padding: "16px 24px", display: "flex", flexDirection: "column", gap: 8 }}>
+                                    {Object.entries(cartItems).map(([key, { product, qty, itemPeriod }]) => {
+                                        const itemCfg = PERIODS[itemPeriod]
+                                        const linePrice = (product as any)[itemCfg.field]
+                                        const lineTotal = linePrice ? linePrice * fxRate * qty : 0
+                                        return (
+                                            <div key={key} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: "1px solid #1C1C1F", gap: 12 }}>
+                                                <div style={{ minWidth: 0 }}>
+                                                    <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{product.name}</div>
+                                                    <div style={{ fontSize: 11, color: "var(--bs-text-secondary)" }}>×{qty} · {itemCfg.name}</div>
                                                 </div>
-                                            )
-                                        }
-                                    )}
+                                                <div style={{ fontSize: 13, fontWeight: 600, flexShrink: 0 }}>{format(lineTotal, currency)}</div>
+                                            </div>
+                                        )
+                                    })}
                                     {activeDiscount && discountAmount > 0 && (
-                                        <div
-                                            style={{
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                fontSize: 12,
-                                                color: "var(--bs-success)",
-                                                paddingTop: 4,
-                                            }}
-                                        >
-                                            <span>
-                                                Promo: {activeDiscount.code} (
-                                                {activeDiscount.display})
-                                            </span>
-                                            <span>
-                                                −
-                                                {format(
-                                                    discountAmount,
-                                                    currency
-                                                )}
-                                            </span>
+                                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "var(--bs-success)", paddingTop: 4 }}>
+                                            <span>Promo: {activeDiscount.code} ({activeDiscount.display})</span>
+                                            <span>−{format(discountAmount, currency)}</span>
                                         </div>
                                     )}
-                                    <div
-                                        style={{
-                                            display: "flex",
-                                            justifyContent: "space-between",
-                                            alignItems: "baseline",
-                                            paddingTop: 8,
-                                            borderTop:
-                                                "1px solid var(--bs-border-default)",
-                                        }}
-                                    >
-                                        <span
-                                            style={{
-                                                fontSize: 13,
-                                                color: "var(--bs-text-secondary)",
-                                            }}
-                                        >
-                                            Total
-                                        </span>
-                                        <span
-                                            style={{
-                                                fontSize: 20,
-                                                fontWeight: 700,
-                                            }}
-                                        >
-                                            {format(cartTotal, currency)}
-                                        </span>
+                                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", paddingTop: 8, borderTop: "1px solid var(--bs-border-default)" }}>
+                                        <span style={{ fontSize: 13, color: "var(--bs-text-secondary)" }}>Total</span>
+                                        <span style={{ fontSize: 20, fontWeight: 700 }}>{format(cartTotal, currency)}</span>
                                     </div>
                                 </div>
 
-                                <div
-                                    style={{
-                                        padding: "20px 24px",
-                                        borderTop: "1px solid #1C1C1F",
-                                        flexShrink: 0,
-                                    }}
-                                >
-                                    <label
-                                        style={{
-                                            fontSize: 12,
-                                            color: "var(--bs-text-secondary)",
-                                            display: "block",
-                                            marginBottom: 8,
-                                        }}
-                                    >
-                                        Your email address
-                                    </label>
-                                    <input
-                                        className="email-input"
-                                        type="email"
-                                        placeholder="you@example.com"
-                                        value={email}
-                                        onChange={(e) => {
-                                            setEmail(e.target.value)
-                                            setEmailError("")
-                                        }}
-                                        onKeyDown={(e) =>
-                                            e.key === "Enter" &&
-                                            handleSendToWhatsApp()
-                                        }
-                                        style={{
-                                            width: "100%",
-                                            height: 48,
-                                            padding: "0 16px",
-                                            borderRadius: 10,
-                                            background: "var(--bs-bg-input)",
-                                            border: `1px solid ${emailError ? "var(--bs-error)" : "var(--bs-border-default)"}`,
-                                            color: "var(--bs-text-primary)",
-                                            fontSize: 14,
-                                            boxSizing: "border-box",
-                                            marginBottom: 6,
-                                        }}
-                                    />
-                                    {emailError && (
-                                        <div
-                                            style={{
-                                                fontSize: 12,
-                                                color: "var(--bs-error)",
-                                                marginBottom: 10,
-                                            }}
-                                        >
-                                            {emailError}
-                                        </div>
-                                    )}
-                                    <button
-                                        onClick={handlePayWithPaystack}
-                                        disabled={orderLoading}
-                                        style={{
-                                            width: "100%",
-                                            height: 52,
-                                            borderRadius: 12,
-                                            background: "#7C5CFF",
-                                            border: "none",
-                                            color: "#fff",
-                                            cursor: orderLoading ? "not-allowed" : "pointer",
-                                            fontSize: 15,
-                                            fontWeight: 700,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: 10,
-                                            transition: "background .15s",
-                                            marginTop: 8,
-                                            opacity: orderLoading ? 0.6 : 1,
-                                        }}
-                                    >
+                                <div style={{ padding: "20px 24px", borderTop: "1px solid #1C1C1F", flexShrink: 0 }}>
+                                    <label style={{ fontSize: 12, color: "var(--bs-text-secondary)", display: "block", marginBottom: 8 }}>Your email address</label>
+                                    <input className="email-input" type="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError("") }} onKeyDown={(e) => e.key === "Enter" && handleSendToWhatsApp()} style={{ width: "100%", height: 48, padding: "0 16px", borderRadius: 10, background: "var(--bs-bg-input)", border: `1px solid ${emailError ? "var(--bs-error)" : "var(--bs-border-default)"}`, color: "var(--bs-text-primary)", fontSize: 14, boxSizing: "border-box", marginBottom: 6 }} />
+                                    {emailError && (<div style={{ fontSize: 12, color: "var(--bs-error)", marginBottom: 10 }}>{emailError}</div>)}
+                                    <button onClick={handlePayWithPaystack} disabled={orderLoading} style={{ width: "100%", height: 52, borderRadius: 12, background: "#7C5CFF", border: "none", color: "#fff", cursor: orderLoading ? "not-allowed" : "pointer", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "background .15s", marginTop: 8, opacity: orderLoading ? 0.6 : 1 }}>
                                         {orderLoading ? "Processing..." : `Pay ${format(cartTotal, currency)} with Paystack`}
                                     </button>
-                                    <div style={{
-                                        display: "flex",
-                                        alignItems: "center",
-                                        gap: 12,
-                                        margin: "16px 0 8px",
-                                    }}>
+                                    <div style={{ display: "flex", alignItems: "center", gap: 12, margin: "16px 0 8px" }}>
                                         <div style={{ flex: 1, height: 1, background: "var(--bs-border-default)" }} />
                                         <span style={{ fontSize: 12, color: "var(--bs-text-muted)" }}>or</span>
                                         <div style={{ flex: 1, height: 1, background: "var(--bs-border-default)" }} />
                                     </div>
-                                    <button
-                                        className="wa-btn"
-                                        onClick={handleSendToWhatsApp}
-                                        disabled={orderLoading}
-                                        style={{
-                                            width: "100%",
-                                            height: 52,
-                                            borderRadius: 12,
-                                            background: "#25D366",
-                                            border: "none",
-                                            color: "#fff",
-                                            cursor: "pointer",
-                                            fontSize: 15,
-                                            fontWeight: 700,
-                                            display: "flex",
-                                            alignItems: "center",
-                                            justifyContent: "center",
-                                            gap: 10,
-                                            transition: "background .15s",
-                                            marginTop: 8,
-                                        }}
-                                    >
+                                    <button className="wa-btn" onClick={handleSendToWhatsApp} disabled={orderLoading} style={{ width: "100%", height: 52, borderRadius: 12, background: "#25D366", border: "none", color: "#fff", cursor: "pointer", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "background .15s", marginTop: 8 }}>
                                         <WhatsAppIcon />
                                         Send order to WhatsApp
                                     </button>
-                                    <p
-                                        style={{
-                                            fontSize: 11,
-                                            color: "var(--bs-text-faint)",
-                                            textAlign: "center",
-                                            marginTop: 10,
-                                            lineHeight: 1.5,
-                                        }}
-                                    >
-                                        Opens WhatsApp with your order
-                                        pre-filled. Our team will confirm and
-                                        process.
+                                    <p style={{ fontSize: 11, color: "var(--bs-text-faint)", textAlign: "center", marginTop: 10, lineHeight: 1.5 }}>
+                                        Opens WhatsApp with your order pre-filled. Our team will confirm and process.
                                     </p>
                                 </div>
                             </>
@@ -2465,24 +1775,8 @@ export default function Marketplace() {
    SMALL COMPONENTS
 =============================================================== */
 
-/*
-  ProductLogo — Logo.dev (theme=dark) → Airtable attachment → letter avatar
-  theme=dark tells Logo.dev to render logos optimised for dark backgrounds:
-  black marks become white, dark logos get adapted colours, coloured logos
-  stay as-is. This means the container background must also be dark.
-*/
-const ProductLogo = ({
-    product,
-    size = 48,
-}: {
-    product: any
-    size?: number
-}) => {
-    const domain = String(product.domain || "")
-        .trim()
-        .toLowerCase()
-        .replace(/^https?:\/\//, "")
-        .replace(/\/.*$/, "")
+const ProductLogo = ({ product, size = 48 }: { product: any; size?: number }) => {
+    const domain = String(product.domain || "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "")
     const attachment = product.image_url
     const name = String(product.name || "?")
     const letter = name.charAt(0).toUpperCase()
@@ -2491,10 +1785,7 @@ const ProductLogo = ({
 
     const buildSources = (d: string): string[] => {
         const list: string[] = []
-        if (d && LOGO_DEV_TOKEN)
-            list.push(
-                `https://img.logo.dev/${d}?token=${LOGO_DEV_TOKEN}&size=128&format=png&theme=dark&retina=true`
-            )
+        if (d && LOGO_DEV_TOKEN) list.push(`https://img.logo.dev/${d}?token=${LOGO_DEV_TOKEN}&size=128&format=png&theme=dark&retina=true`)
         if (attachment) list.push(attachment)
         return list
     }
@@ -2520,67 +1811,22 @@ const ProductLogo = ({
 
     if (!allFailed && currentSrc) {
         return (
-            <div
-                style={{
-                    width: size,
-                    height: size,
-                    borderRadius: 14,
-                    flexShrink: 0,
-                    background: "var(--bs-bg-elevated)",
-                    overflow: "hidden",
-                    border: "1px solid rgba(255,255,255,0.06)",
-                }}
-            >
-                <img
-                    key={currentSrc}
-                    src={currentSrc}
-                    alt={name}
-                    onError={onError}
-                    style={{
-                        width: "100%",
-                        height: "100%",
-                        objectFit: "contain",
-                        display: "block",
-                    }}
-                />
+            <div style={{ width: size, height: size, borderRadius: 14, flexShrink: 0, background: "var(--bs-bg-elevated)", overflow: "hidden", border: "1px solid rgba(255,255,255,0.06)" }}>
+                <img key={currentSrc} src={currentSrc} alt={name} onError={onError} style={{ width: "100%", height: "100%", objectFit: "contain", display: "block" }} />
             </div>
         )
     }
 
     return (
-        <div
-            style={{
-                width: size,
-                height: size,
-                borderRadius: 14,
-                flexShrink: 0,
-                background: bg,
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontSize: Math.round(size * 0.38),
-                fontWeight: 700,
-                color: "rgba(255,255,255,0.85)",
-            }}
-        >
+        <div style={{ width: size, height: size, borderRadius: 14, flexShrink: 0, background: bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: Math.round(size * 0.38), fontWeight: 700, color: "rgba(255,255,255,0.85)" }}>
             {letter}
         </div>
     )
 }
 
 const CartIcon = ({ size = 14 }: { size?: number }) => (
-    <svg
-        width={size}
-        height={size}
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-    >
-        <circle cx="9" cy="21" r="1" />
-        <circle cx="20" cy="21" r="1" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <circle cx="9" cy="21" r="1" /><circle cx="20" cy="21" r="1" />
         <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
     </svg>
 )
@@ -2592,63 +1838,12 @@ const WhatsAppIcon = () => (
     </svg>
 )
 
-const QtyBtn = ({
-    onClick,
-    children,
-}: {
-    onClick: () => void
-    children: React.ReactNode
-}) => (
-    <button
-        className="cart-qty-btn"
-        onClick={onClick}
-        style={{
-            width: 36,
-            height: 36,
-            borderRadius: 8,
-            background: "var(--bs-bg-input)",
-            border: "1px solid var(--bs-border-default)",
-            color: "var(--bs-text-primary)",
-            cursor: "pointer",
-            fontSize: 18,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            flexShrink: 0,
-            transition: "background .15s",
-        }}
-    >
-        {children}
-    </button>
+const QtyBtn = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => (
+    <button className="cart-qty-btn" onClick={onClick} style={{ width: 36, height: 36, borderRadius: 8, background: "var(--bs-bg-input)", border: "1px solid var(--bs-border-default)", color: "var(--bs-text-primary)", cursor: "pointer", fontSize: 18, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "background .15s" }}>{children}</button>
 )
 
-const DrawerQtyBtn = ({
-    onClick,
-    children,
-}: {
-    onClick: () => void
-    children: React.ReactNode
-}) => (
-    <button
-        className="cart-qty-btn"
-        onClick={onClick}
-        style={{
-            width: 28,
-            height: 28,
-            borderRadius: 6,
-            background: "var(--bs-bg-muted)",
-            border: "1px solid var(--bs-border-default)",
-            color: "var(--bs-text-primary)",
-            cursor: "pointer",
-            fontSize: 16,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            transition: "background .15s",
-        }}
-    >
-        {children}
-    </button>
+const DrawerQtyBtn = ({ onClick, children }: { onClick: () => void; children: React.ReactNode }) => (
+    <button className="cart-qty-btn" onClick={onClick} style={{ width: 28, height: 28, borderRadius: 6, background: "var(--bs-bg-muted)", border: "1px solid var(--bs-border-default)", color: "var(--bs-text-primary)", cursor: "pointer", fontSize: 16, display: "flex", alignItems: "center", justifyContent: "center", transition: "background .15s" }}>{children}</button>
 )
 
 const cardStyle = (isMobile: boolean) => ({
@@ -2662,172 +1857,37 @@ const cardStyle = (isMobile: boolean) => ({
 })
 
 const S: any = {
-    stickyControls: {
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-        background: "var(--bs-bg-base)",
-        paddingTop: 16,
-        paddingBottom: 16,
-        marginBottom: 20,
-        borderBottom: "1px solid var(--bs-border-default)",
-    },
-    topBarRow: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
-        gap: 16,
-        flexWrap: "wrap",
-    },
-    topLeftGroup: {
-        display: "flex",
-        alignItems: "center",
-        gap: 12,
-        flexWrap: "wrap",
-    },
+    stickyControls: { position: "sticky", top: 0, zIndex: 50, background: "var(--bs-bg-base)", paddingTop: 16, paddingBottom: 16, marginBottom: 20, borderBottom: "1px solid var(--bs-border-default)" },
+    topBarRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" },
+    topLeftGroup: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" },
     topRightGroup: { display: "flex", gap: 8, alignItems: "center" },
-    segContainer: {
-        display: "flex",
-        background: "var(--bs-bg-elevated)",
-        border: "1px solid var(--bs-border-default)",
-        borderRadius: 999,
-        padding: 4,
-        gap: 4,
-        boxSizing: "border-box",
-        alignItems: "center",
-    },
-    segBtn: {
-        padding: "0 14px",
-        borderRadius: 999,
-        color: "var(--bs-text-primary)",
-        border: "none",
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontSize: 13,
-    },
-    clearBtn: {
-        position: "absolute",
-        right: 10,
-        top: "50%",
-        transform: "translateY(-50%)",
-        background: "transparent",
-        border: "none",
-        color: "var(--bs-text-secondary)",
-        fontSize: 18,
-        cursor: "pointer",
-        lineHeight: 1,
-        padding: 0,
-    },
+    segContainer: { display: "flex", background: "var(--bs-bg-elevated)", border: "1px solid var(--bs-border-default)", borderRadius: 999, padding: 4, gap: 4, boxSizing: "border-box", alignItems: "center" },
+    segBtn: { padding: "0 14px", borderRadius: 999, color: "var(--bs-text-primary)", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 },
+    clearBtn: { position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "transparent", border: "none", color: "var(--bs-text-secondary)", fontSize: 18, cursor: "pointer", lineHeight: 1, padding: 0 },
     topRow: { display: "flex", gap: 14, alignItems: "center" },
     icon: { width: 48, height: 48, borderRadius: 14, flexShrink: 0 },
-    iconPlaceholder: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        background: "var(--bs-bg-elevated)",
-        flexShrink: 0,
-    },
-    productRow: {
-        display: "flex",
-        flexDirection: "column",
-        gap: 4,
-        minWidth: 0,
-    },
+    iconPlaceholder: { width: 48, height: 48, borderRadius: 14, background: "var(--bs-bg-elevated)", flexShrink: 0 },
+    productRow: { display: "flex", flexDirection: "column", gap: 4, minWidth: 0 },
     productName: { fontWeight: 600, lineHeight: 1.3 },
     category: { fontSize: 12, color: "#7C5CFF" },
-    description: {
-        fontSize: 12,
-        color: "var(--bs-text-secondary)",
-        lineHeight: 1.5,
-    },
+    description: { fontSize: 12, color: "var(--bs-text-secondary)", lineHeight: 1.5 },
     priceBlock: { display: "flex", flexDirection: "column", gap: 4 },
     price: { fontWeight: 700, lineHeight: 1 },
-    discountRow: {
-        display: "flex",
-        gap: 8,
-        alignItems: "center",
-        flexWrap: "wrap",
-    },
-    strike: {
-        fontSize: 12,
-        color: "var(--bs-text-muted)",
-        textDecoration: "line-through",
-    },
+    discountRow: { display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" },
+    strike: { fontSize: 12, color: "var(--bs-text-muted)", textDecoration: "line-through" },
     discountBadge: { fontSize: 10, color: "var(--bs-success)" },
-    periodLabel: {
-        fontSize: 12,
-        color: "var(--bs-text-secondary)",
-        fontWeight: 500,
-    },
+    periodLabel: { fontSize: 12, color: "var(--bs-text-secondary)", fontWeight: 500 },
     badge: { borderRadius: 999, fontWeight: 500, whiteSpace: "nowrap" },
-    bottomBlock: {
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "flex-end",
-        gap: 8,
-    },
-    metaRow: {
-        display: "flex",
-        alignItems: "center",
-        gap: 6,
-        minWidth: 0,
-        flexWrap: "wrap",
-    },
+    bottomBlock: { display: "flex", justifyContent: "space-between", alignItems: "flex-end", gap: 8 },
+    metaRow: { display: "flex", alignItems: "center", gap: 6, minWidth: 0, flexWrap: "wrap" },
     metaSep: { color: "var(--bs-text-faint)", fontSize: 12, flexShrink: 0 },
     tagList: { display: "flex", gap: 6, minWidth: 0, overflow: "hidden" },
-    tag: {
-        fontSize: 12,
-        color: "var(--bs-text-secondary)",
-        cursor: "pointer",
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis",
-    },
-    skelIcon: {
-        width: 48,
-        height: 48,
-        borderRadius: 14,
-        background: "var(--bs-bg-subtle)",
-        flexShrink: 0,
-    },
-    skelLineLg: {
-        height: 14,
-        width: "70%",
-        background: "var(--bs-bg-subtle)",
-        borderRadius: 6,
-        marginBottom: 6,
-    },
-    skelLineSm: {
-        height: 10,
-        width: "40%",
-        background: "var(--bs-bg-subtle)",
-        borderRadius: 6,
-    },
-    skelPara: {
-        height: 10,
-        width: "100%",
-        background: "var(--bs-bg-subtle)",
-        borderRadius: 6,
-    },
-    skelPrice: {
-        height: 18,
-        width: 120,
-        background: "var(--bs-bg-subtle)",
-        borderRadius: 6,
-        marginBottom: 6,
-    },
-    skelSmall: {
-        height: 10,
-        width: 90,
-        background: "var(--bs-bg-subtle)",
-        borderRadius: 6,
-    },
-    skelBadge: {
-        height: 24,
-        width: 80,
-        background: "var(--bs-bg-subtle)",
-        borderRadius: 999,
-    },
+    tag: { fontSize: 12, color: "var(--bs-text-secondary)", cursor: "pointer", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" },
+    skelIcon: { width: 48, height: 48, borderRadius: 14, background: "var(--bs-bg-subtle)", flexShrink: 0 },
+    skelLineLg: { height: 14, width: "70%", background: "var(--bs-bg-subtle)", borderRadius: 6, marginBottom: 6 },
+    skelLineSm: { height: 10, width: "40%", background: "var(--bs-bg-subtle)", borderRadius: 6 },
+    skelPara: { height: 10, width: "100%", background: "var(--bs-bg-subtle)", borderRadius: 6 },
+    skelPrice: { height: 18, width: 120, background: "var(--bs-bg-subtle)", borderRadius: 6, marginBottom: 6 },
+    skelSmall: { height: 10, width: 90, background: "var(--bs-bg-subtle)", borderRadius: 6 },
+    skelBadge: { height: 24, width: 80, background: "var(--bs-bg-subtle)", borderRadius: 999 },
 }

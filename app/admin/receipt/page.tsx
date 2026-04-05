@@ -450,8 +450,10 @@ export default function ReceiptGenerator() {
     loadProducts().then(setProducts).catch(console.error).finally(() => setProdLoading(false))
   }, [])
 
-  const [ref] = useState(genRef)
-  const [date] = useState(() => new Date().toISOString())
+  const [ref, setRef] = useState('')
+  useEffect(() => { if (!ref) setRef(genRef()) }, [])
+  const [date, setDate] = useState('')
+  useEffect(() => { if (!date) setDate(new Date().toISOString()) }, [])
   const todayStr = new Date().toISOString().slice(0, 10)
   const [purchaseDate, setPurchaseDate] = useState(todayStr)
   const [currency, setCurrency] = useState('NGN')
