@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import { getProducts, getAutoApplyDiscounts as fetchAutoApplyAPI, validateDiscount as validateDiscountAPI, createWhatsAppOrder, createOrder, initPaystackPayment } from "@/lib/api";
 import { PERIODS, TAB_ORDER, FX, CART_STORAGE_KEY, LOGO_DEV_TOKEN, WHATSAPP_NUMBER, Product, CartItem, AppliedDiscount, DiscountRecord, format, discountPct, isInStock, hasCategory, getCategoryList, cartKey, isValidEmail, norm, isItemEligible, getEligibleSubtotal, calcDiscountAmount } from "@/lib/constants";
+import { useReferral } from '@/lib/useReferral'
 
 /* ===============================================================
    HOOKS
@@ -17,6 +18,8 @@ const useWindowWidth = () => {
     }, [])
     return width
 }
+
+const { referralCode, affiliateInfo, clearReferral } = useReferral()
 
 /* ===============================================================
    HELPERS
