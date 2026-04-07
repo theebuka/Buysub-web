@@ -85,6 +85,7 @@ interface DiscountResult { code: string; type: string; value: number; display: s
 const uid = () => Math.random().toString(36).slice(2, 9)
 const norm = (s: string) => s.toLowerCase().trim()
 const parse = (s: string) => Math.max(0, parseFloat(s.replace(/[^0-9.]/g, '')) || 0)
+const sentenceCase = (s: string) => s ? s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : ''
 
 const genRef = (): string => {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'
@@ -150,7 +151,7 @@ const fetchCustomers = async (q: string): Promise<Customer[]> => {
   if (!data.ok) return []
   return (data.data || []).map((c: any): Customer => ({
     id: c.id,
-    name: c.display_name || '',
+    name: c.name || '',
     email: c.email || '',
     phone: c.phone || '',
   }))
@@ -164,8 +165,8 @@ const checkDiscount = async (
     { headers: authHeaders() }
   )
   const data = await res.json()
-  if (data.ok && data.result) return { ok: true, result: data.result }
-  return { ok: false, error: data.error || 'Code not found or inactive.' }
+  if (data.ok && data.data?.ok && data.data?.result) return { ok: true, result: data.data.result }
+  return { ok: false, error: data.data?.error || data.error || 'Code not found or inactive.' }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -185,6 +186,7 @@ const buildPDF = async (p: {
   items: LineItem[]; discount: DiscountResult | null
   subtotalNGN: number; discountNGN: number; taxNGN: number; totalNGN: number
   taxRate: number; taxEnabled: boolean; paymentMethod: string; salesRep: string; note: string
+  paymentInstructions: string
 }) => {
   await new Promise<void>((resolve, reject) => {
     if ((window as any).jspdf) { resolve(); return }
@@ -261,7 +263,7 @@ const buildPDF = async (p: {
     const nameH = nameParts.length * 4.2
     if (item.category) {
       doc.setFontSize(7.5); doc.setTextColor(130, 130, 142)
-      tx(item.category + (item.tags ? `  ·  ${item.tags}` : ''), ML + 3, y + nameH)
+      tx(item.category + (item.tags ? `  ·  ${sentenceCase(item.tags)}` : ''), ML + 3, y + nameH)
     }
 
     doc.setFont('helvetica', 'normal'); doc.setFontSize(9); doc.setTextColor(55, 55, 68)
@@ -303,6 +305,17 @@ const buildPDF = async (p: {
   const noteText = p.note.trim() || DEFAULT_NOTE
   const noteLines = doc.splitTextToSize(noteText, R - ML)
   noteLines.forEach((line: string, i: number) => { tx(line, ML, y + i * 5.5) })
+  y += noteLines.length * 5.5 + 10
+
+  /* Payment Instructions */
+  const piText = (p as any).paymentInstructions || ''
+  if (piText.trim()) {
+    doc.setFont('helvetica', 'normal'); doc.setFontSize(8); doc.setTextColor(120, 120, 132); tx('Payment Instructions:', ML, y); y += 5.5
+    doc.setFontSize(8.5); doc.setTextColor(70, 70, 82)
+    const piLines = doc.splitTextToSize(piText, R - ML)
+    piLines.forEach((line: string, i: number) => { tx(line, ML, y + i * 5.5) })
+    y += piLines.length * 5.5 + 6
+  }
 
   /* Footer */
   const FOOTER_H = 38, FOOTER_Y = 297 - FOOTER_H
@@ -378,7 +391,7 @@ const ProductCombobox = ({ products, value, onChange }: {
               style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle, #1c1c22)', background: i === active ? 'var(--bs-bg-muted, #18181c)' : 'transparent' }}>
               <div style={{ fontSize: 13, color: 'var(--bs-text-primary, #e8e8ec)' }}>{p.name}</div>
               <div style={{ fontSize: 11, color: 'var(--bs-text-muted, #6b6b7e)', marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
-                <span>{p.category}{p.tags ? `  ·  ${p.tags}` : ''}</span>
+                <span>{p.category}{p.tags ? `  ·  ${sentenceCase(p.tags)}` : ''}</span>
                 <span style={{ color: 'var(--bs-text-faint, #4a4a5e)' }}>
                   {p.isOutright ? `₦${(p.prices['One-time'] || 0).toLocaleString()}` : `₦${(p.prices.Annual || p.prices.Quarterly || 0).toLocaleString()} /yr`}
                 </span>
@@ -391,9 +404,10 @@ const ProductCombobox = ({ products, value, onChange }: {
   )
 }
 
-const CustomerCombobox = ({ onSelect }: { onSelect: (c: Customer) => void }) => {
+const CustomerCombobox = ({ onSelect, onOrderFound }: { onSelect: (c: Customer) => void; onOrderFound?: (order: any) => void }) => {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Customer[]>([])
+  const [orderResult, setOrderResult] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
@@ -401,9 +415,18 @@ const CustomerCombobox = ({ onSelect }: { onSelect: (c: Customer) => void }) => 
 
   useEffect(() => {
     clearTimeout(timer.current)
-    if (query.length < 2) { setResults([]); return }
+    if (query.length < 2) { setResults([]); setOrderResult(null); return }
     timer.current = setTimeout(async () => {
       setLoading(true)
+      setOrderResult(null)
+      // If it looks like an order ref, search orders too
+      if (query.toUpperCase().startsWith('BS-') && onOrderFound) {
+        try {
+          const r = await fetch(`${API}/v2/admin/orders/${query.toUpperCase()}`, { headers: authHeaders() })
+          const data = await r.json()
+          if (data.ok && data.data) setOrderResult(data.data)
+        } catch { /* ignore */ }
+      }
       try { setResults(await fetchCustomers(query)) } finally { setLoading(false) }
     }, 400)
   }, [query])
@@ -417,11 +440,27 @@ const CustomerCombobox = ({ onSelect }: { onSelect: (c: Customer) => void }) => 
     <div ref={ref} style={{ position: 'relative' }}>
       <div style={{ position: 'relative' }}>
         <input value={query} onChange={e => { setQuery(e.target.value); setOpen(true) }}
-          onFocus={() => setOpen(true)} placeholder="Search by name, email or phone…" style={IS} />
+          onFocus={() => setOpen(true)} placeholder="Search by name, email, phone, or order ref (BS-…)" style={IS} />
         {loading && <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: 'var(--bs-text-faint, #6b6b7e)' }}>…</span>}
       </div>
-      {open && results.length > 0 && (
+      {open && (results.length > 0 || orderResult) && (
         <div style={DD}>
+          {orderResult && (
+            <div onClick={() => {
+              if (onOrderFound) onOrderFound(orderResult)
+              onSelect({ id: '', name: orderResult.customer_name || '', email: orderResult.customer_email || '', phone: orderResult.customer_phone || '' })
+              setQuery(orderResult.order_ref)
+              setOpen(false)
+            }}
+              style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle, #1c1c22)', background: 'rgba(124,92,255,0.06)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,92,255,0.12)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(124,92,255,0.06)')}>
+              <div style={{ fontSize: 13, color: '#7C5CFF', fontWeight: 600 }}>📋 Order {orderResult.order_ref}</div>
+              <div style={{ fontSize: 11, color: 'var(--bs-text-muted, #6b6b7e)', marginTop: 2 }}>
+                {orderResult.customer_name || '—'} · {fmtAmt(orderResult.total_ngn, orderResult.currency)} · {orderResult.status}
+              </div>
+            </div>
+          )}
           {results.map(c => (
             <div key={c.id} onClick={() => { onSelect(c); setQuery(c.name); setOpen(false) }}
               style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle, #1c1c22)' }}
@@ -443,6 +482,18 @@ const CustomerCombobox = ({ onSelect }: { onSelect: (c: Customer) => void }) => 
    MAIN COMPONENT — identical UI to the Airtable version
 ════════════════════════════════════════════════════════════ */
 
+const DEFAULT_PAYMENT_INSTRUCTIONS =
+  'Payment can be made via bank transfer to: Bank Name, Account Number, Account Name.\n' +
+  'Or via PayStack at buysub.ng. For cash payments, contact us on WhatsApp.'
+
+/* Fetch order by ref for auto-populate */
+const fetchOrderByRef = async (orderRef: string) => {
+  const res = await fetch(`${API}/v2/admin/orders/${orderRef}`, { headers: authHeaders() })
+  const data = await res.json()
+  if (data.ok && data.data) return data.data
+  return null
+}
+
 export default function ReceiptGenerator() {
   const [products, setProducts] = useState<Product[]>([])
   const [prodLoading, setProdLoading] = useState(true)
@@ -450,8 +501,8 @@ export default function ReceiptGenerator() {
     loadProducts().then(setProducts).catch(console.error).finally(() => setProdLoading(false))
   }, [])
 
-  const [ref, setRef] = useState('')
-  useEffect(() => { if (!ref) setRef(genRef()) }, [])
+  const [orderRef, setOrderRef] = useState('')
+  const [isFromOrder, setIsFromOrder] = useState(false)
   const [date, setDate] = useState('')
   useEffect(() => { if (!date) setDate(new Date().toISOString()) }, [])
   const todayStr = new Date().toISOString().slice(0, 10)
@@ -469,6 +520,57 @@ export default function ReceiptGenerator() {
   const [items, setItems] = useState<LineItem[]>([emptyItem()])
   const setItem = (id: string, patch: Partial<LineItem>) =>
     setItems(p => p.map(i => (i.id === id ? { ...i, ...patch } : i)))
+
+  /* Auto-populate from ?ref= URL param (Orders tab → Receipt) */
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const refParam = params.get('ref')
+    if (refParam) {
+      setOrderRef(refParam)
+      setIsFromOrder(true)
+      fetchOrderByRef(refParam).then(order => {
+        if (!order) return
+        setCustName(order.customer_name || '')
+        setCustEmail(order.customer_email || '')
+        setCustPhone(order.customer_phone || '')
+        setCurrency(order.currency || 'NGN')
+        setPaymentMethod(order.payment_method || '')
+        if (order.created_at) setPurchaseDate(order.created_at.slice(0, 10))
+        if (order.discount_code && order.discount_ngn > 0) {
+          setDResult({
+            code: order.discount_code,
+            type: '',
+            value: 0,
+            display: order.discount_code,
+            amountNGN: order.discount_ngn || 0,
+          })
+        }
+        if (order.order_items && order.order_items.length > 0) {
+          const orderItems: LineItem[] = order.order_items.map((oi: any) => ({
+            id: uid(),
+            productId: oi.product_id || '',
+            name: oi.product_name || '',
+            category: oi.category || '',
+            tags: '',
+            period: oi.billing_period || 'Annual',
+            isOutright: oi.billing_period === 'One-time',
+            qty: oi.quantity || 1,
+            unitPriceNGN: oi.unit_price_ngn || 0,
+            override: '',
+          }))
+          setItems(orderItems)
+        }
+      })
+    } else {
+      setOrderRef(genRef())
+    }
+  }, [])
+
+  /* Sales rep auto-set from logged-in admin */
+  useEffect(() => {
+    const email = (() => { try { for (const key of Object.keys(localStorage)) { if (key.startsWith('sb-') && key.endsWith('-auth-token')) { const s = JSON.parse(localStorage.getItem(key) || '{}'); return s?.user?.email || '' } } } catch {} return '' })()
+    if (email) setSalesRep(email.split('@')[0])
+  }, [])
 
   const onProductSelect = (itemId: string, product: Product | null) => {
     if (!product) { setItem(itemId, { productId: '', name: '', category: '', tags: '', unitPriceNGN: 0, override: '' }); return }
@@ -511,6 +613,7 @@ export default function ReceiptGenerator() {
   const [paymentMethod, setPaymentMethod] = useState('')
   const [salesRep, setSalesRep] = useState('')
   const [note, setNote] = useState('')
+  const [paymentInstructions, setPaymentInstructions] = useState('')
 
   /* Totals */
   const subtotalNGN = items.reduce((s, i) => s + (i.override ? parse(i.override) : i.unitPriceNGN) * i.qty, 0)
@@ -520,10 +623,11 @@ export default function ReceiptGenerator() {
   const totalNGN = afterDiscount + taxNGN
 
   const payload = () => ({
-    ref, date: purchaseDate, generatedAt: date, currency,
+    ref: orderRef, date: purchaseDate, generatedAt: date, currency,
     customer: { name: custName, phone: custPhone, email: custEmail },
     items, discount: dResult, subtotalNGN, discountNGN, taxNGN, totalNGN,
     taxRate: parseFloat(taxRate) || 0, taxEnabled, paymentMethod, salesRep, note,
+    paymentInstructions: paymentInstructions || DEFAULT_PAYMENT_INSTRUCTIONS,
   })
 
   /* Actions */
@@ -543,7 +647,7 @@ export default function ReceiptGenerator() {
     try { await buildPDF(payload()); setGenerated(true) } catch (e) { console.error(e) }
     finally { setGenerating(false) }
     const wa = toWAPhone(custPhone)
-    const msg = `Thank you for your purchase${custName ? ', ' + custName.split(' ')[0] : ''}. [additional instructions]\n\nYour order reference is *${ref}* — please find your receipt attached.\nFor any questions, reply here or email ${BUYSUB_EMAIL}.`
+    const msg = `Thank you for your purchase${custName ? ', ' + custName.split(' ')[0] : ''}. [additional instructions]\n\nYour order reference is *${orderRef}* — please find your receipt attached.\nFor any questions, reply here or email ${BUYSUB_EMAIL}.`
     window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer')
     setWaSent(true)
   }
@@ -576,7 +680,7 @@ export default function ReceiptGenerator() {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
           <div>
             <div style={{ fontSize: 18 }}>Receipt Generator</div>
-            <div style={{ fontSize: 11, color: 'var(--bs-text-muted, #6b6b7e)', marginTop: 4 }}>Internal · {ref} · Generated {fmtDate(date)}</div>
+            <div style={{ fontSize: 11, color: 'var(--bs-text-muted, #6b6b7e)', marginTop: 4 }}>Internal · {orderRef} · Generated {fmtDate(date)}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 11, color: 'var(--bs-text-secondary, #a0a0b0)' }}>Currency</span>
@@ -591,7 +695,28 @@ export default function ReceiptGenerator() {
         <Panel title="Customer">
           <div style={{ marginBottom: 14 }}>
             <Lbl>Search existing customer</Lbl>
-            <CustomerCombobox onSelect={c => { setCustName(c.name); setCustEmail(c.email); setCustPhone(c.phone) }} />
+            <CustomerCombobox
+              onSelect={c => { setCustName(c.name); setCustEmail(c.email); setCustPhone(c.phone) }}
+              onOrderFound={order => {
+                if (!order) return
+                setOrderRef(order.order_ref || orderRef)
+                setCustName(order.customer_name || '')
+                setCustEmail(order.customer_email || '')
+                setCustPhone(order.customer_phone || '')
+                setCurrency(order.currency || 'NGN')
+                setPaymentMethod(order.payment_method || '')
+                if (order.created_at) setPurchaseDate(order.created_at.slice(0, 10))
+                if (order.order_items && order.order_items.length > 0) {
+                  const orderItems: LineItem[] = order.order_items.map((oi: any) => ({
+                    id: uid(), productId: oi.product_id || '', name: oi.product_name || '',
+                    category: oi.category || '', tags: '', period: oi.billing_period || 'Annual',
+                    isOutright: oi.billing_period === 'One-time', qty: oi.quantity || 1,
+                    unitPriceNGN: oi.unit_price_ngn || 0, override: '',
+                  }))
+                  setItems(orderItems)
+                }
+              }}
+            />
           </div>
           <div className="rg-cust-grid">
             <div className="rg-cust-name"><Lbl>Name</Lbl><input style={IS} placeholder="Full name" value={custName} onChange={e => setCustName(e.target.value)} /></div>
@@ -707,6 +832,13 @@ export default function ReceiptGenerator() {
           <Lbl>Notes <span style={{ color: 'var(--bs-text-faint, #4a4a5e)', fontSize: 10 }}>(leave blank for default)</span></Lbl>
           <textarea value={note} onChange={e => setNote(e.target.value)} placeholder={DEFAULT_NOTE}
             style={{ ...IS, height: 88, padding: '10px 12px', resize: 'vertical', lineHeight: 1.7, fontSize: 12 } as any} />
+        </Panel>
+
+        {/* Payment Instructions */}
+        <Panel title="Payment Instructions">
+          <Lbl>Instructions printed on receipt <span style={{ color: 'var(--bs-text-faint, #4a4a5e)', fontSize: 10 }}>(leave blank for default)</span></Lbl>
+          <textarea value={paymentInstructions} onChange={e => setPaymentInstructions(e.target.value)} placeholder={DEFAULT_PAYMENT_INSTRUCTIONS}
+            style={{ ...IS, height: 80, padding: '10px 12px', resize: 'vertical', lineHeight: 1.7, fontSize: 12 } as any} />
         </Panel>
 
         {/* Totals */}
