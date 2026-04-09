@@ -31,6 +31,15 @@ const statusColor = (s: string) => {
 }
 const emptyPagination: Pagination = {page:1,limit:20,total:0,pages:0}
 const parsePagination = (r: any): Pagination => r?.meta?.pagination||r?.pagination||emptyPagination
+const logoUrl = (domain: string) => domain ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&size=64` : ''
+
+// ── Hydration-safe client hook ──
+function useClientValue<T>(getter: () => T, fallback: T): T {
+  const [value, setValue] = useState<T>(fallback)
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => { setMounted(true); try { setValue(getter()) } catch {} }, [])
+  return mounted ? value : fallback
+}
 
 // ── Theme ──
 const dark = {
@@ -47,22 +56,215 @@ const light = {
 }
 type Theme = typeof dark
 
-const useTheme = () => {
+function useTheme() {
   const [isDark, setIsDark] = useState(true)
-  useEffect(() => { const saved = localStorage.getItem('bs_admin_theme'); if (saved==='light') setIsDark(false); else setIsDark(true) }, [])
-  const toggle = () => { const next = !isDark; setIsDark(next); localStorage.setItem('bs_admin_theme', next?'dark':'light') }
-  return { T: isDark ? dark : light, isDark, toggle }
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => {
+    setMounted(true)
+    try { const saved = localStorage.getItem('bs_admin_theme'); if (saved === 'light') setIsDark(false) } catch {}
+  }, [])
+  const toggle = () => {
+    const next = !isDark; setIsDark(next)
+    try { localStorage.setItem('bs_admin_theme', next ? 'dark' : 'light') } catch {}
+  }
+  return { T: isDark ? dark : light, isDark, toggle, mounted }
 }
 
-// ── Auth ──
-const getToken = (): string => { try { for (const key of Object.keys(localStorage)) { if (key.startsWith('sb-')&&key.endsWith('-auth-token')) { const s=JSON.parse(localStorage.getItem(key)||'{}'); if(s?.access_token){if(s.expires_at&&s.expires_at*1000<Date.now()){localStorage.removeItem(key);return ''}return s.access_token}}} } catch{} return '' }
-const getAdminEmail = (): string => { try { for (const key of Object.keys(localStorage)) { if (key.startsWith('sb-')&&key.endsWith('-auth-token')) { return JSON.parse(localStorage.getItem(key)||'{}')?.user?.email||'' } } } catch{} return '' }
-const signOut = () => { Object.keys(localStorage).forEach(key=>{if(key.startsWith('sb-')&&key.endsWith('-auth-token'))localStorage.removeItem(key)}); window.location.href='/login' }
-const apiFetch = async (path: string, opts: RequestInit={}) => {
-  const token=getToken(); if(!token){signOut();return{ok:false,error:'Session expired'}}
-  try { const res=await fetch(`${API}${path}`,{...opts,headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,...(opts.headers||{})}}); const data=await res.json(); if(res.status===401||res.status===403){signOut();return{ok:false,error:'Session expired'}} return data } catch(e:any){return{ok:false,error:e.message||'Network error'}}
+// ── Auth (only called inside useEffect / event handlers) ──
+function readToken(): string {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        const s = JSON.parse(localStorage.getItem(key) || '{}')
+        if (s?.access_token) {
+          if (s.expires_at && s.expires_at * 1000 < Date.now()) { localStorage.removeItem(key); return '' }
+          return s.access_token
+        }
+      }
+    }
+  } catch {}
+  return ''
 }
-const logoUrl = (domain: string) => domain ? `https://img.logo.dev/${domain}?token=${LOGO_DEV_TOKEN}&size=64` : ''
+function readAdminEmail(): string {
+  try {
+    for (const key of Object.keys(localStorage)) {
+      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+        return JSON.parse(localStorage.getItem(key) || '{}')?.user?.email || ''
+      }
+    }
+  } catch {}
+  return ''
+}
+function signOut() {
+  try { Object.keys(localStorage).forEach(key => { if (key.startsWith('sb-') && key.endsWith('-auth-token')) localStorage.removeItem(key) }) } catch {}
+  window.location.href = '/login'
+}
+async function apiFetch(path: string, opts: RequestInit = {}) {
+  let token = ''
+  try { token = readToken() } catch {}
+  if (!token) { signOut(); return { ok: false, error: 'Session expired' } }
+  try {
+    const res = await fetch(`${API}${path}`, {
+      ...opts,
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers || {}) },
+    })
+    const data = await res.json()
+    if (res.status === 401 || res.status === 403) { signOut(); return { ok: false, error: 'Session expired' } }
+    return data
+  } catch (e: any) {
+    return { ok: false, error: e.message === 'Failed to fetch' ? 'Network error — check that the API is reachable and CORS allows this origin' : (e.message || 'Network error') }
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// SHARED COMPONENTS (module-level — stable references, no re-mount)
+// ════════════════════════════════════════════════════════════════
+const inputStyle = (T: Theme): React.CSSProperties => ({
+  height: 42, padding: '0 14px', borderRadius: 10, fontSize: 13,
+  width: '100%', flex: 1, background: T.input, border: `1px solid ${T.border}`,
+  color: T.text, boxSizing: 'border-box', outline: 'none', fontFamily: 'Inter,sans-serif',
+})
+const pageBtnStyle = (T: Theme, disabled: boolean): React.CSSProperties => ({
+  padding: '8px 16px', borderRadius: 8, border: `1px solid ${T.border}`, background: T.card,
+  color: T.text, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 12,
+  opacity: disabled ? 0.4 : 1, fontFamily: 'Inter,sans-serif',
+})
+
+function Shell({ T, isDark, toggle, adminEmail, children }: { T: Theme; isDark: boolean; toggle: () => void; adminEmail: string; children: React.ReactNode }) {
+  return (
+    <div style={{ background: T.bg, minHeight: '100vh', color: T.text, fontFamily: 'Inter,sans-serif', padding: '0 24px 60px', paddingTop: 'calc(5vh + 16px)', boxSizing: 'border-box', transition: 'background 0.2s, color 0.2s' }}>
+      <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+          <div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: T.text }}>Admin Dashboard</div>
+            {adminEmail && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>BuySub Internal · {adminEmail}</div>}
+          </div>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <a href="/admin/receipt" style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: T.accent, color: '#fff', textDecoration: 'none' }}>+ Receipt</a>
+            <button onClick={toggle} style={{ width: 38, height: 38, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, color: T.text, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{isDark ? '☀️' : '🌙'}</button>
+            <button onClick={signOut} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, background: 'transparent', border: `1px solid ${T.border}`, color: T.textMuted, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>Sign Out</button>
+          </div>
+        </div>
+        {children}
+      </div>
+    </div>
+  )
+}
+
+function Card({ T, title, children, style }: { T: Theme; title: string; children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, padding: '20px 24px', boxShadow: T.shadow, ...style }}><div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, fontWeight: 600 }}>{title}</div>{children}</div>
+}
+function KpiCard({ T, label, value, highlight }: { T: Theme; label: string; value: string; highlight?: boolean }) {
+  return <div style={{ background: T.card, border: `1px solid ${highlight ? T.warning + '66' : T.borderSubtle}`, borderRadius: 16, padding: '18px 20px', boxShadow: T.shadow }}><div style={{ fontSize: 11, color: T.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div><div style={{ fontSize: 24, fontWeight: 700, color: highlight ? T.warning : T.text }}>{value}</div></div>
+}
+function Badge({ status, T }: { status: string; T: Theme }) {
+  const c = statusColor(status)
+  return <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 500, background: c.bg, color: c.color, whiteSpace: 'nowrap' }}>{status.replace(/_/g, ' ')}</span>
+}
+function SmallBtn({ T, children, color, onClick, disabled }: { T: Theme; children: React.ReactNode; color: string; onClick: () => void; disabled?: boolean }) {
+  return <button onClick={onClick} disabled={disabled} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: `1px solid ${color}30`, background: `${color}10`, color, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap', fontFamily: 'Inter,sans-serif' }}>{children}</button>
+}
+function Loading({ T }: { T: Theme }) { return <div style={{ padding: '50px 0', textAlign: 'center', color: T.textMuted, fontSize: 13 }}>Loading…</div> }
+function ErrorMsg({ msg, T }: { msg: string; T: Theme }) { return <div style={{ padding: 20, background: T.errorBg, border: `1px solid ${T.error}30`, borderRadius: 12, color: T.error, fontSize: 13 }}>{msg}</div> }
+function EmptyState({ text, T }: { text: string; T: Theme }) { return <div style={{ padding: '50px 0', textAlign: 'center', color: T.textMuted, fontSize: 13 }}>{text}</div> }
+function PaginationBar({ T, pagination, onPage }: { T: Theme; pagination: Pagination; onPage: (p: number) => void }) {
+  return <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, fontSize: 12, color: T.textMuted }}><span>Page {pagination.page} of {pagination.pages} ({pagination.total} total)</span><div style={{ display: 'flex', gap: 8 }}><button disabled={pagination.page <= 1} onClick={() => onPage(pagination.page - 1)} style={pageBtnStyle(T, pagination.page <= 1)}>← Prev</button><button disabled={pagination.page >= pagination.pages} onClick={() => onPage(pagination.page + 1)} style={pageBtnStyle(T, pagination.page >= pagination.pages)}>Next →</button></div></div>
+}
+function DetailSection({ T, title, children }: { T: Theme; title: string; children: React.ReactNode }) {
+  return <div><div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{title}</div>{children}</div>
+}
+function DRow({ T, label, value }: { T: Theme; label: string; value: string }) {
+  return <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 0', fontSize: 12 }}><span style={{ color: T.textMuted }}>{label}</span><span style={{ color: T.textSecondary, textAlign: 'right' }}>{value}</span></div>
+}
+
+// ── Field label (module-level, stable) ──
+function FieldLabel({ label, T, children }: { label: string; T: Theme; children: React.ReactNode }) {
+  return <div><div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 4 }}>{label}</div>{children}</div>
+}
+
+// ── Product form (module-level, stable — fixes focus loss) ──
+function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }: { T: Theme; form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
+  const IS = inputStyle(T)
+  const updateField = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }))
+  return (
+    <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, padding: '20px 24px', marginBottom: 14 }}>
+      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Name *" T={T}><input style={IS} value={form.name || ''} onChange={e => updateField('name', e.target.value)} /></FieldLabel>
+        <FieldLabel label="Slug" T={T}><input style={IS} value={form.slug || ''} onChange={e => updateField('slug', e.target.value)} placeholder="auto-generated from name" /></FieldLabel>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Category" T={T}><select style={IS} value={form.category || ''} onChange={e => updateField('category', e.target.value)}><option value="">Select…</option>{ALL_CATEGORIES.filter(c => c !== 'all').map(c => <option key={c} value={c}>{sentenceCase(c)}</option>)}</select></FieldLabel>
+        <FieldLabel label="Tags" T={T}><input style={IS} value={form.tags || ''} onChange={e => updateField('tags', e.target.value)} placeholder="e.g. No Ads" /></FieldLabel>
+        <FieldLabel label="Domain" T={T}><input style={IS} value={form.domain || ''} onChange={e => updateField('domain', e.target.value)} placeholder="e.g. netflix.com" /></FieldLabel>
+      </div>
+      <div style={{ marginBottom: 12 }}><FieldLabel label="Short Description" T={T}><input style={IS} value={form.short_description || ''} onChange={e => updateField('short_description', e.target.value)} /></FieldLabel></div>
+      <div style={{ marginBottom: 12 }}><FieldLabel label="Description" T={T}><textarea style={{ ...IS, height: 72, padding: '10px 14px', resize: 'vertical' } as any} value={form.description || ''} onChange={e => updateField('description', e.target.value)} /></FieldLabel></div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 12 }}>
+        <FieldLabel label="Price 1M (₦)" T={T}><input style={IS} type="number" value={form.price_1m || ''} onChange={e => updateField('price_1m', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Price 3M (₦)" T={T}><input style={IS} type="number" value={form.price_3m || ''} onChange={e => updateField('price_3m', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Price 6M (₦)" T={T}><input style={IS} type="number" value={form.price_6m || ''} onChange={e => updateField('price_6m', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Price 1Y (₦)" T={T}><input style={IS} type="number" value={form.price_1y || ''} onChange={e => updateField('price_1y', Number(e.target.value))} /></FieldLabel>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Billing Type" T={T}><select style={IS} value={form.billing_type || 'subscription'} onChange={e => updateField('billing_type', e.target.value)}><option value="subscription">Subscription</option><option value="one_time">One-time</option></select></FieldLabel>
+        <FieldLabel label="Stock Status" T={T}><select style={IS} value={form.stock_status || 'in_stock'} onChange={e => updateField('stock_status', e.target.value)}><option value="in_stock">In Stock</option><option value="out_of_stock">Out of Stock</option><option value="preorder">Preorder</option></select></FieldLabel>
+        <FieldLabel label="Status" T={T}><select style={IS} value={form.status || 'active'} onChange={e => updateField('status', e.target.value)}><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select></FieldLabel>
+        <FieldLabel label="Sort Order" T={T}><input style={IS} type="number" value={form.sort_order ?? 100} onChange={e => updateField('sort_order', Number(e.target.value))} /></FieldLabel>
+      </div>
+      <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: T.text, cursor: 'pointer' }}><input type="checkbox" checked={!!form.featured} onChange={e => updateField('featured', e.target.checked)} style={{ accentColor: T.accent, width: 16, height: 16 }} />Featured</label>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <SmallBtn T={T} color={T.success} onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</SmallBtn>
+        <SmallBtn T={T} color={T.textMuted} onClick={onCancel}>Cancel</SmallBtn>
+      </div>
+    </div>
+  )
+}
+
+// ── Discount form (module-level, stable — fixes focus loss) ──
+function DiscountFormPanel({ T, form, setForm, onSave, onCancel, saving, title }: { T: Theme; form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
+  const IS = inputStyle(T)
+  const uf = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }))
+  return (
+    <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, padding: '20px 24px', marginBottom: 14 }}>
+      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Code *" T={T}><input style={IS} value={form.code || ''} onChange={e => uf('code', e.target.value.toUpperCase())} placeholder="e.g. SAVE10" /></FieldLabel>
+        <FieldLabel label="Type" T={T}><select style={IS} value={form.type || 'percentage'} onChange={e => uf('type', e.target.value)}><option value="percentage">Percentage</option><option value="fixed">Fixed Amount (₦)</option></select></FieldLabel>
+        <FieldLabel label="Value" T={T}><input style={IS} type="number" value={form.value || ''} onChange={e => uf('value', Number(e.target.value))} /></FieldLabel>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Min Order (₦)" T={T}><input style={IS} type="number" value={form.min_order_ngn || ''} onChange={e => uf('min_order_ngn', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Max Discount (₦)" T={T}><input style={IS} type="number" value={form.max_discount_ngn || ''} onChange={e => uf('max_discount_ngn', Number(e.target.value) || null)} placeholder="No cap" /></FieldLabel>
+        <FieldLabel label="Max Uses" T={T}><input style={IS} type="number" value={form.max_uses || ''} onChange={e => uf('max_uses', Number(e.target.value) || null)} placeholder="Unlimited" /></FieldLabel>
+        <FieldLabel label="Scope" T={T}><select style={IS} value={form.scope || 'site_wide'} onChange={e => uf('scope', e.target.value)}><option value="site_wide">Site-wide</option><option value="category">Category</option></select></FieldLabel>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Active From" T={T}><input style={{ ...IS, colorScheme: 'dark' }} type="date" value={form.active_from || ''} onChange={e => uf('active_from', e.target.value || null)} /></FieldLabel>
+        <FieldLabel label="Expires" T={T}><input style={{ ...IS, colorScheme: 'dark' }} type="date" value={form.expires_at || ''} onChange={e => uf('expires_at', e.target.value || null)} /></FieldLabel>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Included Products" T={T}><input style={IS} value={form.included_products || ''} onChange={e => uf('included_products', e.target.value || null)} placeholder="All products" /></FieldLabel>
+        <FieldLabel label="Excluded Products" T={T}><input style={IS} value={form.excluded_products || ''} onChange={e => uf('excluded_products', e.target.value || null)} /></FieldLabel>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Included Categories" T={T}><input style={IS} value={form.included_categories || ''} onChange={e => uf('included_categories', e.target.value || null)} placeholder="All categories" /></FieldLabel>
+        <FieldLabel label="Excluded Categories" T={T}><input style={IS} value={form.excluded_categories || ''} onChange={e => uf('excluded_categories', e.target.value || null)} /></FieldLabel>
+      </div>
+      <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: T.text, cursor: 'pointer' }}><input type="checkbox" checked={!!form.active} onChange={e => uf('active', e.target.checked)} style={{ accentColor: T.accent, width: 16, height: 16 }} />Active</label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: T.text, cursor: 'pointer' }}><input type="checkbox" checked={!!form.auto_apply} onChange={e => uf('auto_apply', e.target.checked)} style={{ accentColor: T.accent, width: 16, height: 16 }} />Auto Apply</label>
+        <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: T.text, cursor: 'pointer' }}><input type="checkbox" checked={!!form.exclusive} onChange={e => uf('exclusive', e.target.checked)} style={{ accentColor: T.accent, width: 16, height: 16 }} />Exclusive</label>
+      </div>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <SmallBtn T={T} color={T.success} onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</SmallBtn>
+        <SmallBtn T={T} color={T.textMuted} onClick={onCancel}>Cancel</SmallBtn>
+      </div>
+    </div>
+  )
+}
 
 
 // ════════════════════ MAIN ════════════════════
@@ -70,44 +272,53 @@ const TABS = ['Overview','Orders','Rejected','Products','Customers','Partners','
 type Tab = typeof TABS[number]
 
 export default function AdminDashboard() {
-  const {T, isDark, toggle} = useTheme()
+  const { T, isDark, toggle, mounted } = useTheme()
   const [tab, setTab] = useState<Tab>('Overview')
   const [token, setToken] = useState('')
-  useEffect(() => { const t=getToken(); setToken(t); const iv=setInterval(()=>{if(!getToken())setToken('')},15000); return()=>clearInterval(iv) }, [])
+  const adminEmail = useClientValue(readAdminEmail, '')
+
+  useEffect(() => {
+    try { const t = readToken(); setToken(t) } catch {}
+    const iv = setInterval(() => { try { if (!readToken()) setToken('') } catch {} }, 15000)
+    return () => clearInterval(iv)
+  }, [])
+
+  // Don't render until mounted (prevents hydration mismatch)
+  if (!mounted) return null
 
   if (!token) return (
-    <Shell T={T} isDark={isDark} toggle={toggle}>
-      <div style={{textAlign:'center',padding:'80px 20px'}}>
-        <div style={{fontSize:48,marginBottom:16}}>🔒</div>
-        <div style={{fontSize:20,fontWeight:600,color:T.text,marginBottom:8}}>Admin Access Required</div>
-        <div style={{fontSize:14,color:T.textMuted,marginBottom:24}}>Session expired or not logged in.</div>
-        <a href="/login" style={{display:'inline-block',padding:'12px 32px',borderRadius:10,background:'#7C5CFF',color:'#fff',textDecoration:'none',fontSize:14,fontWeight:600}}>Sign In</a>
+    <Shell T={T} isDark={isDark} toggle={toggle} adminEmail="">
+      <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
+        <div style={{ fontSize: 20, fontWeight: 600, color: T.text, marginBottom: 8 }}>Admin Access Required</div>
+        <div style={{ fontSize: 14, color: T.textMuted, marginBottom: 24 }}>Session expired or not logged in.</div>
+        <a href="/login" style={{ display: 'inline-block', padding: '12px 32px', borderRadius: 10, background: '#7C5CFF', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>Sign In</a>
       </div>
     </Shell>
   )
 
   return (
-    <Shell T={T} isDark={isDark} toggle={toggle}>
-      <div style={{display:'flex',gap:4,borderBottom:`1px solid ${T.border}`,marginBottom:28,overflowX:'auto',paddingBottom:0}}>
+    <Shell T={T} isDark={isDark} toggle={toggle} adminEmail={adminEmail}>
+      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${T.border}`, marginBottom: 28, overflowX: 'auto', paddingBottom: 0 }}>
         {TABS.map(t => (
-          <button key={t} onClick={()=>setTab(t)} style={{
-            padding:'12px 18px',fontSize:13,border:'none',cursor:'pointer',background:'transparent',
-            color:tab===t?T.accent:T.textMuted,borderBottom:tab===t?`2px solid ${T.accent}`:'2px solid transparent',
-            fontWeight:tab===t?600:400,whiteSpace:'nowrap',transition:'all 0.15s',fontFamily:'Inter,sans-serif'
+          <button key={t} onClick={() => setTab(t)} style={{
+            padding: '12px 18px', fontSize: 13, border: 'none', cursor: 'pointer', background: 'transparent',
+            color: tab === t ? T.accent : T.textMuted, borderBottom: tab === t ? `2px solid ${T.accent}` : '2px solid transparent',
+            fontWeight: tab === t ? 600 : 400, whiteSpace: 'nowrap', transition: 'all 0.15s', fontFamily: 'Inter,sans-serif',
           }}>{t}</button>
         ))}
       </div>
-      {tab==='Overview'&&<OverviewTab T={T}/>}
-      {tab==='Orders'&&<OrdersTab T={T}/>}
-      {tab==='Rejected'&&<RejectedTab T={T}/>}
-      {tab==='Products'&&<ProductsTab T={T}/>}
-      {tab==='Customers'&&<CustomersTab T={T}/>}
-      {tab==='Partners'&&<PartnersTab T={T}/>}
-      {tab==='Wallets'&&<WalletsTab T={T}/>}
-      {tab==='Affiliates'&&<AffiliatesTab T={T}/>}
-      {tab==='Links'&&<LinksTab T={T}/>}
-      {tab==='Ads'&&<AdsTab T={T}/>}
-      {tab==='Discounts'&&<DiscountsTab T={T}/>}
+      {tab === 'Overview' && <OverviewTab T={T} />}
+      {tab === 'Orders' && <OrdersTab T={T} />}
+      {tab === 'Rejected' && <RejectedTab T={T} />}
+      {tab === 'Products' && <ProductsTab T={T} />}
+      {tab === 'Customers' && <CustomersTab T={T} />}
+      {tab === 'Partners' && <PartnersTab T={T} />}
+      {tab === 'Wallets' && <WalletsTab T={T} />}
+      {tab === 'Affiliates' && <AffiliatesTab T={T} />}
+      {tab === 'Links' && <LinksTab T={T} />}
+      {tab === 'Ads' && <AdsTab T={T} />}
+      {tab === 'Discounts' && <DiscountsTab T={T} />}
     </Shell>
   )
 }
@@ -389,46 +600,8 @@ function ProductsTab({T}:{T:Theme}) {
   }
 
   const IS = inputStyle(T)
-  const Field=({label,children}:{label:string;children:React.ReactNode})=>(<div><div style={{fontSize:11,color:T.textSecondary,marginBottom:4}}>{label}</div>{children}</div>)
 
-  // Product form (shared between create and edit)
-  const ProductForm=({form,setForm,onSave,onCancel,saving,title}:{form:any;setForm:(f:any)=>void;onSave:()=>void;onCancel:()=>void;saving?:boolean;title:string})=>(
-    <div style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:'20px 24px',marginBottom:14}}>
-      <div style={{fontSize:10,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:16,fontWeight:600}}>{title}</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-        <Field label="Name *"><input style={IS} value={form.name||''} onChange={e=>setForm({...form,name:e.target.value})}/></Field>
-        <Field label="Slug"><input style={IS} value={form.slug||''} onChange={e=>setForm({...form,slug:e.target.value})} placeholder="auto-generated from name"/></Field>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}}>
-        <Field label="Category"><select style={IS} value={form.category||''} onChange={e=>setForm({...form,category:e.target.value})}><option value="">Select…</option>{ALL_CATEGORIES.filter(c=>c!=='all').map(c=><option key={c} value={c}>{sentenceCase(c)}</option>)}</select></Field>
-        <Field label="Tags"><input style={IS} value={form.tags||''} onChange={e=>setForm({...form,tags:e.target.value})} placeholder="e.g. No Ads"/></Field>
-        <Field label="Domain"><input style={IS} value={form.domain||''} onChange={e=>setForm({...form,domain:e.target.value})} placeholder="e.g. netflix.com"/></Field>
-      </div>
-      <div style={{marginBottom:12}}><Field label="Short Description"><input style={IS} value={form.short_description||''} onChange={e=>setForm({...form,short_description:e.target.value})}/></Field></div>
-      <div style={{marginBottom:12}}><Field label="Description"><textarea style={{...IS,height:72,padding:'10px 14px',resize:'vertical'} as any} value={form.description||''} onChange={e=>setForm({...form,description:e.target.value})}/></Field></div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:12}}>
-        <Field label="Price 1M (₦)"><input style={IS} type="number" value={form.price_1m||''} onChange={e=>setForm({...form,price_1m:Number(e.target.value)})}/></Field>
-        <Field label="Price 3M (₦)"><input style={IS} type="number" value={form.price_3m||''} onChange={e=>setForm({...form,price_3m:Number(e.target.value)})}/></Field>
-        <Field label="Price 6M (₦)"><input style={IS} type="number" value={form.price_6m||''} onChange={e=>setForm({...form,price_6m:Number(e.target.value)})}/></Field>
-        <Field label="Price 1Y (₦)"><input style={IS} type="number" value={form.price_1y||''} onChange={e=>setForm({...form,price_1y:Number(e.target.value)})}/></Field>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:12,marginBottom:12}}>
-        <Field label="Billing Type"><select style={IS} value={form.billing_type||'subscription'} onChange={e=>setForm({...form,billing_type:e.target.value})}><option value="subscription">Subscription</option><option value="one_time">One-time</option></select></Field>
-        <Field label="Stock Status"><select style={IS} value={form.stock_status||'in_stock'} onChange={e=>setForm({...form,stock_status:e.target.value})}><option value="in_stock">In Stock</option><option value="out_of_stock">Out of Stock</option><option value="preorder">Preorder</option></select></Field>
-        <Field label="Status"><select style={IS} value={form.status||'active'} onChange={e=>setForm({...form,status:e.target.value})}><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select></Field>
-        <Field label="Sort Order"><input style={IS} type="number" value={form.sort_order||100} onChange={e=>setForm({...form,sort_order:Number(e.target.value)})}/></Field>
-      </div>
-      <div style={{display:'flex',gap:12,alignItems:'center',marginBottom:12}}>
-        <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13,color:T.text,cursor:'pointer'}}>
-          <input type="checkbox" checked={!!form.featured} onChange={e=>setForm({...form,featured:e.target.checked})} style={{accentColor:T.accent,width:16,height:16}}/>Featured
-        </label>
-      </div>
-      <div style={{display:'flex',gap:8}}>
-        <SmallBtn T={T} color={T.success} onClick={onSave} disabled={saving}>{saving?'Saving…':'Save'}</SmallBtn>
-        <SmallBtn T={T} color={T.textMuted} onClick={onCancel}>Cancel</SmallBtn>
-      </div>
-    </div>
-  )
+  // Product form uses module-level ProductFormPanel (prevents focus loss)
 
   return (
     <div>
@@ -439,8 +612,8 @@ function ProductsTab({T}:{T:Theme}) {
         <button onClick={()=>setShowCreate(!showCreate)} style={{height:42,padding:'0 20px',borderRadius:10,background:T.accent,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginLeft:'auto'}}>+ New Product</button>
       </div>
 
-      {showCreate&&<ProductForm form={newProduct} setForm={setNewProduct} onSave={createProduct} onCancel={()=>setShowCreate(false)} saving={creating} title="Create New Product"/>}
-      {editingId&&<ProductForm form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={()=>setEditingId(null)} title="Edit Product"/>}
+      {showCreate&&<ProductFormPanel T={T} form={newProduct} setForm={setNewProduct} onSave={createProduct} onCancel={()=>setShowCreate(false)} saving={creating} title="Create New Product"/>}
+      {editingId&&<ProductFormPanel T={T} form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={()=>setEditingId(null)} title="Edit Product"/>}
 
       {loading?<Loading T={T}/>:paged.length===0?<EmptyState text="No products found" T={T}/>:(
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:14}}>
@@ -724,145 +897,104 @@ function AdsTab({T}:{T:Theme}) {
   )
 }
 
-// ════════════════════ DISCOUNTS TAB (new — full CRUD) ════════════════════
-const EMPTY_DISCOUNT = ():Partial<Discount>&{[k:string]:any} => ({code:'',type:'percentage',value:0,active:true,min_order_ngn:0,max_uses:null,expires_at:null,active_from:null,max_discount_ngn:null,included_products:null,excluded_products:null,included_categories:null,excluded_categories:null,auto_apply:false,scope:'site_wide',exclusive:false})
 
-function DiscountsTab({T}:{T:Theme}) {
-  const [discounts,setDiscounts]=useState<Discount[]>([]); const [loading,setLoading]=useState(true)
-  const [showCreate,setShowCreate]=useState(false); const [creating,setCreating]=useState(false)
-  const [editingId,setEditingId]=useState<string|null>(null); const [editForm,setEditForm]=useState<any>({})
-  const [newDiscount,setNewDiscount]=useState<any>(EMPTY_DISCOUNT())
-  const [expanded,setExpanded]=useState<string|null>(null)
+// ════════════════════ DISCOUNTS TAB (full CRUD) ════════════════════
+const EMPTY_DISCOUNT = (): any => ({ code: '', type: 'percentage', value: 0, active: true, min_order_ngn: 0, max_uses: null, expires_at: null, active_from: null, max_discount_ngn: null, included_products: null, excluded_products: null, included_categories: null, excluded_categories: null, auto_apply: false, scope: 'site_wide', exclusive: false })
 
-  const load=useCallback(async()=>{
+function DiscountsTab({ T }: { T: Theme }) {
+  const [discounts, setDiscounts] = useState<Discount[]>([]); const [loading, setLoading] = useState(true)
+  const [showCreate, setShowCreate] = useState(false); const [creating, setCreating] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<any>({})
+  const [newDiscount, setNewDiscount] = useState<any>(EMPTY_DISCOUNT())
+  const [expanded, setExpanded] = useState<string | null>(null)
+
+  const load = useCallback(async () => {
     setLoading(true)
-    const r=await apiFetch('/v2/admin/discounts?limit=100')
-    if(r.ok) setDiscounts(r.data||[])
+    const r = await apiFetch('/v2/admin/discounts?limit=100')
+    if (r.ok) setDiscounts(r.data || [])
     setLoading(false)
-  },[])
-  useEffect(()=>{load()},[])
+  }, [])
+  useEffect(() => { load() }, [])
 
-  const createDiscount=async()=>{
-    if(!newDiscount.code){alert('Code is required');return}
+  const createDiscount = async () => {
+    if (!newDiscount.code) { alert('Code is required'); return }
     setCreating(true)
-    const payload={...newDiscount,code:newDiscount.code.toUpperCase()}
-    const r=await apiFetch('/v2/admin/discounts',{method:'POST',body:JSON.stringify(payload)})
-    if(r.ok){setNewDiscount(EMPTY_DISCOUNT());setShowCreate(false);await load()}
-    else alert(r.error||r.data?.error||'Failed to create discount. Ensure the API route /v2/admin/discounts POST is available.')
+    const r = await apiFetch('/v2/admin/discounts', { method: 'POST', body: JSON.stringify({ ...newDiscount, code: newDiscount.code.toUpperCase() }) })
+    if (r.ok) { setNewDiscount(EMPTY_DISCOUNT()); setShowCreate(false); await load() }
+    else alert(r.error || r.data?.error || 'Failed to create discount')
     setCreating(false)
   }
 
-  const startEdit=(d:Discount)=>{
+  const startEdit = (d: Discount) => {
     setEditingId(d.id); setExpanded(null)
-    setEditForm({code:d.code,type:d.type,value:d.value,active:d.active,min_order_ngn:d.min_order_ngn||0,max_uses:d.max_uses,expires_at:d.expires_at?d.expires_at.slice(0,10):'',active_from:d.active_from?d.active_from.slice(0,10):'',max_discount_ngn:d.max_discount_ngn,included_products:d.included_products||'',excluded_products:d.excluded_products||'',included_categories:d.included_categories||'',excluded_categories:d.excluded_categories||'',auto_apply:!!d.auto_apply,scope:d.scope||'site_wide',exclusive:!!d.exclusive})
+    setEditForm({ code: d.code, type: d.type, value: d.value, active: d.active, min_order_ngn: d.min_order_ngn || 0, max_uses: d.max_uses, expires_at: d.expires_at ? d.expires_at.slice(0, 10) : '', active_from: d.active_from ? d.active_from.slice(0, 10) : '', max_discount_ngn: d.max_discount_ngn, included_products: d.included_products || '', excluded_products: d.excluded_products || '', included_categories: d.included_categories || '', excluded_categories: d.excluded_categories || '', auto_apply: !!d.auto_apply, scope: d.scope || 'site_wide', exclusive: !!d.exclusive })
   }
 
-  const saveEdit=async()=>{
-    if(!editingId)return
-    const r=await apiFetch(`/v2/admin/discounts/${editingId}`,{method:'PATCH',body:JSON.stringify(editForm)})
-    if(r.ok){setEditingId(null);await load()} else alert(r.error||r.data?.error||'Failed to update')
+  const saveEdit = async () => {
+    if (!editingId) return
+    const r = await apiFetch(`/v2/admin/discounts/${editingId}`, { method: 'PATCH', body: JSON.stringify(editForm) })
+    if (r.ok) { setEditingId(null); await load() } else alert(r.error || r.data?.error || 'Failed to update')
   }
 
-  const deleteDiscount=async(id:string)=>{
-    if(!confirm('Delete this discount code?'))return
-    const r=await apiFetch(`/v2/admin/discounts/${id}`,{method:'DELETE'})
-    if(r.ok) await load(); else alert(r.error||'Failed')
+  const deleteDiscount = async (id: string) => {
+    if (!confirm('Delete this discount code?')) return
+    const r = await apiFetch(`/v2/admin/discounts/${id}`, { method: 'DELETE' })
+    if (r.ok) await load(); else alert(r.error || 'Failed')
   }
 
-  const toggleActive=async(d:Discount)=>{
-    const r=await apiFetch(`/v2/admin/discounts/${d.id}`,{method:'PATCH',body:JSON.stringify({active:!d.active})})
-    if(r.ok) setDiscounts(prev=>prev.map(x=>x.id===d.id?{...x,active:!d.active}:x))
+  const toggleActive = async (d: Discount) => {
+    const r = await apiFetch(`/v2/admin/discounts/${d.id}`, { method: 'PATCH', body: JSON.stringify({ active: !d.active }) })
+    if (r.ok) setDiscounts(prev => prev.map(x => x.id === d.id ? { ...x, active: !d.active } : x))
   }
-
-  const IS=inputStyle(T)
-  const Field=({label,children}:{label:string;children:React.ReactNode})=>(<div><div style={{fontSize:11,color:T.textSecondary,marginBottom:4}}>{label}</div>{children}</div>)
-
-  const DiscountForm=({form,setForm,onSave,onCancel,saving,title}:{form:any;setForm:(f:any)=>void;onSave:()=>void;onCancel:()=>void;saving?:boolean;title:string})=>(
-    <div style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:'20px 24px',marginBottom:14}}>
-      <div style={{fontSize:10,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:16,fontWeight:600}}>{title}</div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:12,marginBottom:12}}>
-        <Field label="Code *"><input style={IS} value={form.code||''} onChange={e=>setForm({...form,code:e.target.value.toUpperCase()})} placeholder="e.g. SAVE10"/></Field>
-        <Field label="Type"><select style={IS} value={form.type||'percentage'} onChange={e=>setForm({...form,type:e.target.value})}><option value="percentage">Percentage</option><option value="fixed">Fixed Amount (₦)</option></select></Field>
-        <Field label="Value"><input style={IS} type="number" value={form.value||''} onChange={e=>setForm({...form,value:Number(e.target.value)})}/></Field>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:12,marginBottom:12}}>
-        <Field label="Min Order (₦)"><input style={IS} type="number" value={form.min_order_ngn||''} onChange={e=>setForm({...form,min_order_ngn:Number(e.target.value)})}/></Field>
-        <Field label="Max Discount (₦)"><input style={IS} type="number" value={form.max_discount_ngn||''} onChange={e=>setForm({...form,max_discount_ngn:Number(e.target.value)||null})} placeholder="No cap"/></Field>
-        <Field label="Max Uses"><input style={IS} type="number" value={form.max_uses||''} onChange={e=>setForm({...form,max_uses:Number(e.target.value)||null})} placeholder="Unlimited"/></Field>
-        <Field label="Scope"><select style={IS} value={form.scope||'site_wide'} onChange={e=>setForm({...form,scope:e.target.value})}><option value="site_wide">Site-wide</option><option value="category">Category</option></select></Field>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-        <Field label="Active From"><input style={{...IS,colorScheme:'dark'}} type="date" value={form.active_from||''} onChange={e=>setForm({...form,active_from:e.target.value||null})}/></Field>
-        <Field label="Expires"><input style={{...IS,colorScheme:'dark'}} type="date" value={form.expires_at||''} onChange={e=>setForm({...form,expires_at:e.target.value||null})}/></Field>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-        <Field label="Included Products (comma-sep)"><input style={IS} value={form.included_products||''} onChange={e=>setForm({...form,included_products:e.target.value||null})} placeholder="All products"/></Field>
-        <Field label="Excluded Products (comma-sep)"><input style={IS} value={form.excluded_products||''} onChange={e=>setForm({...form,excluded_products:e.target.value||null})}/></Field>
-      </div>
-      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:12}}>
-        <Field label="Included Categories (comma-sep)"><input style={IS} value={form.included_categories||''} onChange={e=>setForm({...form,included_categories:e.target.value||null})} placeholder="All categories"/></Field>
-        <Field label="Excluded Categories (comma-sep)"><input style={IS} value={form.excluded_categories||''} onChange={e=>setForm({...form,excluded_categories:e.target.value||null})}/></Field>
-      </div>
-      <div style={{display:'flex',gap:16,alignItems:'center',marginBottom:16}}>
-        <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13,color:T.text,cursor:'pointer'}}><input type="checkbox" checked={!!form.active} onChange={e=>setForm({...form,active:e.target.checked})} style={{accentColor:T.accent,width:16,height:16}}/>Active</label>
-        <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13,color:T.text,cursor:'pointer'}}><input type="checkbox" checked={!!form.auto_apply} onChange={e=>setForm({...form,auto_apply:e.target.checked})} style={{accentColor:T.accent,width:16,height:16}}/>Auto Apply</label>
-        <label style={{display:'flex',gap:8,alignItems:'center',fontSize:13,color:T.text,cursor:'pointer'}}><input type="checkbox" checked={!!form.exclusive} onChange={e=>setForm({...form,exclusive:e.target.checked})} style={{accentColor:T.accent,width:16,height:16}}/>Exclusive</label>
-      </div>
-      <div style={{display:'flex',gap:8}}>
-        <SmallBtn T={T} color={T.success} onClick={onSave} disabled={saving}>{saving?'Saving…':'Save'}</SmallBtn>
-        <SmallBtn T={T} color={T.textMuted} onClick={onCancel}>Cancel</SmallBtn>
-      </div>
-    </div>
-  )
 
   return (
     <div>
-      <button onClick={()=>{setShowCreate(!showCreate);setEditingId(null)}} style={{height:42,padding:'0 20px',borderRadius:10,background:T.accent,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginBottom:20}}>+ New Discount</button>
+      <button onClick={() => { setShowCreate(!showCreate); setEditingId(null) }} style={{ height: 42, padding: '0 20px', borderRadius: 10, background: T.accent, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>+ New Discount</button>
 
-      {showCreate&&<DiscountForm form={newDiscount} setForm={setNewDiscount} onSave={createDiscount} onCancel={()=>setShowCreate(false)} saving={creating} title="Create Discount Code"/>}
-      {editingId&&<DiscountForm form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={()=>setEditingId(null)} title="Edit Discount Code"/>}
+      {showCreate && <DiscountFormPanel T={T} form={newDiscount} setForm={setNewDiscount} onSave={createDiscount} onCancel={() => setShowCreate(false)} saving={creating} title="Create Discount Code" />}
+      {editingId && <DiscountFormPanel T={T} form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Discount Code" />}
 
-      {loading?<Loading T={T}/>:discounts.length===0?<EmptyState text="No discount codes" T={T}/>:(
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {discounts.map(d=>(
-            <div key={d.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,overflow:'hidden',opacity:d.active?1:0.55}}>
-              <div onClick={()=>setExpanded(expanded===d.id?null:d.id)} style={{padding:'14px 22px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
-                <div style={{display:'flex',gap:10,alignItems:'center'}}>
-                  <span style={{fontFamily:'monospace',fontSize:14,fontWeight:700,color:T.accent,background:T.accent+'18',padding:'3px 10px',borderRadius:6}}>{d.code}</span>
-                  <span style={{fontSize:13,color:T.text}}>{d.type==='percentage'?`${d.value}% off`:`₦${Number(d.value).toLocaleString()} off`}</span>
-                  <Badge status={d.active?'active':'inactive'} T={T}/>
-                  {d.auto_apply&&<span style={{fontSize:10,padding:'2px 8px',borderRadius:4,background:T.accent+'15',color:T.accent,fontWeight:600}}>Auto</span>}
+      {loading ? <Loading T={T} /> : discounts.length === 0 ? <EmptyState text="No discount codes" T={T} /> : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+          {discounts.map(d => (
+            <div key={d.id} style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, overflow: 'hidden', opacity: d.active ? 1 : 0.55 }}>
+              <div onClick={() => setExpanded(expanded === d.id ? null : d.id)} style={{ padding: '14px 22px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                  <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: T.accent, background: T.accent + '18', padding: '3px 10px', borderRadius: 6 }}>{d.code}</span>
+                  <span style={{ fontSize: 13, color: T.text }}>{d.type === 'percentage' ? `${d.value}% off` : `₦${Number(d.value).toLocaleString()} off`}</span>
+                  <Badge status={d.active ? 'active' : 'inactive'} T={T} />
+                  {d.auto_apply && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: T.accent + '15', color: T.accent, fontWeight: 600 }}>Auto</span>}
                 </div>
-                <div style={{display:'flex',gap:8,alignItems:'center',flexShrink:0}}>
-                  <span style={{fontSize:11,color:T.textMuted}}>{d.times_used||0} uses</span>
-                  <span style={{color:T.textMuted}}>{expanded===d.id?'▾':'▸'}</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
+                  <span style={{ fontSize: 11, color: T.textMuted }}>{d.times_used || 0} uses</span>
+                  <span style={{ color: T.textMuted }}>{expanded === d.id ? '▾' : '▸'}</span>
                 </div>
               </div>
-              {expanded===d.id&&(
-                <div style={{padding:'0 22px 18px',borderTop:`1px solid ${T.borderSubtle}`}}>
-                  <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:16,padding:'14px 0'}}>
+              {expanded === d.id && (
+                <div style={{ padding: '0 22px 18px', borderTop: `1px solid ${T.borderSubtle}` }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16, padding: '14px 0' }}>
                     <DetailSection T={T} title="Rules">
-                      <DRow T={T} label="Min Order" value={d.min_order_ngn?fmt(d.min_order_ngn):'None'}/>
-                      <DRow T={T} label="Max Discount" value={d.max_discount_ngn?fmt(d.max_discount_ngn):'No cap'}/>
-                      <DRow T={T} label="Max Uses" value={d.max_uses?String(d.max_uses):'Unlimited'}/>
-                      <DRow T={T} label="Used" value={String(d.times_used||0)}/>
+                      <DRow T={T} label="Min Order" value={d.min_order_ngn ? fmt(d.min_order_ngn) : 'None'} />
+                      <DRow T={T} label="Max Discount" value={d.max_discount_ngn ? fmt(d.max_discount_ngn) : 'No cap'} />
+                      <DRow T={T} label="Max Uses" value={d.max_uses ? String(d.max_uses) : 'Unlimited'} />
+                      <DRow T={T} label="Used" value={String(d.times_used || 0)} />
                     </DetailSection>
                     <DetailSection T={T} title="Dates">
-                      <DRow T={T} label="Active From" value={d.active_from?fmtDate(d.active_from):'Immediately'}/>
-                      <DRow T={T} label="Expires" value={d.expires_at?fmtDate(d.expires_at):'Never'}/>
-                      <DRow T={T} label="Created" value={fmtDate(d.created_at)}/>
+                      <DRow T={T} label="Active From" value={d.active_from ? fmtDate(d.active_from) : 'Immediately'} />
+                      <DRow T={T} label="Expires" value={d.expires_at ? fmtDate(d.expires_at) : 'Never'} />
+                      <DRow T={T} label="Created" value={fmtDate(d.created_at)} />
                     </DetailSection>
                     <DetailSection T={T} title="Targeting">
-                      <DRow T={T} label="Scope" value={d.scope||'site_wide'}/>
-                      <DRow T={T} label="Incl. Products" value={d.included_products||'All'}/>
-                      <DRow T={T} label="Excl. Products" value={d.excluded_products||'None'}/>
-                      <DRow T={T} label="Excl. Categories" value={d.excluded_categories||'None'}/>
+                      <DRow T={T} label="Scope" value={d.scope || 'site_wide'} />
+                      <DRow T={T} label="Incl. Products" value={d.included_products || 'All'} />
+                      <DRow T={T} label="Excl. Products" value={d.excluded_products || 'None'} />
                     </DetailSection>
                   </div>
-                  <div style={{display:'flex',gap:8}}>
-                    <SmallBtn T={T} color={T.accent} onClick={()=>{startEdit(d);setExpanded(null)}}>Edit</SmallBtn>
-                    <SmallBtn T={T} color={d.active?T.warning:T.success} onClick={()=>toggleActive(d)}>{d.active?'Deactivate':'Activate'}</SmallBtn>
-                    <SmallBtn T={T} color={T.error} onClick={()=>deleteDiscount(d.id)}>Delete</SmallBtn>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <SmallBtn T={T} color={T.accent} onClick={() => startEdit(d)}>Edit</SmallBtn>
+                    <SmallBtn T={T} color={d.active ? T.warning : T.success} onClick={() => toggleActive(d)}>{d.active ? 'Deactivate' : 'Activate'}</SmallBtn>
+                    <SmallBtn T={T} color={T.error} onClick={() => deleteDiscount(d.id)}>Delete</SmallBtn>
                   </div>
                 </div>
               )}
@@ -873,102 +1005,3 @@ function DiscountsTab({T}:{T:Theme}) {
     </div>
   )
 }
-
-// ════════════════════ SHARED COMPONENTS ════════════════════
-const inputStyle = (T: Theme): React.CSSProperties => ({
-  height:42, padding:'0 14px', borderRadius:10, fontSize:13,
-  width:'100%', flex:1, background:T.input, border:`1px solid ${T.border}`,
-  color:T.text, boxSizing:'border-box', outline:'none', fontFamily:'Inter,sans-serif',
-})
-
-const pageBtnStyle = (T: Theme, disabled: boolean): React.CSSProperties => ({
-  padding:'8px 16px', borderRadius:8, border:`1px solid ${T.border}`, background:T.card,
-  color:T.text, cursor:disabled?'not-allowed':'pointer', fontSize:12,
-  opacity:disabled?0.4:1, fontFamily:'Inter,sans-serif',
-})
-
-const Shell = ({T, isDark, toggle, children}:{T:Theme;isDark:boolean;toggle:()=>void;children:React.ReactNode}) => (
-  <div style={{
-    background:T.bg, minHeight:'100vh', color:T.text, fontFamily:'Inter,sans-serif',
-    padding:'0 24px 60px', paddingTop:'calc(5vh + 16px)', boxSizing:'border-box',
-    transition:'background 0.2s, color 0.2s',
-  }}>
-    <div style={{maxWidth:1400, margin:'0 auto', width:'100%'}}>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:24}}>
-        <div>
-          <div style={{fontSize:22, fontWeight:700, color:T.text}}>Admin Dashboard</div>
-          <div style={{fontSize:12, color:T.textMuted, marginTop:2}}>BuySub Internal · {getAdminEmail()}</div>
-        </div>
-        <div style={{display:'flex', gap:10, alignItems:'center'}}>
-          <a href="/admin/receipt" style={{
-            padding:'10px 20px', borderRadius:10, fontSize:13, fontWeight:600,
-            background:T.accent, color:'#fff', textDecoration:'none',
-          }}>+ Receipt</a>
-          <button onClick={toggle} style={{
-            width:38, height:38, borderRadius:10, border:`1px solid ${T.border}`,
-            background:T.card, color:T.text, cursor:'pointer', fontSize:16,
-            display:'flex', alignItems:'center', justifyContent:'center',
-          }}>{isDark?'☀️':'🌙'}</button>
-          <button onClick={signOut} style={{
-            padding:'10px 18px', borderRadius:10, fontSize:13, background:'transparent',
-            border:`1px solid ${T.border}`, color:T.textMuted, cursor:'pointer', fontFamily:'Inter,sans-serif',
-          }}>Sign Out</button>
-        </div>
-      </div>
-      {children}
-    </div>
-  </div>
-)
-
-const Card = ({T,title,children,style}:{T:Theme;title:string;children:React.ReactNode;style?:React.CSSProperties}) => (
-  <div style={{background:T.card, border:`1px solid ${T.borderSubtle}`, borderRadius:16, padding:'20px 24px', boxShadow:T.shadow, ...style}}>
-    <div style={{fontSize:10, color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:14, fontWeight:600}}>{title}</div>
-    {children}
-  </div>
-)
-
-const KpiCard = ({T,label,value,highlight}:{T:Theme;label:string;value:string;highlight?:boolean}) => (
-  <div style={{
-    background:T.card, border:`1px solid ${highlight?T.warning+'66':T.borderSubtle}`,
-    borderRadius:16, padding:'18px 20px', boxShadow:T.shadow,
-  }}>
-    <div style={{fontSize:11, color:T.textMuted, marginBottom:8, textTransform:'uppercase', letterSpacing:'0.06em'}}>{label}</div>
-    <div style={{fontSize:24, fontWeight:700, color:highlight?T.warning:T.text}}>{value}</div>
-  </div>
-)
-
-const Badge = ({status,T}:{status:string;T:Theme}) => {
-  const c = statusColor(status)
-  return <span style={{display:'inline-block', padding:'3px 10px', borderRadius:999, fontSize:11, fontWeight:500, background:c.bg, color:c.color, whiteSpace:'nowrap'}}>{status.replace(/_/g,' ')}</span>
-}
-
-const SmallBtn = ({T,children,color,onClick,disabled}:{T:Theme;children:React.ReactNode;color:string;onClick:()=>void;disabled?:boolean}) => (
-  <button onClick={onClick} disabled={disabled} style={{
-    padding:'7px 14px', borderRadius:8, fontSize:12, fontWeight:500,
-    border:`1px solid ${color}30`, background:`${color}10`, color,
-    cursor:disabled?'not-allowed':'pointer', opacity:disabled?0.5:1, whiteSpace:'nowrap', fontFamily:'Inter,sans-serif',
-  }}>{children}</button>
-)
-
-const Loading = ({T}:{T:Theme}) => <div style={{padding:'50px 0', textAlign:'center', color:T.textMuted, fontSize:13}}>Loading…</div>
-const ErrorMsg = ({msg,T}:{msg:string;T:Theme}) => <div style={{padding:20, background:T.errorBg, border:`1px solid ${T.error}30`, borderRadius:12, color:T.error, fontSize:13}}>{msg}</div>
-const EmptyState = ({text,T}:{text:string;T:Theme}) => <div style={{padding:'50px 0', textAlign:'center', color:T.textMuted, fontSize:13}}>{text}</div>
-
-const PaginationBar = ({T,pagination,onPage}:{T:Theme;pagination:Pagination;onPage:(p:number)=>void}) => (
-  <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginTop:20, fontSize:12, color:T.textMuted}}>
-    <span>Page {pagination.page} of {pagination.pages} ({pagination.total} total)</span>
-    <div style={{display:'flex', gap:8}}>
-      <button disabled={pagination.page<=1} onClick={()=>onPage(pagination.page-1)} style={pageBtnStyle(T, pagination.page<=1)}>← Prev</button>
-      <button disabled={pagination.page>=pagination.pages} onClick={()=>onPage(pagination.page+1)} style={pageBtnStyle(T, pagination.page>=pagination.pages)}>Next →</button>
-    </div>
-  </div>
-)
-
-const DetailSection = ({T,title,children}:{T:Theme;title:string;children:React.ReactNode}) => (
-  <div><div style={{fontSize:10, fontWeight:600, color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', marginBottom:10}}>{title}</div>{children}</div>
-)
-const DRow = ({T,label,value}:{T:Theme;label:string;value:string}) => (
-  <div style={{display:'flex', justifyContent:'space-between', gap:8, padding:'4px 0', fontSize:12}}>
-    <span style={{color:T.textMuted}}>{label}</span><span style={{color:T.textSecondary, textAlign:'right'}}>{value}</span>
-  </div>
-)
