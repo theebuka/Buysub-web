@@ -366,23 +366,23 @@ export default function PartnerSignupForm() {
         {/* Step 1: Business Details */}
         {step === 1 && (
           <FormSection title="Business Details">
-            <Input label="Legal Business Name *" error={touched.legalName && errors.legalName} value={form.legalName} onChange={v => update('legalName', v)} onBlur={() => blur('legalName')} />
+            <Input label="Legal Business Name *" error={touched.legalName && errors.legalName} value={form.legalName} onChange={(v: string) => update('legalName', v)} onBlur={() => blur('legalName')} />
             <Checkbox label="Store name same as legal name" checked={sameAsLegal} onChange={toggleSameAsLegal} />
-            <Input label="Store Name *" error={touched.storeName && errors.storeName} value={form.storeName} onChange={v => update('storeName', v)} onBlur={() => blur('storeName')} disabled={sameAsLegal} />
-            <Input label="Business Address *" error={touched.address && errors.address} value={form.address} onChange={v => update('address', v)} onBlur={() => blur('address')} />
+            <Input label="Store Name *" error={touched.storeName && errors.storeName} value={form.storeName} onChange={(v: string) => update('storeName', v)} onBlur={() => blur('storeName')} disabled={sameAsLegal} />
+            <Input label="Business Address *" error={touched.address && errors.address} value={form.address} onChange={(v: string) => update('address', v)} onBlur={() => blur('address')} />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="LGA *" error={touched.lga && errors.lga} value={form.lga} onChange={v => update('lga', v)} onBlur={() => blur('lga')} />
-              <Select label="State *" error={touched.state && errors.state} value={form.state} onChange={v => update('state', v)} onBlur={() => blur('state')}
+              <Input label="LGA *" error={touched.lga && errors.lga} value={form.lga} onChange={(v: string) => update('lga', v)} onBlur={() => blur('lga')} />
+              <Select label="State *" error={touched.state && errors.state} value={form.state} onChange={(v: string) => update('state', v)} onBlur={() => blur('state')}
                 options={['', 'Abia', 'Adamawa', 'Akwa Ibom', 'Anambra', 'Bauchi', 'Bayelsa', 'Benue', 'Borno', 'Cross River', 'Delta', 'Ebonyi', 'Edo', 'Ekiti', 'Enugu', 'FCT', 'Gombe', 'Imo', 'Jigawa', 'Kaduna', 'Kano', 'Katsina', 'Kebbi', 'Kogi', 'Kwara', 'Lagos', 'Nasarawa', 'Niger', 'Ogun', 'Ondo', 'Osun', 'Oyo', 'Plateau', 'Rivers', 'Sokoto', 'Taraba', 'Yobe', 'Zamfara']} />
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="Business Phone *" error={touched.businessPhone && errors.businessPhone} value={form.businessPhone} onChange={v => update('businessPhone', v)} onBlur={() => blur('businessPhone')} type="tel" placeholder="080..." />
-              <Input label="Alternate Phone" error={touched.alternatePhone && errors.alternatePhone} value={form.alternatePhone} onChange={v => update('alternatePhone', v)} onBlur={() => blur('alternatePhone')} type="tel" />
+              <Input label="Business Phone *" error={touched.businessPhone && errors.businessPhone} value={form.businessPhone} onChange={(v: string) => update('businessPhone', v)} onBlur={() => blur('businessPhone')} type="tel" placeholder="080..." />
+              <Input label="Alternate Phone" error={touched.alternatePhone && errors.alternatePhone} value={form.alternatePhone} onChange={(v: string) => update('alternatePhone', v)} onBlur={() => blur('alternatePhone')} type="tel" />
             </div>
-            <Input label="Business Email *" error={touched.businessEmail && errors.businessEmail} value={form.businessEmail} onChange={v => update('businessEmail', v)} onBlur={() => blur('businessEmail')} type="email" />
+            <Input label="Business Email *" error={touched.businessEmail && errors.businessEmail} value={form.businessEmail} onChange={(v: string) => update('businessEmail', v)} onBlur={() => blur('businessEmail')} type="email" />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Input label="CAC Number" error={touched.cac && errors.cac} value={form.cac} onChange={v => update('cac', v)} onBlur={() => blur('cac')} placeholder="Optional" />
-              <Select label="Registration Year" value={form.registrationYear} onChange={v => update('registrationYear', v)}
+              <Input label="CAC Number" error={touched.cac && errors.cac} value={form.cac} onChange={(v: string) => update('cac', v)} onBlur={() => blur('cac')} placeholder="Optional" />
+              <Select label="Registration Year" value={form.registrationYear} onChange={(v: string) => update('registrationYear', v)}
                 options={['', ...YEARS.reverse().map(String)]} />
             </div>
             {/* Social media */}
@@ -390,9 +390,9 @@ export default function PartnerSignupForm() {
               <div style={{ fontSize: 11, color: 'var(--bs-text-secondary, #a0a0b0)', marginBottom: 6 }}>Social Media Channels</div>
               {form.socialMedia.map((s: any, i: number) => (
                 <div key={i} style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
-                  <Select value={s.platform} onChange={v => { const sm = [...form.socialMedia]; sm[i] = { ...sm[i], platform: v }; update('socialMedia', sm) }}
+                  <Select value={s.platform} onChange={(v: string) => { const sm = [...form.socialMedia]; sm[i] = { ...sm[i], platform: v }; update('socialMedia', sm) }}
                     options={['', 'Instagram', 'Twitter/X', 'Facebook', 'TikTok', 'WhatsApp', 'LinkedIn', 'YouTube', 'Other']} style={{ flex: 1 }} />
-                  <Input value={s.handle} onChange={v => { const sm = [...form.socialMedia]; sm[i] = { ...sm[i], handle: v }; update('socialMedia', sm) }}
+                  <Input value={s.handle} onChange={(v: string) => { const sm = [...form.socialMedia]; sm[i] = { ...sm[i], handle: v }; update('socialMedia', sm) }}
                     placeholder="@handle or URL" style={{ flex: 1 }} />
                   {form.socialMedia.length > 1 && (
                     <button onClick={() => { const sm = form.socialMedia.filter((_: any, j: number) => j !== i); update('socialMedia', sm) }}
@@ -411,50 +411,50 @@ export default function PartnerSignupForm() {
         {/* Step 2: Owner Info */}
         {step === 2 && (
           <FormSection title="Owner Information">
-            <Input label="Full Name *" error={touched.fullName && errors.fullName} value={form.fullName} onChange={v => update('fullName', v)} onBlur={() => blur('fullName')} />
-            <Input label="Email *" error={touched.contactEmail && errors.contactEmail} value={form.contactEmail} onChange={v => update('contactEmail', v)} onBlur={() => blur('contactEmail')} type="email" />
-            <Input label="Phone *" error={touched.contactPhone && errors.contactPhone} value={form.contactPhone} onChange={v => update('contactPhone', v)} onBlur={() => blur('contactPhone')} type="tel" placeholder="080..." />
+            <Input label="Full Name *" error={touched.fullName && errors.fullName} value={form.fullName} onChange={(v: string) => update('fullName', v)} onBlur={() => blur('fullName')} />
+            <Input label="Email *" error={touched.contactEmail && errors.contactEmail} value={form.contactEmail} onChange={(v: string) => update('contactEmail', v)} onBlur={() => blur('contactEmail')} type="email" />
+            <Input label="Phone *" error={touched.contactPhone && errors.contactPhone} value={form.contactPhone} onChange={(v: string) => update('contactPhone', v)} onBlur={() => blur('contactPhone')} type="tel" placeholder="080..." />
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <Select label="Gender *" error={touched.gender && errors.gender} value={form.gender} onChange={v => update('gender', v)} onBlur={() => blur('gender')}
+              <Select label="Gender *" error={touched.gender && errors.gender} value={form.gender} onChange={(v: string) => update('gender', v)} onBlur={() => blur('gender')}
                 options={['', 'Male', 'Female', 'Other', 'Prefer not to say']} />
-              <Select label="Preferred Contact *" error={touched.contactMethod && errors.contactMethod} value={form.contactMethod} onChange={v => update('contactMethod', v)} onBlur={() => blur('contactMethod')}
+              <Select label="Preferred Contact *" error={touched.contactMethod && errors.contactMethod} value={form.contactMethod} onChange={(v: string) => update('contactMethod', v)} onBlur={() => blur('contactMethod')}
                 options={['', 'WhatsApp', 'Phone Call', 'Email', 'SMS']} />
             </div>
-            <Input label="Location" value={form.location} onChange={v => update('location', v)} placeholder="City, State" />
+            <Input label="Location" value={form.location} onChange={(v: string) => update('location', v)} placeholder="City, State" />
           </FormSection>
         )}
 
         {/* Step 3: Payment & Terms */}
         {step === 3 && (
           <FormSection title="Payment & Compliance">
-            <Select label="Payout Frequency *" error={touched.payoutFrequency && errors.payoutFrequency} value={form.payoutFrequency} onChange={v => update('payoutFrequency', v)} onBlur={() => blur('payoutFrequency')}
+            <Select label="Payout Frequency *" error={touched.payoutFrequency && errors.payoutFrequency} value={form.payoutFrequency} onChange={(v: string) => update('payoutFrequency', v)} onBlur={() => blur('payoutFrequency')}
               options={['', 'Monthly', 'Quarterly', 'Biannual', 'Annual']} />
-            <Select label="Payout Method *" error={touched.payoutMethod && errors.payoutMethod} value={form.payoutMethod} onChange={v => update('payoutMethod', v)} onBlur={() => blur('payoutMethod')}
+            <Select label="Payout Method *" error={touched.payoutMethod && errors.payoutMethod} value={form.payoutMethod} onChange={(v: string) => update('payoutMethod', v)} onBlur={() => blur('payoutMethod')}
               options={['', 'Bank Transfer', 'Crypto']} />
 
             {form.payoutMethod === 'Bank Transfer' && (
               <>
-                <Input label="Bank Name *" error={touched.bank && errors.bank} value={form.bank} onChange={v => update('bank', v)} onBlur={() => blur('bank')} />
-                <Input label="Account Name *" error={touched.accountName && errors.accountName} value={form.accountName} onChange={v => update('accountName', v)} onBlur={() => blur('accountName')} />
-                <Input label="Account Number *" error={touched.accountNumber && errors.accountNumber} value={form.accountNumber} onChange={v => update('accountNumber', v)} onBlur={() => blur('accountNumber')} maxLength={10} />
+                <Input label="Bank Name *" error={touched.bank && errors.bank} value={form.bank} onChange={(v: string) => update('bank', v)} onBlur={() => blur('bank')} />
+                <Input label="Account Name *" error={touched.accountName && errors.accountName} value={form.accountName} onChange={(v: string) => update('accountName', v)} onBlur={() => blur('accountName')} />
+                <Input label="Account Number *" error={touched.accountNumber && errors.accountNumber} value={form.accountNumber} onChange={(v: string) => update('accountNumber', v)} onBlur={() => blur('accountNumber')} maxLength={10} />
               </>
             )}
             {form.payoutMethod === 'Crypto' && (
               <>
-                <Input label="Token *" error={touched.token && errors.token} value={form.token} onChange={v => update('token', v)} onBlur={() => blur('token')} />
-                <Input label="Chain *" error={touched.chain && errors.chain} value={form.chain} onChange={v => update('chain', v)} onBlur={() => blur('chain')} />
-                <Input label="Wallet Address *" error={touched.wallet && errors.wallet} value={form.wallet} onChange={v => update('wallet', v)} onBlur={() => blur('wallet')} />
+                <Input label="Token *" error={touched.token && errors.token} value={form.token} onChange={(v: string) => update('token', v)} onBlur={() => blur('token')} />
+                <Input label="Chain *" error={touched.chain && errors.chain} value={form.chain} onChange={(v: string) => update('chain', v)} onBlur={() => blur('chain')} />
+                <Input label="Wallet Address *" error={touched.wallet && errors.wallet} value={form.wallet} onChange={(v: string) => update('wallet', v)} onBlur={() => blur('wallet')} />
               </>
             )}
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8, padding: '16px 18px', background: 'var(--bs-bg-elevated, #18181c)', borderRadius: 12, border: '1px solid var(--bs-border-default, #27272e)' }}>
               <Checkbox label="I confirm that I comply with AML/CFT regulations and that all funds are from legitimate sources. *"
-                error={touched.amlAccepted && errors.amlAccepted} checked={form.amlAccepted} onChange={v => update('amlAccepted', v)} />
+                error={touched.amlAccepted && errors.amlAccepted} checked={form.amlAccepted} onChange={(v: string) => update('amlAccepted', v)} />
               <Checkbox label="I have read and accept the BuySub Privacy Policy. *"
-                error={touched.privacyAccepted && errors.privacyAccepted} checked={form.privacyAccepted} onChange={v => update('privacyAccepted', v)} />
+                error={touched.privacyAccepted && errors.privacyAccepted} checked={form.privacyAccepted} onChange={(v: string) => update('privacyAccepted', v)} />
               <Checkbox
                 label={<>I have read and accept the <span style={{ color: '#7C5CFF', cursor: 'pointer' }} onClick={() => setShowTerms(true)}>Partner Program Terms & Conditions</span>. *</>}
-                error={touched.termsAccepted && errors.termsAccepted} checked={form.termsAccepted} onChange={v => update('termsAccepted', v)} />
+                error={touched.termsAccepted && errors.termsAccepted} checked={form.termsAccepted} onChange={(v: string) => update('termsAccepted', v)} />
             </div>
           </FormSection>
         )}
