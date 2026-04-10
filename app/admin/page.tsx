@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 
-const API = process.env.NEXT_PUBLIC_API_BASE || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'
+const API = process.env.NEXT_PUBLIC_API_URL!
 const LOGO_DEV_TOKEN = 'pk_S77F38yQR6WQWErhPEEp1w'
 const ALL_CATEGORIES = ['all','music streaming','video streaming','security','ai','productivity','sports','bundles','education','cloud','gaming','services','coins','social media','lifestyle']
 
@@ -404,8 +404,41 @@ function OrdersTab({T}:{T:Theme}) {
     }
   }
 
-  const approveOrder=async(ref:string)=>{if(!confirm(`Approve order ${ref}?`))return;setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/approve`,{method:'POST',body:JSON.stringify({payment_method:'manual'})});if(r.ok||r.data?.approved)await load(pagination.page);else alert(r.error||'Failed');setActionLoading(null)}
-  const rejectOrder=async(ref:string)=>{const reason=prompt('Reason (optional):');if(reason===null)return;setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/reject`,{method:'POST',body:JSON.stringify({reason})});if(r.ok||r.data?.rejected)await load(pagination.page);else alert(r.error||'Failed');setActionLoading(null)}
+  const approve = async (ref: string) => {
+    const r = await apiFetch(`/v2/admin/orders/${ref}/approve`, {
+      method: 'POST'
+    })
+  
+    if (r.ok) {
+      setOrders(prev =>
+        prev.map(o =>
+          o.order_ref === ref
+            ? { ...o, status: 'approved' } // ✅ update UI instantly
+            : o
+        )
+      )
+    } else {
+      alert(r.error || 'Failed to approve')
+    }
+  }
+  const reject = async (ref: string) => {
+    const r = await apiFetch(`/v2/admin/orders/${ref}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ reason: 'Rejected' }),
+    })
+  
+    if (r.ok) {
+      setOrders(prev =>
+        prev.map(o =>
+          o.order_ref === ref
+            ? { ...o, status: 'rejected' }
+            : o
+        )
+      )
+    } else {
+      alert(r.error || 'Failed to reject')
+    }
+  }
   const openReceipt=(ref:string)=>{window.open(`/admin/receipt?ref=${ref}`,'_blank')}
 
   const grouped:{day:string;orders:Order[]}[]=[];let lastDay='';for(const o of orders){const d=dayKey(o.created_at);if(d!==lastDay){grouped.push({day:d,orders:[]});lastDay=d}grouped[grouped.length-1].orders.push(o)}
@@ -486,8 +519,8 @@ function OrdersTab({T}:{T:Theme}) {
                         {o.notes&&<div style={{fontSize:12,color:T.textMuted,marginBottom:10}}>Notes: {o.notes}</div>}
                         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                           {o.status==='pending_manual'&&<>
-                            <SmallBtn T={T} color={T.success} onClick={()=>approveOrder(o.order_ref)} disabled={actionLoading===o.order_ref}>{actionLoading===o.order_ref?'…':'✓ Approve'}</SmallBtn>
-                            <SmallBtn T={T} color={T.error} onClick={()=>rejectOrder(o.order_ref)} disabled={actionLoading===o.order_ref}>✕ Reject</SmallBtn>
+                            <SmallBtn T={T} color={T.success} onClick={()=>approve(o.order_ref)} disabled={actionLoading===o.order_ref}>{actionLoading===o.order_ref?'…':'✓ Approve'}</SmallBtn>
+                            <SmallBtn T={T} color={T.error} onClick={()=>reject(o.order_ref)} disabled={actionLoading===o.order_ref}>✕ Reject</SmallBtn>
                           </>}
                           {o.status==='paid'&&<SmallBtn T={T} color={T.accent} onClick={()=>openReceipt(o.order_ref)}>📄 Receipt</SmallBtn>}
                         </div>
@@ -1005,3 +1038,4 @@ function DiscountsTab({ T }: { T: Theme }) {
     </div>
   )
 }
+console.log("API URL:", API)

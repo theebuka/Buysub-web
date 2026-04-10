@@ -20,7 +20,7 @@ import { useEffect, useRef, useState } from 'react'
 /* ================================================================
    CONFIG
 ================================================================ */
-const API = process.env.NEXT_PUBLIC_API_BASE || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'
+const API = process.env.NEXT_PUBLIC_API_URL!
 const WA_NUMBER = '2348107872916'
 const BUYSUB_URL = 'https://buysub.ng'
 const BUYSUB_EMAIL = 'help@buysub.ng'
