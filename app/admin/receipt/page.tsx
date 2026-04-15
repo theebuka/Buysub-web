@@ -16,6 +16,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { toast } from 'sonner'
 
 /* ================================================================
    CONFIG
@@ -638,7 +639,7 @@ export default function ReceiptGenerator() {
   const handleDownload = async () => {
     setGenerating(true)
     try { await buildPDF(payload()); setGenerated(true) }
-    catch (e) { console.error(e); alert('PDF generation failed. Please try again.') }
+    catch (e) { console.error(e); toast.error('PDF generation failed. Please try again.') }
     finally { setGenerating(false) }
   }
 

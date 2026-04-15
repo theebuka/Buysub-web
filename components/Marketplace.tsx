@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useRef, useState } from "react";
+import { toast } from "sonner";
 import { getProducts, getAutoApplyDiscounts as fetchAutoApplyAPI, validateDiscount as validateDiscountAPI, createWhatsAppOrder, createOrder, initPaystackPayment } from "@/lib/api";
 import { PERIODS, TAB_ORDER, FX, CART_STORAGE_KEY, LOGO_DEV_TOKEN, WHATSAPP_NUMBER, Product, CartItem, AppliedDiscount, DiscountRecord, format, discountPct, isInStock, hasCategory, getCategoryList, cartKey, isValidEmail, norm, isItemEligible, getEligibleSubtotal, calcDiscountAmount } from "@/lib/constants";
 import { useReferral } from '@/lib/useReferral'
@@ -105,7 +106,11 @@ export default function Marketplace() {
     const [cartReconcileMsg, setCartReconcileMsg] = useState("")
 
     const [drawerStep, setDrawerStep] = useState<"cart" | "email">("cart")
-    const [email, setEmail] = useState("")
+    const [customer, setCustomer] = useState({
+        email: "",
+        name: "",
+        phone: ""
+      })
     const [emailError, setEmailError] = useState("")
 
     const fxRate =
@@ -284,8 +289,16 @@ export default function Marketplace() {
     const [orderLoading, setOrderLoading] = useState(false)
 
     const handleSendToWhatsApp = async () => {
-        if (!isValidEmail(email)) {
+        if (!isValidEmail(customer.email)) {
             setEmailError("Please enter a valid email address.")
+            return
+        }
+        if (!customer.name) {
+            setEmailError("Please enter your full name.")
+            return
+        }
+        if (!customer.phone) {
+            setEmailError("Please enter your phone number.")
             return
         }
         setOrderLoading(true)
@@ -304,7 +317,9 @@ export default function Marketplace() {
                 }
             })
             const res = await createWhatsAppOrder({
-                customer_email: email,
+                customer_email: customer.email,
+                customer_name: customer.name,
+                customer_phone: customer.phone,
                 items,
                 discount_code: activeDiscount?.code || undefined,
                 currency,
@@ -313,24 +328,34 @@ export default function Marketplace() {
                 referral_code: referralCode || undefined,
             })
             if (res.ok && res.data?.whatsapp_url) {
+                toast.success("Order created. Redirecting to WhatsApp...")
                 window.open(res.data.whatsapp_url, "_blank", "noopener,noreferrer")
                 // Clear cart after successful order
                 setCartItems({})
                 closeDrawer()
             } else {
-                setEmailError(res.error || "Failed to create order. Please try again.")
+                toast.error(res.error || "Failed to create order. Please try again. If the problem persists, please contact support.");
             }
         } catch {
-            setEmailError("Something went wrong. Please try again.")
+            toast.error("Something went wrong. Please try again. If the problem persists, please contact support.");
         } finally {
             setOrderLoading(false)
         }
     }
 
     const handlePayWithPaystack = async () => {
-        if (!isValidEmail(email)) {
+        if (!isValidEmail(customer.email)) {
             setEmailError("Please enter a valid email address.")
             return
+        }
+        if (!customer.name) {
+          setEmailError("Please enter your full name.")
+          return
+        }
+        
+        if (!customer.phone) {
+          setEmailError("Please enter your phone number.")
+          return
         }
         setOrderLoading(true)
         setEmailError("")
@@ -350,7 +375,9 @@ export default function Marketplace() {
             })
             // Step 1: Create order
             const orderRes = await createOrder({
-                customer_email: email,
+                customer_email: customer.email,
+                customer_name: customer.name,
+                customer_phone: customer.phone,
                 items,
                 discount_code: activeDiscount?.code || undefined,
                 currency,
@@ -359,20 +386,21 @@ export default function Marketplace() {
                 referral_code: referralCode || undefined,
             })
             if (!orderRes.ok || !orderRes.data?.order_id) {
-                setEmailError(orderRes.error || "Failed to create order.")
+                toast.error(orderRes.error || "Failed to create order. Please try again. If the problem persists, please contact support.");
                 return
             }
             // Step 2: Init Paystack payment
             const callbackUrl = `${window.location.origin}/order/verify`
             const payRes = await initPaystackPayment(orderRes.data.order_id, callbackUrl)
             if (!payRes.ok || !payRes.data?.authorization_url) {
-                setEmailError(payRes.error || "Failed to initialize payment.")
+                toast.error(payRes.error || "Failed to initialize payment. Please try again. If the problem persists, please contact support.");
                 return
             }
             // Step 3: Redirect to Paystack
+            toast.success("Redirecting to payment...")
             window.location.href = payRes.data.authorization_url
         } catch {
-            setEmailError("Something went wrong. Please try again.")
+            toast.error("Something went wrong. Please try again. If the problem persists, please contact support.");
         } finally {
             setOrderLoading(false)
         }
@@ -408,7 +436,7 @@ export default function Marketplace() {
     }
 
     const PRODUCT_CACHE_KEY = "bs_products_v2"
-    const PRODUCT_CACHE_TTL = 10 * 60 * 1000
+    const PRODUCT_CACHE_TTL = 0
 
     useEffect(() => {
         let cancelled = false
@@ -1743,8 +1771,62 @@ export default function Marketplace() {
                                 </div>
 
                                 <div style={{ padding: "20px 24px", borderTop: "1px solid #1C1C1F", flexShrink: 0 }}>
-                                    <label style={{ fontSize: 12, color: "var(--bs-text-secondary)", display: "block", marginBottom: 8 }}>Your email address</label>
-                                    <input className="email-input" type="email" placeholder="you@example.com" value={email} onChange={(e) => { setEmail(e.target.value); setEmailError("") }} onKeyDown={(e) => e.key === "Enter" && handleSendToWhatsApp()} style={{ width: "100%", height: 48, padding: "0 16px", borderRadius: 10, background: "var(--bs-bg-input)", border: `1px solid ${emailError ? "var(--bs-error)" : "var(--bs-border-default)"}`, color: "var(--bs-text-primary)", fontSize: 14, boxSizing: "border-box", marginBottom: 6 }} />
+                                    <label style={{ fontSize: 12, color: "var(--bs-text-secondary)", display: "block", marginBottom: 8 }}>Your details</label>
+
+                                    <input
+                                    placeholder="Full name"
+                                    value={customer.name}
+                                    onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
+                                    style={{
+                                        width: "100%",
+                                        height: 48,
+                                        padding: "0 16px",
+                                        borderRadius: 10,
+                                        background: "var(--bs-bg-input)",
+                                        border: "1px solid var(--bs-border-default)",
+                                        color: "var(--bs-text-primary)",
+                                        fontSize: 14,
+                                        marginBottom: 8
+                                    }}
+                                    />
+
+                                    <input
+                                    placeholder="Phone number"
+                                    value={customer.phone}
+                                    onChange={(e) => setCustomer({ ...customer, phone: e.target.value })}
+                                    style={{
+                                        width: "100%",
+                                        height: 48,
+                                        padding: "0 16px",
+                                        borderRadius: 10,
+                                        background: "var(--bs-bg-input)",
+                                        border: "1px solid var(--bs-border-default)",
+                                        color: "var(--bs-text-primary)",
+                                        fontSize: 14,
+                                        marginBottom: 8
+                                    }}
+                                    />
+
+                                    <input
+                                    type="email"
+                                    placeholder="Email address"
+                                    value={customer.email}
+                                    onChange={(e) => {
+                                        setCustomer({ ...customer, email: e.target.value })
+                                        setEmailError("")
+                                    }}
+                                    style={{
+                                        width: "100%",
+                                        height: 48,
+                                        padding: "0 16px",
+                                        borderRadius: 10,
+                                        background: "var(--bs-bg-input)",
+                                        border: `1px solid ${emailError ? "var(--bs-error)" : "var(--bs-border-default)"}`,
+                                        color: "var(--bs-text-primary)",
+                                        fontSize: 14,
+                                        marginBottom: 6
+                                    }}
+                                    />
                                     {emailError && (<div style={{ fontSize: 12, color: "var(--bs-error)", marginBottom: 10 }}>{emailError}</div>)}
                                     <button onClick={handlePayWithPaystack} disabled={orderLoading} style={{ width: "100%", height: 52, borderRadius: 12, background: "#7C5CFF", border: "none", color: "#fff", cursor: orderLoading ? "not-allowed" : "pointer", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "background .15s", marginTop: 8, opacity: orderLoading ? 0.6 : 1 }}>
                                         {orderLoading ? "Processing..." : `Pay ${format(cartTotal, currency)} with Paystack`}
@@ -1756,7 +1838,7 @@ export default function Marketplace() {
                                     </div>
                                     <button className="wa-btn" onClick={handleSendToWhatsApp} disabled={orderLoading} style={{ width: "100%", height: 52, borderRadius: 12, background: "#25D366", border: "none", color: "#fff", cursor: "pointer", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 10, transition: "background .15s", marginTop: 8 }}>
                                         <WhatsAppIcon />
-                                        Send order to WhatsApp
+                                        Complete order via WhatsApp
                                     </button>
                                     <p style={{ fontSize: 11, color: "var(--bs-text-faint)", textAlign: "center", marginTop: 10, lineHeight: 1.5 }}>
                                         Opens WhatsApp with your order pre-filled. Our team will confirm and process.

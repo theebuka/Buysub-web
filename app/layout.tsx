@@ -1,4 +1,9 @@
 import { CSS_VARS } from '@/lib/constants';
+// import { usePathname } from "next/navigation"
+/* import Navbar from '../components/Navbar'
+import Footer from '../components/Footer' */
+import AppShell from '../components/AppShell'
+import { Toaster } from 'sonner';
 
 export const metadata = {
   title: 'BuySub — Digital Subscription Marketplace',
@@ -6,6 +11,9 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
+  /* const pathname = usePathname()
+  const isAdmin = pathname.startsWith("/admin") */
+
   return (
     <html lang="en">
       <head>
@@ -31,7 +39,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           .hide-scrollbar { -ms-overflow-style:none; scrollbar-width:none }
         `}} />
       </head>
-      <body>{children}</body>
+      <body>
+        <AppShell>
+          {children}
+        </AppShell>
+
+        <Toaster richColors position="top-right" />
+      </body>
     </html>
   );
 }

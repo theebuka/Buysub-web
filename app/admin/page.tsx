@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
+import { toast } from "sonner"
 
 const API = process.env.NEXT_PUBLIC_API_URL!
 const LOGO_DEV_TOKEN = 'pk_S77F38yQR6WQWErhPEEp1w'
@@ -25,7 +26,7 @@ const sentenceCase = (s: string) => s ? s.split(' ').map(w => w.charAt(0).toUppe
 const statusColor = (s: string) => {
   if (s==='paid'||s==='approved'||s==='in_stock'||s==='active') return {bg:'rgba(22,163,74,0.12)',color:'#16a34a'}
   if (s==='pending_manual'||s==='pending_review'||s==='pending') return {bg:'rgba(217,119,6,0.12)',color:'#d97706'}
-  if (s==='cancelled'||s==='rejected'||s==='out_of_stock'||s==='inactive'||s==='suspended'||s==='archived') return {bg:'rgba(220,38,38,0.12)',color:'#dc2626'}
+  if (s==='cancelled'||s==='rejected'||s==='out_of_stock'||s==='hidden'||s==='suspended'||s==='archived') return {bg:'rgba(220,38,38,0.12)',color:'#dc2626'}
   if (s==='rejected_pending') return {bg:'rgba(217,119,6,0.08)',color:'#92400e'}
   return {bg:'rgba(107,107,126,0.12)',color:'#6b6b7e'}
 }
@@ -209,7 +210,7 @@ function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }:
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <FieldLabel label="Billing Type" T={T}><select style={IS} value={form.billing_type || 'subscription'} onChange={e => updateField('billing_type', e.target.value)}><option value="subscription">Subscription</option><option value="one_time">One-time</option></select></FieldLabel>
         <FieldLabel label="Stock Status" T={T}><select style={IS} value={form.stock_status || 'in_stock'} onChange={e => updateField('stock_status', e.target.value)}><option value="in_stock">In Stock</option><option value="out_of_stock">Out of Stock</option><option value="preorder">Preorder</option></select></FieldLabel>
-        <FieldLabel label="Status" T={T}><select style={IS} value={form.status || 'active'} onChange={e => updateField('status', e.target.value)}><option value="active">Active</option><option value="inactive">Inactive</option><option value="archived">Archived</option></select></FieldLabel>
+        <FieldLabel label="Status" T={T}><select style={IS} value={form.status || 'active'} onChange={e => updateField('status', e.target.value)}><option value="active">Active</option><option value="hidden">hidden</option><option value="archived">Archived</option></select></FieldLabel>
         <FieldLabel label="Sort Order" T={T}><input style={IS} type="number" value={form.sort_order ?? 100} onChange={e => updateField('sort_order', Number(e.target.value))} /></FieldLabel>
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
@@ -417,8 +418,9 @@ function OrdersTab({T}:{T:Theme}) {
             : o
         )
       )
+      toast.success("Order approved")
     } else {
-      alert(r.error || 'Failed to approve')
+      toast.error(r.error || 'Failed to approve')
     }
   }
   const reject = async (ref: string) => {
@@ -435,8 +437,9 @@ function OrdersTab({T}:{T:Theme}) {
             : o
         )
       )
+      toast.success("Order rejected")
     } else {
-      alert(r.error || 'Failed to reject')
+      toast.error(r.error || 'Failed to reject')
     }
   }
   const openReceipt=(ref:string)=>{window.open(`/admin/receipt?ref=${ref}`,'_blank')}
@@ -543,8 +546,8 @@ function RejectedTab({T}:{T:Theme}) {
   const [orders,setOrders]=useState<Order[]>([]); const [loading,setLoading]=useState(true); const [actionLoading,setActionLoading]=useState<string|null>(null)
   const load=useCallback(async()=>{setLoading(true);const r=await apiFetch('/v2/admin/orders?status=rejected_pending&limit=50');if(r.ok)setOrders(r.data||[]);setLoading(false)},[])
   useEffect(()=>{load()},[])
-  const confirmReject=async(ref:string)=>{if(!confirm(`Permanently reject ${ref}?`))return;setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/reject`,{method:'POST',body:JSON.stringify({confirm:true})});if(r.ok||r.data?.rejected)await load();else alert(r.error||'Failed');setActionLoading(null)}
-  const undoReject=async(ref:string)=>{setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/undo-reject`,{method:'POST'});if(r.ok||r.data?.undone)await load();else alert(r.error||'Failed');setActionLoading(null)}
+  const confirmReject=async(ref:string)=>{if(!confirm(`Permanently reject ${ref}?`))return;setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/reject`,{method:'POST',body:JSON.stringify({confirm:true})});if(r.ok||r.data?.rejected)await load();else toast.error(r.error||'Failed');setActionLoading(null)}
+  const undoReject=async(ref:string)=>{setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/undo-reject`,{method:'POST'});if(r.ok||r.data?.undone)await load();else toast.error(r.error||'Failed');setActionLoading(null)}
   return (
     <div>
       <div style={{fontSize:13,color:T.warning,marginBottom:20,padding:'12px 16px',background:T.warningBg,borderRadius:12,border:`1px solid ${T.warning}30`}}>Orders here need a second confirmation before permanent cancellation. Use Undo to restore.</div>
@@ -583,19 +586,29 @@ function ProductsTab({T}:{T:Theme}) {
   const [creating,setCreating]=useState(false); const [page,setPage]=useState(1); const PAGE_SIZE=24
 
   // Fetch ALL products for stable client-side filtering+pagination
-  const loadAll = useCallback(async()=>{
+  const loadAll = useCallback(async () => {
     setLoading(true)
-    const r=await apiFetch('/v2/admin/products?limit=100&page=1')
-    let products = r.ok?(r.data||[]):[]
-    // If there are more pages, fetch them
-    const totalPages = r?.meta?.pagination?.pages||1
-    for(let p=2;p<=totalPages;p++){
-      const r2=await apiFetch(`/v2/admin/products?limit=100&page=${p}`)
-      if(r2.ok&&r2.data) products=products.concat(r2.data)
+  
+    let page = 1
+    let products: Product[] = []
+  
+    while (true) {
+      const r = await apiFetch(`/v2/admin/products?limit=100&page=${page}`)
+  
+      if (!r.ok || !r.data?.length) break
+  
+      products = products.concat(r.data)
+  
+      if (r.data.length < 100) break
+      page++
     }
-    setAllProducts(products); setLoading(false)
-  },[])
-  useEffect(()=>{loadAll()},[])
+  
+    setAllProducts(products)
+    setLoading(false)
+  }, [])
+  useEffect(() => {
+    loadAll()
+  }, [loadAll])
 
   // Client-side filter+paginate
   const filtered = useMemo(()=>{
@@ -610,9 +623,51 @@ function ProductsTab({T}:{T:Theme}) {
   const paged = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
   useEffect(()=>{setPage(1)},[search,statusFilter,categoryFilter])
 
-  const toggleStatus=async(p:Product)=>{const ns=p.status==='active'?'inactive':'active';const r=await apiFetch(`/v2/admin/products/${p.id}`,{method:'PATCH',body:JSON.stringify({status:ns})});if(r.ok)setAllProducts(prev=>prev.map(x=>x.id===p.id?{...x,status:ns}:x))}
-  const toggleStock=async(p:Product)=>{const ns=p.stock_status==='in_stock'?'out_of_stock':'in_stock';const r=await apiFetch(`/v2/admin/products/${p.id}`,{method:'PATCH',body:JSON.stringify({stock_status:ns})});if(r.ok)setAllProducts(prev=>prev.map(x=>x.id===p.id?{...x,stock_status:ns}:x))}
-  const archiveProduct=async(p:Product)=>{if(!confirm(`Archive "${p.name}"?`))return;const r=await apiFetch(`/v2/admin/products/${p.id}`,{method:'PATCH',body:JSON.stringify({status:'archived'})});if(r.ok)setAllProducts(prev=>prev.filter(x=>x.id!==p.id))}
+  const toggleStatus = async (p: Product) => {
+    const ns = p.status === 'active' ? 'hidden' : 'active'
+  
+    const r = await apiFetch(`/v2/admin/products/${p.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: ns })
+    })
+    console.log('STATUS RESPONSE:', r) // 👈 ADD THIS
+    if (r.ok) {
+      toast.success("Status updated")
+      await loadAll() // 🔴 ALWAYS refresh from backend
+    } else {
+      toast.error(r.error || 'Failed to update status')
+    }
+  }
+  const toggleStock = async (p: Product) => {
+    const ns = p.stock_status === 'in_stock' ? 'out_of_stock' : 'in_stock'
+  
+    const r = await apiFetch(`/v2/admin/products/${p.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ stock_status: ns })
+    })
+  
+    if (r.ok) {
+      await loadAll() // 🔴 SAME FIX
+      toast.success("Stock inventory updated")
+    } else {
+      toast.error(r.error || 'Failed to update stock')
+    }
+  }
+  const archiveProduct = async (p: Product) => {
+    if (!confirm(`Archive "${p.name}"?`)) return
+  
+    const r = await apiFetch(`/v2/admin/products/${p.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ status: 'archived' })
+    })
+  
+    if (r.ok) {
+      await loadAll() // 🔴 always reload for destructive action
+      toast.success("Product Archived")
+    } else {
+      toast.error(r.error || 'Failed to archive')
+    }
+  }
 
   const startEdit=(p:Product)=>{setEditingId(p.id);setEditForm({name:p.name,slug:p.slug,category:p.category,tags:p.tags,description:p.description||'',short_description:p.short_description||'',category_tagline:p.category_tagline||'',domain:p.domain||'',billing_type:p.billing_type||'subscription',billing_period:p.billing_period||'',price_1m:p.price_1m||0,price_3m:p.price_3m||0,price_6m:p.price_6m||0,price_1y:p.price_1y||0,stock_status:p.stock_status,status:p.status,featured:!!p.featured,sort_order:p.sort_order||100,image_url:p.image_url||''})}
 
@@ -620,15 +675,15 @@ function ProductsTab({T}:{T:Theme}) {
     if(!editingId)return
     const r=await apiFetch(`/v2/admin/products/${editingId}`,{method:'PATCH',body:JSON.stringify(editForm)})
     if(r.ok&&r.data){ setAllProducts(prev=>prev.map(x=>x.id===editingId?{...x,...r.data}:x)); setEditingId(null) }
-    else alert(r.error||r.data?.error||'Failed to save. Check that all fields are valid.')
+    else toast.error(r.error||r.data?.error||'Failed to save. Check that all fields are valid.')
   }
 
   const createProduct=async()=>{
-    if(!newProduct.name){alert('Name is required');return} setCreating(true)
+    if(!newProduct.name){toast.error('Name is required');return} setCreating(true)
     const slug = newProduct.slug || newProduct.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')
     const r=await apiFetch('/v2/admin/products',{method:'POST',body:JSON.stringify({...newProduct,slug})})
     if(r.ok){setNewProduct(EMPTY_PRODUCT());setShowCreate(false);await loadAll()}
-    else alert(r.error||r.data?.error||'Failed to create. API route /v2/admin/products POST may need to be added.')
+    else toast.error(r.error||r.data?.error||'Failed to create. API route /v2/admin/products POST may need to be added.')
     setCreating(false)
   }
 
@@ -640,7 +695,7 @@ function ProductsTab({T}:{T:Theme}) {
     <div>
       <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap',alignItems:'center'}}>
         <input placeholder="Search products…" value={search} onChange={e=>setSearch(e.target.value)} style={{...IS,maxWidth:300}}/>
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{...IS,width:140,flex:'none'}}><option value="">All status</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{...IS,width:140,flex:'none'}}><option value="">All status</option><option value="active">Active</option><option value="hidden">hidden</option></select>
         <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} style={{...IS,width:200,flex:'none'}}><option value="">All categories</option>{ALL_CATEGORIES.filter(c=>c!=='all').map(c=><option key={c} value={c}>{sentenceCase(c)}</option>)}</select>
         <button onClick={()=>setShowCreate(!showCreate)} style={{height:42,padding:'0 20px',borderRadius:10,background:T.accent,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginLeft:'auto'}}>+ New Product</button>
       </div>
@@ -674,7 +729,7 @@ function ProductsTab({T}:{T:Theme}) {
               </div>
               <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
                 <SmallBtn T={T} color={T.accent} onClick={()=>startEdit(p)}>Edit</SmallBtn>
-                <SmallBtn T={T} color={p.status==='active'?T.textMuted:T.success} onClick={()=>toggleStatus(p)}>{p.status==='active'?'Deactivate':'Activate'}</SmallBtn>
+                <SmallBtn T={T} color={p.status==='active'?T.textMuted:T.success} onClick={()=>toggleStatus(p)}>{p.status==='active'?'Hide':'Show'}</SmallBtn>
                 <SmallBtn T={T} color={p.stock_status==='in_stock'?T.warning:T.success} onClick={()=>toggleStock(p)}>{p.stock_status==='in_stock'?'Mark OOS':'In Stock'}</SmallBtn>
                 <SmallBtn T={T} color={T.error} onClick={()=>archiveProduct(p)}>Archive</SmallBtn>
               </div>
@@ -718,7 +773,7 @@ function CustomersTab({T}:{T:Theme}) {
                 <td style={{padding:12,color:T.textSecondary}}>{c.phone||'—'}</td>
                 <td style={{padding:12,color:T.textMuted}}>{c.category||'—'}</td>
                 <td style={{padding:12,color:T.textMuted}}>{c.source||'—'}</td>
-                <td style={{padding:12}}><Badge status={c.is_active?'active':'inactive'} T={T}/></td>
+                <td style={{padding:12}}><Badge status={c.is_active?'active':'hidden'} T={T}/></td>
                 <td style={{padding:12,color:T.textMuted,whiteSpace:'nowrap'}}>{fmtDate(c.created_at)}</td>
               </tr>
             ))}</tbody>
@@ -737,8 +792,8 @@ function PartnersTab({T}:{T:Theme}) {
   const [actionLoading,setActionLoading]=useState<string|null>(null)
   const load=useCallback(async(page=1,status=statusFilter)=>{setLoading(true);const params=new URLSearchParams({page:String(page),limit:'20'});if(status)params.set('status',status);const r=await apiFetch(`/v2/admin/partners?${params}`);if(r.ok){setApps(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[statusFilter])
   useEffect(()=>{load()},[])
-  const approve=async(id:string)=>{const notes=prompt('Approval notes (optional):');if(notes===null)return;setActionLoading(id);const r=await apiFetch(`/v2/admin/partners/${id}/approve`,{method:'POST',body:JSON.stringify({notes})});if(r.ok)await load(pagination.page);else alert(r.error||'Failed');setActionLoading(null)}
-  const reject=async(id:string)=>{const reason=prompt('Rejection reason:');if(!reason)return;setActionLoading(id);const r=await apiFetch(`/v2/admin/partners/${id}/reject`,{method:'POST',body:JSON.stringify({reason})});if(r.ok)await load(pagination.page);else alert(r.error||'Failed');setActionLoading(null)}
+  const approve=async(id:string)=>{const notes=prompt('Approval notes (optional):');if(notes===null)return;setActionLoading(id);const r=await apiFetch(`/v2/admin/partners/${id}/approve`,{method:'POST',body:JSON.stringify({notes})});if(r.ok)await load(pagination.page);else toast.error(r.error||'Failed');setActionLoading(null)}
+  const reject=async(id:string)=>{const reason=prompt('Rejection reason:');if(!reason)return;setActionLoading(id);const r=await apiFetch(`/v2/admin/partners/${id}/reject`,{method:'POST',body:JSON.stringify({reason})});if(r.ok)await load(pagination.page);else toast.error(r.error||'Failed');setActionLoading(null)}
   return (
     <div>
       <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);load(1,e.target.value)}} style={{...inputStyle(T),width:200,marginBottom:20}}>
@@ -844,7 +899,7 @@ function LinksTab({T}:{T:Theme}) {
   const load=useCallback(async(page=1,q=search)=>{setLoading(true);const params=new URLSearchParams({page:String(page),limit:'20'});if(q)params.set('q',q);const r=await apiFetch(`/v2/admin/links?${params}`);if(r.ok){setLinks(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[search])
   useEffect(()=>{load()},[])
   const onSearch=(q:string)=>{setSearch(q);clearTimeout(searchTimer.current);searchTimer.current=setTimeout(()=>load(1,q),400)}
-  const createLink=async()=>{if(!newDest)return;setCreating(true);const r=await apiFetch('/v2/admin/links',{method:'POST',body:JSON.stringify({slug:newSlug||undefined,destination_url:newDest,tags:newTags||undefined})});if(r.ok){setNewSlug('');setNewDest('');setNewTags('');setShowCreate(false);await load(1)}else alert(r.error||'Failed');setCreating(false)}
+  const createLink=async()=>{if(!newDest)return;setCreating(true);const r=await apiFetch('/v2/admin/links',{method:'POST',body:JSON.stringify({slug:newSlug||undefined,destination_url:newDest,tags:newTags||undefined})});if(r.ok){setNewSlug('');setNewDest('');setNewTags('');setShowCreate(false);await load(1)}else toast.error(r.error||'Failed');setCreating(false)}
   const toggleActive=async(l:any)=>{const r=await apiFetch(`/v2/admin/links/${l.id}`,{method:'PATCH',body:JSON.stringify({active:!l.active})});if(r.ok)setLinks(prev=>prev.map(x=>x.id===l.id?{...x,active:!l.active}:x))}
   const deleteLink=async(id:string)=>{if(!confirm('Delete this link?'))return;await apiFetch(`/v2/admin/links/${id}`,{method:'DELETE'});await load(pagination.page)}
   const IS=inputStyle(T)
@@ -891,7 +946,7 @@ function AdsTab({T}:{T:Theme}) {
   const [newAd,setNewAd]=useState({title:'',image_url:'',link:'',placement:'shop_banner'})
   const load=useCallback(async(page=1)=>{setLoading(true);const r=await apiFetch(`/v2/admin/ads?page=${page}&limit=20`);if(r.ok){setAds(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[])
   useEffect(()=>{load()},[])
-  const createAd=async()=>{if(!newAd.title||!newAd.image_url||!newAd.link)return;setCreating(true);const r=await apiFetch('/v2/admin/ads',{method:'POST',body:JSON.stringify(newAd)});if(r.ok){setNewAd({title:'',image_url:'',link:'',placement:'shop_banner'});setShowCreate(false);await load(1)}else alert(r.error||'Failed');setCreating(false)}
+  const createAd=async()=>{if(!newAd.title||!newAd.image_url||!newAd.link)return;setCreating(true);const r=await apiFetch('/v2/admin/ads',{method:'POST',body:JSON.stringify(newAd)});if(r.ok){setNewAd({title:'',image_url:'',link:'',placement:'shop_banner'});setShowCreate(false);await load(1)}else toast.error(r.error||'Failed');setCreating(false)}
   const toggleActive=async(a:any)=>{const r=await apiFetch(`/v2/admin/ads/${a.id}`,{method:'PATCH',body:JSON.stringify({active:!a.active})});if(r.ok)setAds(prev=>prev.map(x=>x.id===a.id?{...x,active:!a.active}:x))}
   const deleteAd=async(id:string)=>{if(!confirm('Delete this ad?'))return;await apiFetch(`/v2/admin/ads/${id}`,{method:'DELETE'});await load(pagination.page)}
   const IS=inputStyle(T)
@@ -951,11 +1006,11 @@ function DiscountsTab({ T }: { T: Theme }) {
   useEffect(() => { load() }, [])
 
   const createDiscount = async () => {
-    if (!newDiscount.code) { alert('Code is required'); return }
+    if (!newDiscount.code) { toast.error('Code is required'); return }
     setCreating(true)
     const r = await apiFetch('/v2/admin/discounts', { method: 'POST', body: JSON.stringify({ ...newDiscount, code: newDiscount.code.toUpperCase() }) })
-    if (r.ok) { setNewDiscount(EMPTY_DISCOUNT()); setShowCreate(false); await load() }
-    else alert(r.error || r.data?.error || 'Failed to create discount')
+    if (r.ok) { setNewDiscount(EMPTY_DISCOUNT()); setShowCreate(false); toast.success("Discount created"); await load() }
+    else toast.error(r.error || r.data?.error || 'Failed to create discount')
     setCreating(false)
   }
 
@@ -967,13 +1022,17 @@ function DiscountsTab({ T }: { T: Theme }) {
   const saveEdit = async () => {
     if (!editingId) return
     const r = await apiFetch(`/v2/admin/discounts/${editingId}`, { method: 'PATCH', body: JSON.stringify(editForm) })
-    if (r.ok) { setEditingId(null); await load() } else alert(r.error || r.data?.error || 'Failed to update')
+    if (r.ok) { setEditingId(null); toast.success("Changes saved"); await load() } else toast.error(r.error || r.data?.error || 'Failed to update')
   }
 
   const deleteDiscount = async (id: string) => {
     if (!confirm('Delete this discount code?')) return
     const r = await apiFetch(`/v2/admin/discounts/${id}`, { method: 'DELETE' })
-    if (r.ok) await load(); else alert(r.error || 'Failed')
+    if (r.ok) {
+      await load();
+      toast.success('Discount code deleted successfully')
+    }
+    else toast.error(r.error || 'Failed to delete discount')
   }
 
   const toggleActive = async (d: Discount) => {
@@ -996,7 +1055,7 @@ function DiscountsTab({ T }: { T: Theme }) {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: T.accent, background: T.accent + '18', padding: '3px 10px', borderRadius: 6 }}>{d.code}</span>
                   <span style={{ fontSize: 13, color: T.text }}>{d.type === 'percentage' ? `${d.value}% off` : `₦${Number(d.value).toLocaleString()} off`}</span>
-                  <Badge status={d.active ? 'active' : 'inactive'} T={T} />
+                  <Badge status={d.active ? 'active' : 'hidden'} T={T} />
                   {d.auto_apply && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: T.accent + '15', color: T.accent, fontWeight: 600 }}>Auto</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
