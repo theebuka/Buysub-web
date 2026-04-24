@@ -19,7 +19,7 @@ export const PERIODS: Record<string, { months: number; field: string; label: str
 export const TAB_ORDER = [
   'all', 'music streaming', 'video streaming', 'security', 'ai',
   'productivity', 'sports', 'bundles', 'education', 'cloud',
-  'gaming', 'services', 'coins', 'social media',
+  'gaming', 'services', 'coins', 'social media','lifestyle',
 ];
 
 // ── FX ──

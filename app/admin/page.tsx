@@ -133,8 +133,8 @@ const pageBtnStyle = (T: Theme, disabled: boolean): React.CSSProperties => ({
 
 function Shell({ T, isDark, toggle, adminEmail, children }: { T: Theme; isDark: boolean; toggle: () => void; adminEmail: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: T.bg, minHeight: '100vh', color: T.text, fontFamily: 'Inter,sans-serif', padding: '0 24px 60px', paddingTop: 'calc(5vh + 16px)', boxSizing: 'border-box', transition: 'background 0.2s, color 0.2s' }}>
-      <div style={{ maxWidth: 1400, margin: '0 auto', width: '100%' }}>
+    <div style={{ background: T.bg, minHeight: '100vh', color: T.text, fontFamily: 'Inter,sans-serif', padding: '0 24px 60px', paddingTop: 'calc(2vh + 16px)', boxSizing: 'border-box', transition: 'background 0.2s, color 0.2s' }}>
+      <div style={{ margin: '0 auto', width: '100%' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
           <div>
             <div style={{ fontSize: 22, fontWeight: 700, color: T.text }}>Admin Dashboard</div>
@@ -269,7 +269,7 @@ function DiscountFormPanel({ T, form, setForm, onSave, onCancel, saving, title }
 
 
 // ════════════════════ MAIN ════════════════════
-const TABS = ['Overview','Orders','Rejected','Products','Customers','Partners','Wallets','Affiliates','Links','Ads','Discounts'] as const
+const TABS = ['Overview','Orders','Rejected','Products','Customers','Partners','Wallets','Affiliates','Links','Ads','Discounts','Notifications'] as const
 type Tab = typeof TABS[number]
 
 export default function AdminDashboard() {
@@ -320,6 +320,7 @@ export default function AdminDashboard() {
       {tab === 'Links' && <LinksTab T={T} />}
       {tab === 'Ads' && <AdsTab T={T} />}
       {tab === 'Discounts' && <DiscountsTab T={T} />}
+      {tab === 'Notifications' && <NotificationsTab T={T} />}
     </Shell>
   )
 }
@@ -576,33 +577,60 @@ function RejectedTab({T}:{T:Theme}) {
 }
 
 // ════════════════════ PRODUCTS TAB (full overhaul) ════════════════════
-const EMPTY_PRODUCT = ():Partial<Product>&{[k:string]:any} => ({name:'',slug:'',category:'',tags:'',description:'',short_description:'',category_tagline:'',domain:'',billing_type:'subscription',billing_period:'',price_1m:0,price_3m:0,price_6m:0,price_1y:0,stock_status:'in_stock',status:'active',featured:false,sort_order:100,image_url:''})
+const EMPTY_PRODUCT = (): Partial<Product> & { [k: string]: any } => ({
+  name: '',
+  slug: '',
+  category: '',
+  tags: '',
+  description: '',
+  short_description: '',
+  category_tagline: '',
+  domain: '',
+  billing_type: 'subscription',
+  billing_period: '',
+  price_1m: 0,
+  price_3m: 0,
+  price_6m: 0,
+  price_1y: 0,
+  stock_status: 'in_stock',
+  status: 'active',
+  featured: false,
+  sort_order: 100,
+  image_url: '',
+})
 
-function ProductsTab({T}:{T:Theme}) {
-  const [allProducts,setAllProducts]=useState<Product[]>([]); const [loading,setLoading]=useState(true)
-  const [search,setSearch]=useState(''); const [statusFilter,setStatusFilter]=useState(''); const [categoryFilter,setCategoryFilter]=useState('')
-  const [editingId,setEditingId]=useState<string|null>(null); const [editForm,setEditForm]=useState<any>({})
-  const [showCreate,setShowCreate]=useState(false); const [newProduct,setNewProduct]=useState<any>(EMPTY_PRODUCT())
-  const [creating,setCreating]=useState(false); const [page,setPage]=useState(1); const PAGE_SIZE=24
+function ProductsTab({ T }: { T: Theme }) {
+  const [allProducts, setAllProducts] = useState<Product[]>([])
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [editForm, setEditForm] = useState<any>({})
+  const [showCreate, setShowCreate] = useState(false)
+  const [newProduct, setNewProduct] = useState<any>(EMPTY_PRODUCT())
+  const [creating, setCreating] = useState(false)
+  const [page, setPage] = useState(1)
+  const PAGE_SIZE = 24
 
   // Fetch ALL products for stable client-side filtering+pagination
   const loadAll = useCallback(async () => {
     setLoading(true)
-  
+
     let page = 1
     let products: Product[] = []
-  
+
     while (true) {
       const r = await apiFetch(`/v2/admin/products?limit=100&page=${page}`)
-  
+
       if (!r.ok || !r.data?.length) break
-  
+
       products = products.concat(r.data)
-  
+
       if (r.data.length < 100) break
       page++
     }
-  
+
     setAllProducts(products)
     setLoading(false)
   }, [])
@@ -611,43 +639,55 @@ function ProductsTab({T}:{T:Theme}) {
   }, [loadAll])
 
   // Client-side filter+paginate
-  const filtered = useMemo(()=>{
+  const filtered = useMemo(() => {
     let list = allProducts
-    if(statusFilter) list=list.filter(p=>p.status===statusFilter)
-    if(categoryFilter) list=list.filter(p=>(p.category||'').toLowerCase().includes(categoryFilter.toLowerCase()))
-    if(search) { const q=search.toLowerCase(); list=list.filter(p=>(p.name||'').toLowerCase().includes(q)||(p.category||'').toLowerCase().includes(q)||(p.tags||'').toLowerCase().includes(q)) }
+    if (statusFilter) list = list.filter(p => p.status === statusFilter)
+    if (categoryFilter) list = list.filter(p => (p.category || '').toLowerCase().includes(categoryFilter.toLowerCase()))
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(p =>
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.category || '').toLowerCase().includes(q) ||
+        (p.tags || '').toLowerCase().includes(q)
+      )
+    }
     return list
-  },[allProducts,statusFilter,categoryFilter,search])
+  }, [allProducts, statusFilter, categoryFilter, search])
 
-  const totalPages = Math.ceil(filtered.length/PAGE_SIZE)
-  const paged = filtered.slice((page-1)*PAGE_SIZE, page*PAGE_SIZE)
-  useEffect(()=>{setPage(1)},[search,statusFilter,categoryFilter])
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const paged = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  useEffect(() => { setPage(1) }, [search, statusFilter, categoryFilter])
+
+  // Summary counts (for header strip)
+  const counts = useMemo(() => ({
+    total: allProducts.length,
+    active: allProducts.filter(p => p.status === 'active').length,
+    hidden: allProducts.filter(p => p.status === 'hidden').length,
+    oos: allProducts.filter(p => p.stock_status !== 'in_stock').length,
+  }), [allProducts])
 
   const toggleStatus = async (p: Product) => {
     const ns = p.status === 'active' ? 'hidden' : 'active'
-  
     const r = await apiFetch(`/v2/admin/products/${p.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: ns })
     })
-    console.log('STATUS RESPONSE:', r) // 👈 ADD THIS
+    console.log('STATUS RESPONSE:', r)
     if (r.ok) {
       toast.success("Status updated")
-      await loadAll() // 🔴 ALWAYS refresh from backend
+      await loadAll()
     } else {
       toast.error(r.error || 'Failed to update status')
     }
   }
   const toggleStock = async (p: Product) => {
     const ns = p.stock_status === 'in_stock' ? 'out_of_stock' : 'in_stock'
-  
     const r = await apiFetch(`/v2/admin/products/${p.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ stock_status: ns })
     })
-  
     if (r.ok) {
-      await loadAll() // 🔴 SAME FIX
+      await loadAll()
       toast.success("Stock inventory updated")
     } else {
       toast.error(r.error || 'Failed to update stock')
@@ -655,100 +695,687 @@ function ProductsTab({T}:{T:Theme}) {
   }
   const archiveProduct = async (p: Product) => {
     if (!confirm(`Archive "${p.name}"?`)) return
-  
     const r = await apiFetch(`/v2/admin/products/${p.id}`, {
       method: 'PATCH',
       body: JSON.stringify({ status: 'archived' })
     })
-  
     if (r.ok) {
-      await loadAll() // 🔴 always reload for destructive action
+      await loadAll()
       toast.success("Product Archived")
     } else {
       toast.error(r.error || 'Failed to archive')
     }
   }
 
-  const startEdit=(p:Product)=>{setEditingId(p.id);setEditForm({name:p.name,slug:p.slug,category:p.category,tags:p.tags,description:p.description||'',short_description:p.short_description||'',category_tagline:p.category_tagline||'',domain:p.domain||'',billing_type:p.billing_type||'subscription',billing_period:p.billing_period||'',price_1m:p.price_1m||0,price_3m:p.price_3m||0,price_6m:p.price_6m||0,price_1y:p.price_1y||0,stock_status:p.stock_status,status:p.status,featured:!!p.featured,sort_order:p.sort_order||100,image_url:p.image_url||''})}
-
-  const saveEdit=async()=>{
-    if(!editingId)return
-    const r=await apiFetch(`/v2/admin/products/${editingId}`,{method:'PATCH',body:JSON.stringify(editForm)})
-    if(r.ok&&r.data){ setAllProducts(prev=>prev.map(x=>x.id===editingId?{...x,...r.data}:x)); setEditingId(null) }
-    else toast.error(r.error||r.data?.error||'Failed to save. Check that all fields are valid.')
+  const startEdit = (p: Product) => {
+    setEditingId(p.id)
+    setEditForm({
+      name: p.name,
+      slug: p.slug,
+      category: p.category,
+      tags: p.tags,
+      description: p.description || '',
+      short_description: p.short_description || '',
+      category_tagline: p.category_tagline || '',
+      domain: p.domain || '',
+      billing_type: p.billing_type || 'subscription',
+      billing_period: p.billing_period || '',
+      price_1m: p.price_1m || 0,
+      price_3m: p.price_3m || 0,
+      price_6m: p.price_6m || 0,
+      price_1y: p.price_1y || 0,
+      stock_status: p.stock_status,
+      status: p.status,
+      featured: !!p.featured,
+      sort_order: p.sort_order || 100,
+      image_url: p.image_url || '',
+    })
   }
 
-  const createProduct=async()=>{
-    if(!newProduct.name){toast.error('Name is required');return} setCreating(true)
-    const slug = newProduct.slug || newProduct.name.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+$/,'')
-    const r=await apiFetch('/v2/admin/products',{method:'POST',body:JSON.stringify({...newProduct,slug})})
-    if(r.ok){setNewProduct(EMPTY_PRODUCT());setShowCreate(false);await loadAll()}
-    else toast.error(r.error||r.data?.error||'Failed to create. API route /v2/admin/products POST may need to be added.')
+  const saveEdit = async () => {
+    if (!editingId) return
+    const r = await apiFetch(`/v2/admin/products/${editingId}`, { method: 'PATCH', body: JSON.stringify(editForm) })
+    if (r.ok && r.data) {
+      setAllProducts(prev => prev.map(x => x.id === editingId ? { ...x, ...r.data } : x))
+      setEditingId(null)
+    } else toast.error(r.error || r.data?.error || 'Failed to save. Check that all fields are valid.')
+  }
+
+  const createProduct = async () => {
+    if (!newProduct.name) { toast.error('Name is required'); return }
+    setCreating(true)
+    const slug = newProduct.slug || newProduct.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/-+$/, '')
+    const r = await apiFetch('/v2/admin/products', { method: 'POST', body: JSON.stringify({ ...newProduct, slug }) })
+    if (r.ok) {
+      setNewProduct(EMPTY_PRODUCT())
+      setShowCreate(false)
+      await loadAll()
+    } else toast.error(r.error || r.data?.error || 'Failed to create. API route /v2/admin/products POST may need to be added.')
     setCreating(false)
   }
 
   const IS = inputStyle(T)
 
-  // Product form uses module-level ProductFormPanel (prevents focus loss)
+  // Uppercase section label style (tiny all-caps)
+  const metaLabel: React.CSSProperties = {
+    fontSize: 10,
+    color: T.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.06em',
+    fontWeight: 600,
+  }
+
+  // Generate a stable accent color per product name (same pattern as marketplace fallback avatar)
+  const avatarTintFor = (name: string) => {
+    const code = (name || '?').charCodeAt(0)
+    const hues = [262, 200, 150, 30, 340, 20, 280, 180]
+    const hue = hues[code % hues.length]
+    return { bg: `hsl(${hue}, 65%, 18%)`, fg: `hsl(${hue}, 75%, 68%)` }
+  }
+
+  // Primary price for display on the card (prefer 1M, fall back in order)
+  const primaryPrice = (p: Product) =>
+    p.price_1m || p.price_3m || p.price_6m || p.price_1y || 0
 
   return (
     <div>
-      <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap',alignItems:'center'}}>
-        <input placeholder="Search products…" value={search} onChange={e=>setSearch(e.target.value)} style={{...IS,maxWidth:300}}/>
-        <select value={statusFilter} onChange={e=>setStatusFilter(e.target.value)} style={{...IS,width:140,flex:'none'}}><option value="">All status</option><option value="active">Active</option><option value="hidden">hidden</option></select>
-        <select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)} style={{...IS,width:200,flex:'none'}}><option value="">All categories</option>{ALL_CATEGORIES.filter(c=>c!=='all').map(c=><option key={c} value={c}>{sentenceCase(c)}</option>)}</select>
-        <button onClick={()=>setShowCreate(!showCreate)} style={{height:42,padding:'0 20px',borderRadius:10,background:T.accent,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginLeft:'auto'}}>+ New Product</button>
+      <style>{`
+        .bs-pt-input:focus,
+        .bs-pt-input:focus-visible {
+          outline: none !important;
+          border-color: #7C5CFF !important;
+        }
+        .bs-pt-card {
+          transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
+        }
+        .bs-pt-card:hover {
+          border-color: var(--bs-border-strong) !important;
+          transform: translateY(-1px);
+        }
+        .bs-pt-action {
+          transition: all 0.15s ease;
+        }
+        .bs-pt-action:hover:not(:disabled) {
+          background: var(--bs-bg-muted) !important;
+        }
+        .bs-pt-action-danger:hover:not(:disabled) {
+          background: rgba(var(--bs-error-rgb), 0.08) !important;
+          border-color: rgba(var(--bs-error-rgb), 0.35) !important;
+          color: var(--bs-error) !important;
+        }
+        .bs-pt-action-accent:hover:not(:disabled) {
+          background: rgba(var(--bs-accent-rgb), 0.1) !important;
+          border-color: rgba(var(--bs-accent-rgb), 0.4) !important;
+          color: #7C5CFF !important;
+        }
+        .bs-pt-new-btn:hover {
+          background: #6B4EE6 !important;
+        }
+        .bs-pt-page-btn:hover:not(:disabled) {
+          background: var(--bs-bg-muted) !important;
+          border-color: var(--bs-border-strong) !important;
+        }
+      `}</style>
+
+      {/* ============================================================ */}
+      {/* TOP BAR — COUNTS + FILTERS                                   */}
+      {/* ============================================================ */}
+      <div style={{
+        display: 'flex',
+        flexWrap: 'wrap',
+        alignItems: 'center',
+        gap: 14,
+        marginBottom: 18,
+      }}>
+        <div style={{
+          display: 'flex',
+          alignItems: 'baseline',
+          gap: 10,
+        }}>
+          <div style={{
+            fontSize: 22,
+            fontWeight: 700,
+            color: T.text,
+            lineHeight: 1,
+          }}>
+            Products
+          </div>
+          <div style={{
+            fontSize: 12,
+            color: T.textMuted,
+          }}>
+            {counts.total} total
+          </div>
+        </div>
+
+        <div style={{ flex: 1 }} />
+
+        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+          <StatChip T={T} label="Active" value={counts.active} color={T.success} />
+          <StatChip T={T} label="Hidden" value={counts.hidden} color={T.textMuted} />
+          <StatChip T={T} label="Out of stock" value={counts.oos} color={T.warning} />
+        </div>
       </div>
 
-      {showCreate&&<ProductFormPanel T={T} form={newProduct} setForm={setNewProduct} onSave={createProduct} onCancel={()=>setShowCreate(false)} saving={creating} title="Create New Product"/>}
-      {editingId&&<ProductFormPanel T={T} form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={()=>setEditingId(null)} title="Edit Product"/>}
+      {/* Filter row */}
+      <div style={{
+        display: 'flex',
+        gap: 10,
+        marginBottom: 20,
+        flexWrap: 'wrap',
+        alignItems: 'center',
+      }}>
+        <div style={{ position: 'relative', flex: '1 1 260px', maxWidth: 340 }}>
+          <input
+            className="bs-pt-input"
+            placeholder="Search name, category, or tag…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ ...IS, paddingLeft: 36, width: '100%' }}
+          />
+          <div style={{
+            position: 'absolute',
+            left: 12,
+            top: '50%',
+            transform: 'translateY(-50%)',
+            color: T.textMuted,
+            pointerEvents: 'none',
+            fontSize: 14,
+          }}>
+            ⌕
+          </div>
+        </div>
 
-      {loading?<Loading T={T}/>:paged.length===0?<EmptyState text="No products found" T={T}/>:(
-        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(320px,1fr))',gap:14}}>
-          {paged.map(p=>(
-            <div key={p.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:'20px 22px',opacity:p.status!=='active'?0.55:1,display:'flex',flexDirection:'column',gap:12}}>
-              <div style={{display:'flex',gap:12,alignItems:'flex-start'}}>
-                {p.domain&&logoUrl(p.domain)?(<img src={logoUrl(p.domain)} alt="" style={{width:44,height:44,borderRadius:14,background:T.elevated,border:'1px solid rgba(255,255,255,0.06)',objectFit:'contain',flexShrink:0}} onError={e=>{(e.target as HTMLImageElement).style.display='none'}}/>):(<div style={{width:44,height:44,borderRadius:14,background:T.accent+'30',display:'flex',alignItems:'center',justifyContent:'center',fontSize:18,fontWeight:700,color:T.accent,flexShrink:0}}>{(p.name||'?')[0]}</div>)}
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:6}}>
-                    <div style={{fontSize:14,fontWeight:600,color:T.text,lineHeight:1.3}}>{p.name}</div>
-                    <div style={{display:'flex',gap:4,flexShrink:0}}><Badge status={p.status} T={T}/><Badge status={p.stock_status} T={T}/></div>
-                  </div>
-                  <div style={{fontSize:12,color:T.accent,marginTop:2}}>{sentenceCase(p.category||'')}</div>
-                  {p.tags&&<div style={{fontSize:11,color:T.textMuted,marginTop:1}}>{sentenceCase(p.tags)}</div>}
-                  {p.short_description&&<div style={{fontSize:11,color:T.textFaint,marginTop:2,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{p.short_description}</div>}
-                </div>
-              </div>
-              <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:6}}>
-                {[{l:'1M',v:p.price_1m},{l:'3M',v:p.price_3m},{l:'6M',v:p.price_6m},{l:'1Y',v:p.price_1y}].map(x=>(
-                  <div key={x.l} style={{background:T.elevated,borderRadius:10,padding:8,textAlign:'center'}}>
-                    <div style={{fontSize:10,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.06em'}}>{x.l}</div>
-                    <div style={{fontSize:12,fontWeight:600,color:T.text,fontFamily:'monospace',marginTop:2}}>{x.v?fmt(x.v):'—'}</div>
-                  </div>
-                ))}
-              </div>
-              <div style={{display:'flex',gap:6,flexWrap:'wrap'}}>
-                <SmallBtn T={T} color={T.accent} onClick={()=>startEdit(p)}>Edit</SmallBtn>
-                <SmallBtn T={T} color={p.status==='active'?T.textMuted:T.success} onClick={()=>toggleStatus(p)}>{p.status==='active'?'Hide':'Show'}</SmallBtn>
-                <SmallBtn T={T} color={p.stock_status==='in_stock'?T.warning:T.success} onClick={()=>toggleStock(p)}>{p.stock_status==='in_stock'?'Mark OOS':'In Stock'}</SmallBtn>
-                <SmallBtn T={T} color={T.error} onClick={()=>archiveProduct(p)}>Archive</SmallBtn>
-              </div>
-            </div>
+        <select
+          className="bs-pt-input"
+          value={statusFilter}
+          onChange={e => setStatusFilter(e.target.value)}
+          style={{ ...IS, width: 150, flex: 'none' }}
+        >
+          <option value="">All status</option>
+          <option value="active">Active</option>
+          <option value="hidden">Hidden</option>
+        </select>
+
+        <select
+          className="bs-pt-input"
+          value={categoryFilter}
+          onChange={e => setCategoryFilter(e.target.value)}
+          style={{ ...IS, width: 200, flex: 'none' }}
+        >
+          <option value="">All categories</option>
+          {ALL_CATEGORIES.filter(c => c !== 'all').map(c => (
+            <option key={c} value={c}>{sentenceCase(c)}</option>
           ))}
+        </select>
+
+        {(search || statusFilter || categoryFilter) && (
+          <button
+            onClick={() => { setSearch(''); setStatusFilter(''); setCategoryFilter('') }}
+            className="bs-pt-action"
+            style={{
+              height: 42,
+              padding: '0 14px',
+              borderRadius: 10,
+              background: 'transparent',
+              border: `1px solid ${T.border}`,
+              color: T.textSecondary,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+            }}
+          >
+            Clear
+          </button>
+        )}
+
+        <button
+          onClick={() => setShowCreate(!showCreate)}
+          className="bs-pt-new-btn"
+          style={{
+            height: 42,
+            padding: '0 20px',
+            borderRadius: 10,
+            background: T.accent,
+            border: 'none',
+            color: '#fff',
+            cursor: 'pointer',
+            fontSize: 13,
+            fontWeight: 600,
+            marginLeft: 'auto',
+            display: 'inline-flex',
+            alignItems: 'center',
+            gap: 6,
+            boxShadow: '0 4px 14px rgba(124,92,255,0.25)',
+            transition: 'background 0.15s',
+          }}
+        >
+          <span style={{ fontSize: 15, lineHeight: 1 }}>+</span>
+          New Product
+        </button>
+      </div>
+
+      {/* Active filter summary */}
+      {filtered.length !== allProducts.length && (
+        <div style={{
+          marginBottom: 16,
+          fontSize: 12,
+          color: T.textMuted,
+        }}>
+          Showing <span style={{ color: T.text, fontWeight: 600 }}>{filtered.length}</span> of {allProducts.length} products
         </div>
       )}
-      {totalPages>1&&(
-        <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginTop:20,fontSize:12,color:T.textMuted}}>
-          <span>Showing {(page-1)*PAGE_SIZE+1}–{Math.min(page*PAGE_SIZE,filtered.length)} of {filtered.length} products</span>
-          <div style={{display:'flex',gap:8}}>
-            <button disabled={page<=1} onClick={()=>setPage(page-1)} style={pageBtnStyle(T,page<=1)}>← Prev</button>
-            <button disabled={page>=totalPages} onClick={()=>setPage(page+1)} style={pageBtnStyle(T,page>=totalPages)}>Next →</button>
+
+      {showCreate && <ProductFormPanel T={T} form={newProduct} setForm={setNewProduct} onSave={createProduct} onCancel={() => setShowCreate(false)} saving={creating} title="Create New Product" />}
+      {editingId && <ProductFormPanel T={T} form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Product" />}
+
+      {loading ? (
+        <Loading T={T} />
+      ) : paged.length === 0 ? (
+        <EmptyState text="No products found" T={T} />
+      ) : (
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          gap: 16,
+        }}>
+          {paged.map(p => {
+            const tint = avatarTintFor(p.name || '?')
+            const isHidden = p.status !== 'active'
+            const isOOS = p.stock_status !== 'in_stock'
+            const lead = primaryPrice(p)
+
+            return (
+              <div
+                key={p.id}
+                className="bs-pt-card"
+                style={{
+                  background: T.card,
+                  border: `1px solid ${isHidden ? T.border : '#1C1C1F'}`,
+                  borderRadius: 20,
+                  padding: 20,
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: 16,
+                  position: 'relative',
+                  opacity: isHidden ? 0.65 : 1,
+                }}
+              >
+                {/* Featured ribbon */}
+                {p.featured && (
+                  <div style={{
+                    position: 'absolute',
+                    top: 12,
+                    right: 12,
+                    fontSize: 9,
+                    fontWeight: 700,
+                    letterSpacing: '0.08em',
+                    textTransform: 'uppercase',
+                    color: T.accent,
+                    background: 'rgba(var(--bs-accent-rgb), 0.12)',
+                    border: '1px solid rgba(var(--bs-accent-rgb), 0.3)',
+                    padding: '3px 8px',
+                    borderRadius: 4,
+                  }}>
+                    ★ Featured
+                  </div>
+                )}
+
+                {/* ── HEADER: logo + identity ── */}
+                <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start', minWidth: 0 }}>
+                  {p.domain && logoUrl(p.domain) ? (
+                    <img
+                      src={logoUrl(p.domain)}
+                      alt=""
+                      style={{
+                        width: 48,
+                        height: 48,
+                        borderRadius: 14,
+                        background: T.elevated,
+                        border: '1px solid rgba(255,255,255,0.06)',
+                        objectFit: 'contain',
+                        flexShrink: 0,
+                      }}
+                      onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+                    />
+                  ) : (
+                    <div style={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: 14,
+                      background: tint.bg,
+                      border: '1px solid rgba(255,255,255,0.06)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 20,
+                      fontWeight: 700,
+                      color: tint.fg,
+                      flexShrink: 0,
+                    }}>
+                      {(p.name || '?')[0]?.toUpperCase()}
+                    </div>
+                  )}
+
+                  <div style={{ flex: 1, minWidth: 0, paddingRight: p.featured ? 68 : 0 }}>
+                    <div style={{
+                      fontSize: 14,
+                      fontWeight: 700,
+                      color: T.text,
+                      lineHeight: 1.3,
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      whiteSpace: 'nowrap',
+                    }}>
+                      {p.name}
+                    </div>
+                    {p.category && (
+                      <div style={{ fontSize: 12, color: T.accent, marginTop: 3, fontWeight: 500 }}>
+                        {sentenceCase(p.category)}
+                      </div>
+                    )}
+                    {p.short_description && (
+                      <div style={{
+                        fontSize: 12,
+                        color: T.textSecondary,
+                        marginTop: 4,
+                        lineHeight: 1.5,
+                        display: '-webkit-box',
+                        WebkitLineClamp: 2,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden',
+                      }}>
+                        {p.short_description}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* ── STATUS BADGES ROW ── */}
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                  <PillBadge
+                    T={T}
+                    color={p.status === 'active' ? T.success : T.textMuted}
+                    tone="soft"
+                    dot
+                  >
+                    {sentenceCase(p.status || 'active')}
+                  </PillBadge>
+                  <PillBadge
+                    T={T}
+                    color={isOOS ? T.warning : T.success}
+                    tone="soft"
+                  >
+                    {isOOS ? 'Out of stock' : 'In stock'}
+                  </PillBadge>
+                  {p.billing_type && p.billing_type !== 'subscription' && (
+                    <PillBadge T={T} color={T.textSecondary} tone="ghost">
+                      {sentenceCase(p.billing_type)}
+                    </PillBadge>
+                  )}
+                  {p.tags && (
+                    <PillBadge T={T} color={T.textSecondary} tone="ghost">
+                      {sentenceCase(String(p.tags).split(',')[0])}
+                      {String(p.tags).split(',').length > 1 && ` +${String(p.tags).split(',').length - 1}`}
+                    </PillBadge>
+                  )}
+                </div>
+
+                {/* ── PRICE GRID ── */}
+                <div>
+                  <div style={{ ...metaLabel, marginBottom: 8 }}>Pricing</div>
+                  <div style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
+                    gap: 6,
+                    background: T.elevated,
+                    border: `1px solid ${T.border}`,
+                    borderRadius: 12,
+                    padding: 6,
+                  }}>
+                    {[
+                      { l: '1M', v: p.price_1m },
+                      { l: '3M', v: p.price_3m },
+                      { l: '6M', v: p.price_6m },
+                      { l: '1Y', v: p.price_1y },
+                    ].map(x => {
+                      const isPrimary = x.v === lead && x.v > 0
+                      return (
+                        <div
+                          key={x.l}
+                          style={{
+                            borderRadius: 8,
+                            padding: '8px 6px',
+                            textAlign: 'center',
+                            background: isPrimary ? T.card : 'transparent',
+                            border: isPrimary ? `1px solid ${T.border}` : '1px solid transparent',
+                          }}
+                        >
+                          <div style={{
+                            fontSize: 9,
+                            color: isPrimary ? T.accent : T.textMuted,
+                            textTransform: 'uppercase',
+                            letterSpacing: '0.08em',
+                            fontWeight: 600,
+                          }}>
+                            {x.l}
+                          </div>
+                          <div style={{
+                            fontSize: 12,
+                            fontWeight: 600,
+                            color: x.v ? T.text : T.textFaint,
+                            fontFamily: "'SF Mono', Menlo, monospace",
+                            marginTop: 3,
+                            lineHeight: 1,
+                          }}>
+                            {x.v ? fmt(x.v) : '—'}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+
+                {/* ── ACTIONS ── */}
+                <div style={{
+                  display: 'grid',
+                  gridTemplateColumns: '1fr 1fr',
+                  gap: 6,
+                  marginTop: 'auto',
+                }}>
+                  <button
+                    onClick={() => startEdit(p)}
+                    className="bs-pt-action bs-pt-action-accent"
+                    style={actionBtnStyle(T)}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => toggleStatus(p)}
+                    className="bs-pt-action"
+                    style={actionBtnStyle(T)}
+                  >
+                    {p.status === 'active' ? 'Hide' : 'Show'}
+                  </button>
+                  <button
+                    onClick={() => toggleStock(p)}
+                    className="bs-pt-action"
+                    style={actionBtnStyle(T)}
+                  >
+                    {p.stock_status === 'in_stock' ? 'Mark OOS' : 'In stock'}
+                  </button>
+                  <button
+                    onClick={() => archiveProduct(p)}
+                    className="bs-pt-action bs-pt-action-danger"
+                    style={actionBtnStyle(T)}
+                  >
+                    Archive
+                  </button>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
+
+      {/* PAGINATION */}
+      {totalPages > 1 && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginTop: 24,
+          paddingTop: 20,
+          borderTop: `1px solid ${T.border}`,
+          fontSize: 12,
+          color: T.textMuted,
+          flexWrap: 'wrap',
+          gap: 12,
+        }}>
+          <span>
+            Showing <span style={{ color: T.text, fontWeight: 600 }}>
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)}
+            </span> of {filtered.length}
+          </span>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              disabled={page <= 1}
+              onClick={() => setPage(page - 1)}
+              className="bs-pt-page-btn"
+              style={refinedPageBtnStyle(T, page <= 1)}
+            >
+              ← Prev
+            </button>
+
+            <div style={{
+              padding: '0 12px',
+              fontSize: 12,
+              color: T.textSecondary,
+            }}>
+              Page <span style={{ color: T.text, fontWeight: 600 }}>{page}</span> of {totalPages}
+            </div>
+
+            <button
+              disabled={page >= totalPages}
+              onClick={() => setPage(page + 1)}
+              className="bs-pt-page-btn"
+              style={refinedPageBtnStyle(T, page >= totalPages)}
+            >
+              Next →
+            </button>
           </div>
         </div>
       )}
     </div>
   )
 }
+
+/* ------------------------------------------------------------------ */
+/*  LOCAL HELPERS (module-level so focus doesn't drop on re-render)   */
+/* ------------------------------------------------------------------ */
+
+function StatChip({
+  T, label, value, color,
+}: { T: Theme; label: string; value: number; color: string }) {
+  return (
+    <div style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 8,
+      height: 30,
+      padding: '0 12px',
+      borderRadius: 999,
+      background: T.elevated,
+      border: `1px solid ${T.border}`,
+      fontSize: 12,
+      color: T.textSecondary,
+    }}>
+      <span style={{
+        width: 6,
+        height: 6,
+        borderRadius: 999,
+        background: color,
+      }} />
+      <span>{label}</span>
+      <span style={{ color: T.text, fontWeight: 600 }}>{value}</span>
+    </div>
+  )
+}
+
+function PillBadge({
+  T, color, tone = 'soft', dot = false, children,
+}: {
+  T: Theme
+  color: string
+  tone?: 'soft' | 'ghost'
+  dot?: boolean
+  children: React.ReactNode
+}) {
+  // Derive an RGB tint. We assume `color` is already a CSS value from T.*.
+  // For soft tone, use a semi-transparent companion; for ghost, neutral border.
+  const soft = tone === 'soft'
+  return (
+    <span style={{
+      display: 'inline-flex',
+      alignItems: 'center',
+      gap: 5,
+      height: 22,
+      padding: '0 9px',
+      borderRadius: 999,
+      fontSize: 11,
+      fontWeight: 600,
+      color,
+      background: soft
+        ? 'rgba(255,255,255,0.04)'
+        : 'transparent',
+      border: `1px solid ${soft ? T.border : T.border}`,
+      whiteSpace: 'nowrap',
+    }}>
+      {dot && (
+        <span style={{
+          width: 6,
+          height: 6,
+          borderRadius: 999,
+          background: color,
+        }} />
+      )}
+      {children}
+    </span>
+  )
+}
+
+function actionBtnStyle(T: Theme): React.CSSProperties {
+  return {
+    height: 34,
+    padding: '0 12px',
+    borderRadius: 10,
+    background: 'transparent',
+    border: `1px solid ${T.border}`,
+    color: T.text,
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: 'pointer',
+    textAlign: 'center',
+  }
+}
+
+function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
+  return {
+    height: 34,
+    padding: '0 14px',
+    borderRadius: 10,
+    background: 'transparent',
+    border: `1px solid ${T.border}`,
+    color: disabled ? T.textFaint : T.text,
+    fontSize: 12,
+    fontWeight: 600,
+    cursor: disabled ? 'not-allowed' : 'pointer',
+    opacity: disabled ? 0.45 : 1,
+    transition: 'all 0.15s',
+  }
+}
+
 
 // ════════════════════ CUSTOMERS TAB ════════════════════
 function CustomersTab({T}:{T:Theme}) {
@@ -890,51 +1517,1467 @@ function AffiliatesTab({T}:{T:Theme}) {
   )
 }
 
-// ════════════════════ LINKS TAB ════════════════════
-function LinksTab({T}:{T:Theme}) {
-  const [links,setLinks]=useState<any[]>([]); const [pagination,setPagination]=useState<Pagination>(emptyPagination)
-  const [loading,setLoading]=useState(true); const [search,setSearch]=useState('')
-  const [showCreate,setShowCreate]=useState(false); const [newSlug,setNewSlug]=useState(''); const [newDest,setNewDest]=useState(''); const [newTags,setNewTags]=useState('')
-  const [creating,setCreating]=useState(false); const searchTimer=useRef<any>(null)
-  const load=useCallback(async(page=1,q=search)=>{setLoading(true);const params=new URLSearchParams({page:String(page),limit:'20'});if(q)params.set('q',q);const r=await apiFetch(`/v2/admin/links?${params}`);if(r.ok){setLinks(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[search])
-  useEffect(()=>{load()},[])
-  const onSearch=(q:string)=>{setSearch(q);clearTimeout(searchTimer.current);searchTimer.current=setTimeout(()=>load(1,q),400)}
-  const createLink=async()=>{if(!newDest)return;setCreating(true);const r=await apiFetch('/v2/admin/links',{method:'POST',body:JSON.stringify({slug:newSlug||undefined,destination_url:newDest,tags:newTags||undefined})});if(r.ok){setNewSlug('');setNewDest('');setNewTags('');setShowCreate(false);await load(1)}else toast.error(r.error||'Failed');setCreating(false)}
-  const toggleActive=async(l:any)=>{const r=await apiFetch(`/v2/admin/links/${l.id}`,{method:'PATCH',body:JSON.stringify({active:!l.active})});if(r.ok)setLinks(prev=>prev.map(x=>x.id===l.id?{...x,active:!l.active}:x))}
-  const deleteLink=async(id:string)=>{if(!confirm('Delete this link?'))return;await apiFetch(`/v2/admin/links/${id}`,{method:'DELETE'});await load(pagination.page)}
-  const IS=inputStyle(T)
+// ════════════════════════════════════════════════════════════════════
+// LINKS TAB — Short links management with full feature support
+// ════════════════════════════════════════════════════════════════════
+//
+// Feature matrix (UI ↔ backend)
+//   ✅ Edit destination               short_links.destination_url
+//   ✅ Expiration by date             short_links.expires_at
+//   ✅ Expiration by click limit      short_links.click_limit
+//   ✅ Link cloaking                  short_links.cloak
+//   ✅ Referrer hiding                short_links.hide_referrer
+//   ✅ Password protection            short_links.password_hash (SHA-256)
+//   ✅ Deep links (ios/android)       short_links.deep_link_* + *_app_store_id / *_package
+//   ✅ Region / city / country / OS   short_link_rules (priority-ordered)
+//   ✅ QR code w/ color + download    client-side, via api.qrserver.com
+//   ✅ UTM params                     short_links.utm_*
+//   ✅ Edit existing links            PATCH /v2/admin/links/:id
+//   ⛔ Main-page redirect / 404        domain-level, belongs in shortener worker settings, not per-link
+//
+// Conventions
+//   • All new sub-components (form sections, pickers, rule editors) are
+//     defined at module level — never inside LinksTab — to preserve
+//     input focus across re-renders. See userMemory: "Component stability".
+//   • Only `SmallBtn`, `Card`, `Loading`, `EmptyState`, `PaginationBar`,
+//     `apiFetch`, `toast`, `inputStyle`, `parsePagination`, `Pagination`,
+//     `emptyPagination`, `Theme` are imported from the existing admin scope.
+
+type LinkRow = {
+  id: string
+  slug: string
+  destination_url: string
+  active: boolean
+  click_count: number
+  click_limit: number | null
+  expires_at: string | null
+  tags: string | null
+  has_password?: boolean
+  cloak?: boolean
+  hide_referrer?: boolean
+  deep_link_ios?: string | null
+  deep_link_android?: string | null
+  ios_app_store_id?: string | null
+  android_package?: string | null
+  utm_source?: string | null
+  utm_medium?: string | null
+  utm_campaign?: string | null
+  utm_content?: string | null
+  utm_term?: string | null
+  qr_config?: { fg?: string; bg?: string; logo_url?: string; ecc?: 'L'|'M'|'Q'|'H' } | null
+  created_at?: string
+  updated_at?: string
+}
+
+type LinkRule = {
+  id?: string
+  link_id?: string
+  priority: number
+  match_type: 'country' | 'region' | 'city' | 'os'
+  match_value: string
+  destination_url: string
+}
+
+type LinkFormState = Partial<LinkRow> & {
+  password?: string        // plain text on write; never received back
+  clearPassword?: boolean  // explicit flag to null out server-side
+  rules: LinkRule[]
+}
+
+const EMPTY_LINK_FORM = (): LinkFormState => ({
+  slug: '',
+  destination_url: '',
+  tags: '',
+  active: true,
+  click_limit: null,
+  expires_at: null,
+  cloak: false,
+  hide_referrer: false,
+  deep_link_ios: '',
+  deep_link_android: '',
+  ios_app_store_id: '',
+  android_package: '',
+  utm_source: '',
+  utm_medium: '',
+  utm_campaign: '',
+  qr_config: { fg: '#000000', bg: '#ffffff', ecc: 'M' },
+  rules: [],
+})
+
+const SHORT_BASE = 'https://go.buysub.ng'
+
+function toDtLocal(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ''
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+}
+
+function fromDtLocal(v: string): string | null {
+  if (!v) return null
+  return new Date(v).toISOString()
+}
+
+// ════════════════════════════════════════════════════════════════════
+// MAIN TAB
+// ════════════════════════════════════════════════════════════════════
+function LinksTab({ T }: { T: Theme }) {
+  const [links, setLinks] = useState<LinkRow[]>([])
+  const [pagination, setPagination] = useState<Pagination>(emptyPagination)
+  const [loading, setLoading] = useState(true)
+  const [search, setSearch] = useState('')
+  const searchTimer = useRef<any>(null)
+
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [form, setForm] = useState<LinkFormState>(EMPTY_LINK_FORM())
+  const [panelOpen, setPanelOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+
+  const [qrFor, setQrFor] = useState<LinkRow | null>(null)
+
+  const load = useCallback(async (page = 1, q = search) => {
+    setLoading(true)
+    const params = new URLSearchParams({ page: String(page), limit: '20' })
+    if (q) params.set('q', q)
+    const r = await apiFetch(`/v2/admin/links?${params}`)
+    if (r.ok) {
+      setLinks(r.data || [])
+      setPagination(parsePagination(r))
+    }
+    setLoading(false)
+  }, [search])
+
+  useEffect(() => { load() }, [])
+
+  const onSearch = (q: string) => {
+    setSearch(q)
+    clearTimeout(searchTimer.current)
+    searchTimer.current = setTimeout(() => load(1, q), 400)
+  }
+
+  const openCreate = () => {
+    setEditingId(null)
+    setForm(EMPTY_LINK_FORM())
+    setPanelOpen(true)
+  }
+
+  const openEdit = async (l: LinkRow) => {
+    setEditingId(l.id)
+    setPanelOpen(true)
+    // Fetch full detail (with rules)
+    const r = await apiFetch(`/v2/admin/links/${l.id}`)
+    const src: any = r.ok ? r.data : l
+    setForm({
+      ...EMPTY_LINK_FORM(),
+      ...src,
+      password: '',
+      clearPassword: false,
+      rules: Array.isArray(src.rules) ? src.rules : [],
+      qr_config: src.qr_config || { fg: '#000000', bg: '#ffffff', ecc: 'M' },
+    })
+  }
+
+  const closePanel = () => {
+    setPanelOpen(false)
+    setEditingId(null)
+    setForm(EMPTY_LINK_FORM())
+  }
+
+  const saveLink = async () => {
+    if (!form.destination_url) {
+      toast.error('Destination URL is required')
+      return
+    }
+    setSaving(true)
+
+    const payload: any = {
+      destination_url: form.destination_url,
+      slug: form.slug || undefined,
+      tags: form.tags || null,
+      active: form.active,
+      expires_at: form.expires_at || null,
+      click_limit: form.click_limit || null,
+      cloak: !!form.cloak,
+      hide_referrer: !!form.hide_referrer,
+      deep_link_ios: form.deep_link_ios || null,
+      deep_link_android: form.deep_link_android || null,
+      ios_app_store_id: form.ios_app_store_id || null,
+      android_package: form.android_package || null,
+      utm_source: form.utm_source || null,
+      utm_medium: form.utm_medium || null,
+      utm_campaign: form.utm_campaign || null,
+      utm_content: form.utm_content || null,
+      utm_term: form.utm_term || null,
+      qr_config: form.qr_config || null,
+    }
+
+    // Password: only send if user actually entered a non-trivial value.
+    // The ' ' sentinel (used to flip the "change password" UI into input mode)
+    // must be ignored; only a real, non-empty password should be submitted.
+    const pwTrimmed = (form.password || '').trim()
+    if (pwTrimmed) payload.password = pwTrimmed
+    else if (form.clearPassword) payload.password = null
+
+    const url = editingId ? `/v2/admin/links/${editingId}` : '/v2/admin/links'
+    const method = editingId ? 'PATCH' : 'POST'
+    const r = await apiFetch(url, { method, body: JSON.stringify(payload) })
+
+    if (!r.ok) {
+      toast.error(r.error || 'Failed to save link')
+      setSaving(false)
+      return
+    }
+
+    const savedId = editingId || r.data?.id
+    // Rule sync: delete removed rules, upsert current ones
+    if (savedId) {
+      const { data: existing } = await apiFetch(`/v2/admin/links/${savedId}/rules`)
+      const existingIds = new Set((existing || []).map((r: any) => r.id))
+      const keepIds = new Set(form.rules.filter(r => r.id).map(r => r.id!))
+      // Delete removed
+      for (const id of existingIds) {
+        if (!keepIds.has(id as string)) {
+          await apiFetch(`/v2/admin/links/${savedId}/rules/${id}`, { method: 'DELETE' })
+        }
+      }
+      // Upsert
+      for (const rule of form.rules) {
+        if (rule.id) {
+          await apiFetch(`/v2/admin/links/${savedId}/rules/${rule.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              priority: rule.priority,
+              match_type: rule.match_type,
+              match_value: rule.match_value,
+              destination_url: rule.destination_url,
+            }),
+          })
+        } else {
+          await apiFetch(`/v2/admin/links/${savedId}/rules`, {
+            method: 'POST',
+            body: JSON.stringify(rule),
+          })
+        }
+      }
+    }
+
+    toast.success(editingId ? 'Link updated' : 'Link created')
+    closePanel()
+    await load(pagination.page)
+    setSaving(false)
+  }
+
+  const toggleActive = async (l: LinkRow) => {
+    const r = await apiFetch(`/v2/admin/links/${l.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ active: !l.active }),
+    })
+    if (r.ok) {
+      setLinks(prev => prev.map(x => x.id === l.id ? { ...x, active: !l.active } : x))
+    } else {
+      toast.error(r.error || 'Failed')
+    }
+  }
+
+  const deleteLink = async (id: string) => {
+    if (!confirm('Delete this link? This cannot be undone.')) return
+    await apiFetch(`/v2/admin/links/${id}`, { method: 'DELETE' })
+    toast.success('Link deleted')
+    await load(pagination.page)
+  }
+
+  const copyShort = async (slug: string) => {
+    try {
+      await navigator.clipboard.writeText(`${SHORT_BASE}/${slug}`)
+      toast.success('Short link copied')
+    } catch {
+      toast.error('Copy failed')
+    }
+  }
+
+  const IS = inputStyle(T)
+
   return (
     <div>
-      <div style={{display:'flex',gap:10,marginBottom:20,flexWrap:'wrap'}}>
-        <input placeholder="Search…" value={search} onChange={e=>onSearch(e.target.value)} style={IS}/>
-        <button onClick={()=>setShowCreate(!showCreate)} style={{height:42,padding:'0 20px',borderRadius:10,background:T.accent,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600}}>+ New Link</button>
+      <style>{`
+        .bs-lnk-input:focus, .bs-lnk-input:focus-visible {
+          outline: none !important; border-color: #7C5CFF !important;
+        }
+        .bs-lnk-card { transition: border-color .18s, transform .18s; }
+        .bs-lnk-card:hover { border-color: var(--bs-border-strong) !important; transform: translateY(-1px); }
+        .bs-lnk-new-btn:hover { background:#6B4EE6 !important; }
+        .bs-lnk-ghost:hover:not(:disabled) { background: var(--bs-bg-muted) !important; }
+        .bs-lnk-ghost-danger:hover:not(:disabled) {
+          background: rgba(var(--bs-error-rgb), .08) !important;
+          border-color: rgba(var(--bs-error-rgb), .35) !important;
+          color: var(--bs-error) !important;
+        }
+        .bs-lnk-ghost-accent:hover:not(:disabled) {
+          background: rgba(var(--bs-accent-rgb), .1) !important;
+          border-color: rgba(var(--bs-accent-rgb), .4) !important;
+          color: #7C5CFF !important;
+        }
+      `}</style>
+
+      {/* ─── HEADER ─── */}
+      <div style={{
+        display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 10,
+        marginBottom: 18,
+      }}>
+        <div style={{ fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1 }}>
+          Short links
+        </div>
+        <div style={{ fontSize: 12, color: T.textMuted }}>
+          {pagination.total || links.length} total · go.buysub.ng
+        </div>
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={openCreate}
+          className="bs-lnk-new-btn"
+          style={{
+            height: 42, padding: '0 20px', borderRadius: 10,
+            background: T.accent, border: 'none', color: '#fff',
+            cursor: 'pointer', fontSize: 13, fontWeight: 600,
+            display: 'inline-flex', alignItems: 'center', gap: 6,
+            boxShadow: '0 4px 14px rgba(124,92,255,0.25)',
+            transition: 'background .15s',
+          }}
+        >
+          <span style={{ fontSize: 15, lineHeight: 1 }}>+</span>
+          New link
+        </button>
       </div>
-      {showCreate&&(
-        <div style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:20,marginBottom:20,display:'flex',flexDirection:'column',gap:10}}>
-          <input placeholder="Destination URL *" value={newDest} onChange={e=>setNewDest(e.target.value)} style={IS}/>
-          <div style={{display:'flex',gap:10}}><input placeholder="Custom slug" value={newSlug} onChange={e=>setNewSlug(e.target.value)} style={IS}/><input placeholder="Tags" value={newTags} onChange={e=>setNewTags(e.target.value)} style={IS}/></div>
-          <div style={{display:'flex',gap:6}}><SmallBtn T={T} color={T.accent} onClick={createLink}>{creating?'…':'Create'}</SmallBtn><SmallBtn T={T} color={T.textMuted} onClick={()=>setShowCreate(false)}>Cancel</SmallBtn></div>
+
+      {/* ─── SEARCH ─── */}
+      <div style={{ position: 'relative', maxWidth: 380, marginBottom: 20 }}>
+        <input
+          className="bs-lnk-input"
+          placeholder="Search slug, destination, or tag…"
+          value={search}
+          onChange={e => onSearch(e.target.value)}
+          style={{ ...IS, paddingLeft: 36, width: '100%' }}
+        />
+        <div style={{
+          position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
+          color: T.textMuted, fontSize: 14, pointerEvents: 'none',
+        }}>⌕</div>
+      </div>
+
+      {/* ─── LIST ─── */}
+      {loading ? (
+        <Loading T={T} />
+      ) : links.length === 0 ? (
+        <EmptyState text="No links yet — create your first one" T={T} />
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {links.map(l => (
+            <LinkRowCard
+              key={l.id}
+              T={T}
+              link={l}
+              onEdit={() => openEdit(l)}
+              onToggle={() => toggleActive(l)}
+              onDelete={() => deleteLink(l.id)}
+              onCopy={() => copyShort(l.slug)}
+              onQR={() => setQrFor(l)}
+            />
+          ))}
         </div>
       )}
-      {loading?<Loading T={T}/>:links.length===0?<EmptyState text="No links" T={T}/>:(
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {links.map((l:any)=>(
-            <div key={l.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:'14px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,opacity:l.active?1:0.5,flexWrap:'wrap'}}>
-              <div style={{minWidth:0}}>
-                <div style={{fontSize:13,fontWeight:500,color:T.accent,fontFamily:'monospace'}}>/{l.slug}</div>
-                <div style={{fontSize:12,color:T.textMuted,marginTop:3,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{l.destination_url}</div>
-                <div style={{fontSize:11,color:T.textFaint,marginTop:2}}>{l.click_count||0} clicks · {l.tags||'—'}</div>
+
+      {pagination?.pages > 1 && (
+        <div style={{ marginTop: 20 }}>
+          <PaginationBar T={T} pagination={pagination} onPage={p => load(p)} />
+        </div>
+      )}
+
+      {/* ─── EDITOR DRAWER ─── */}
+      {panelOpen && (
+        <LinkEditorDrawer
+          T={T}
+          form={form}
+          setForm={setForm}
+          onSave={saveLink}
+          onCancel={closePanel}
+          saving={saving}
+          isEdit={!!editingId}
+        />
+      )}
+
+      {/* ─── QR DIALOG ─── */}
+      {qrFor && (
+        <QrDialog
+          T={T}
+          link={qrFor}
+          onClose={() => setQrFor(null)}
+          onSaveConfig={async (cfg) => {
+            await apiFetch(`/v2/admin/links/${qrFor.id}`, {
+              method: 'PATCH',
+              body: JSON.stringify({ qr_config: cfg }),
+            })
+            toast.success('QR config saved')
+            await load(pagination.page)
+          }}
+        />
+      )}
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// LIST ROW
+// ════════════════════════════════════════════════════════════════════
+function LinkRowCard({
+  T, link, onEdit, onToggle, onDelete, onCopy, onQR,
+}: {
+  T: Theme
+  link: LinkRow
+  onEdit: () => void
+  onToggle: () => void
+  onDelete: () => void
+  onCopy: () => void
+  onQR: () => void
+}) {
+  const features: { label: string; icon: string }[] = []
+  if (link.has_password)  features.push({ label: 'Password', icon: '🔒' })
+  if (link.cloak)         features.push({ label: 'Cloaked',  icon: '🪞' })
+  if (link.hide_referrer) features.push({ label: 'No ref',   icon: '🕶️' })
+  if (link.deep_link_ios || link.deep_link_android)
+                          features.push({ label: 'Deep link', icon: '📱' })
+
+  const expMs = link.expires_at ? new Date(link.expires_at).getTime() - Date.now() : null
+  const limitReached = link.click_limit != null && link.click_count >= link.click_limit
+  const isExpired = expMs != null && expMs < 0
+
+  return (
+    <div
+      className="bs-lnk-card"
+      style={{
+        background: T.card,
+        border: `1px solid ${link.active && !isExpired && !limitReached ? '#1C1C1F' : T.border}`,
+        borderRadius: 16,
+        padding: '16px 18px',
+        display: 'flex',
+        gap: 14,
+        alignItems: 'center',
+        flexWrap: 'wrap',
+        opacity: link.active && !isExpired && !limitReached ? 1 : 0.6,
+      }}
+    >
+      {/* Identity */}
+      <div style={{ minWidth: 0, flex: '1 1 320px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+          <span style={{
+            fontSize: 13, fontWeight: 600, color: T.accent,
+            fontFamily: "'SF Mono', Menlo, monospace",
+          }}>
+            /{link.slug}
+          </span>
+          <span style={{
+            fontSize: 11, color: T.textMuted,
+            fontFamily: "'SF Mono', Menlo, monospace",
+          }}>
+            go.buysub.ng
+          </span>
+          {features.map(f => (
+            <span key={f.label} title={f.label} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 4,
+              height: 20, padding: '0 8px', borderRadius: 999,
+              background: 'rgba(var(--bs-accent-rgb), .1)',
+              border: '1px solid rgba(var(--bs-accent-rgb), .25)',
+              color: T.accent, fontSize: 10, fontWeight: 600,
+            }}>
+              <span style={{ fontSize: 10 }}>{f.icon}</span>
+              {f.label}
+            </span>
+          ))}
+        </div>
+        <div style={{
+          fontSize: 12, color: T.textMuted, marginTop: 4,
+          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+        }}>
+          → {link.destination_url}
+        </div>
+        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+          <span>{link.click_count || 0} click{link.click_count === 1 ? '' : 's'}
+            {link.click_limit ? ` / ${link.click_limit}` : ''}
+          </span>
+          {link.expires_at && (
+            <span style={{ color: isExpired ? T.warning : T.textFaint }}>
+              {isExpired ? 'Expired' : `Expires ${new Date(link.expires_at).toLocaleDateString()}`}
+            </span>
+          )}
+          {link.tags && <span>· {link.tags}</span>}
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
+        <IconBtn T={T} onClick={onCopy} title="Copy short URL">📋</IconBtn>
+        <IconBtn T={T} onClick={onQR} title="Show QR code">▦</IconBtn>
+        <GhostBtn T={T} onClick={onEdit} variant="accent">Edit</GhostBtn>
+        <GhostBtn T={T} onClick={onToggle}>
+          {link.active ? 'Pause' : 'Resume'}
+        </GhostBtn>
+        <GhostBtn T={T} onClick={onDelete} variant="danger">Delete</GhostBtn>
+      </div>
+    </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EDITOR DRAWER — Tabbed sections
+// ════════════════════════════════════════════════════════════════════
+type EditorTab = 'basics' | 'targeting' | 'security' | 'deeplinks' | 'utm' | 'qr'
+
+function LinkEditorDrawer({
+  T, form, setForm, onSave, onCancel, saving, isEdit,
+}: {
+  T: Theme
+  form: LinkFormState
+  setForm: React.Dispatch<React.SetStateAction<LinkFormState>>
+  onSave: () => void
+  onCancel: () => void
+  saving: boolean
+  isEdit: boolean
+}) {
+  const [tab, setTab] = useState<EditorTab>('basics')
+  const IS = inputStyle(T)
+
+  const tabs: { id: EditorTab; label: string; hint: string }[] = [
+    { id: 'basics',    label: 'Basics',     hint: 'URL, slug, expiry' },
+    { id: 'targeting', label: 'Targeting',  hint: 'Geo & OS rules' },
+    { id: 'security',  label: 'Security',   hint: 'Password, cloak, referrer' },
+    { id: 'deeplinks', label: 'Deep links', hint: 'iOS & Android' },
+    { id: 'utm',       label: 'UTM',        hint: 'Campaign tracking' },
+    { id: 'qr',        label: 'QR code',    hint: 'Preview & download' },
+  ]
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onCancel}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)',
+          zIndex: 150, animation: 'bsFadeIn .2s ease',
+        }}
+      />
+      <style>{`@keyframes bsFadeIn { from{opacity:0} to{opacity:1} } @keyframes bsSlideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }`}</style>
+
+      {/* Drawer */}
+      <div style={{
+        position: 'fixed', top: 0, right: 0, bottom: 0,
+        width: 'min(560px, 100vw)',
+        background: T.card,
+        borderLeft: `1px solid ${T.border}`,
+        zIndex: 200,
+        display: 'flex', flexDirection: 'column',
+        animation: 'bsSlideIn .25s cubic-bezier(0.4,0,0.2,1)',
+      }}>
+        {/* Header */}
+        <div style={{
+          padding: '20px 24px 14px',
+          borderBottom: `1px solid ${T.border}`,
+          display: 'flex', alignItems: 'center', gap: 10,
+        }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>
+              {isEdit ? 'Edit link' : 'New short link'}
+            </div>
+            {form.slug && (
+              <div style={{
+                fontSize: 11, color: T.textMuted, marginTop: 2,
+                fontFamily: "'SF Mono', Menlo, monospace",
+              }}>
+                {SHORT_BASE}/{form.slug}
               </div>
-              <div style={{display:'flex',gap:6,flexShrink:0}}>
-                <SmallBtn T={T} color={l.active?T.warning:T.success} onClick={()=>toggleActive(l)}>{l.active?'Pause':'Resume'}</SmallBtn>
-                <SmallBtn T={T} color={T.error} onClick={()=>deleteLink(l.id)}>Delete</SmallBtn>
+            )}
+          </div>
+          <button
+            onClick={onCancel}
+            aria-label="Close"
+            style={{
+              width: 32, height: 32, borderRadius: 8,
+              background: 'transparent', border: `1px solid ${T.border}`,
+              color: T.textSecondary, cursor: 'pointer', fontSize: 16,
+            }}
+          >×</button>
+        </div>
+
+        {/* Tabs */}
+        <div style={{
+          display: 'flex', gap: 4,
+          padding: '12px 24px 0',
+          borderBottom: `1px solid ${T.border}`,
+          overflowX: 'auto',
+        }}>
+          {tabs.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              style={{
+                padding: '10px 14px',
+                background: 'transparent',
+                border: 'none',
+                borderBottom: `2px solid ${tab === t.id ? T.accent : 'transparent'}`,
+                color: tab === t.id ? T.text : T.textMuted,
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                marginBottom: -1, whiteSpace: 'nowrap',
+                transition: 'color .15s, border-color .15s',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
+          {tab === 'basics'    && <BasicsSection T={T} form={form} setForm={setForm} IS={IS} />}
+          {tab === 'targeting' && <TargetingSection T={T} form={form} setForm={setForm} IS={IS} />}
+          {tab === 'security'  && <SecuritySection T={T} form={form} setForm={setForm} IS={IS} isEdit={isEdit} />}
+          {tab === 'deeplinks' && <DeepLinksSection T={T} form={form} setForm={setForm} IS={IS} />}
+          {tab === 'utm'       && <UtmSection T={T} form={form} setForm={setForm} IS={IS} />}
+          {tab === 'qr'        && <QrSection T={T} form={form} setForm={setForm} IS={IS} />}
+        </div>
+
+        {/* Footer */}
+        <div style={{
+          padding: '16px 24px',
+          borderTop: `1px solid ${T.border}`,
+          display: 'flex', gap: 10,
+        }}>
+          <button
+            onClick={onCancel}
+            disabled={saving}
+            style={{
+              padding: '0 22px', height: 44, borderRadius: 10,
+              background: 'transparent',
+              border: `1px solid ${T.border}`,
+              color: T.textSecondary,
+              fontSize: 14, fontWeight: 600,
+              cursor: saving ? 'not-allowed' : 'pointer',
+            }}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={onSave}
+            disabled={saving}
+            className="bs-lnk-new-btn"
+            style={{
+              flex: 1, height: 44, borderRadius: 10,
+              background: T.accent, border: 'none', color: '#fff',
+              fontSize: 14, fontWeight: 600,
+              cursor: saving ? 'not-allowed' : 'pointer',
+              opacity: saving ? 0.6 : 1,
+            }}
+          >
+            {saving ? 'Saving…' : (isEdit ? 'Save changes' : 'Create link')}
+          </button>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// EDITOR SECTIONS (module-level to preserve focus)
+// ════════════════════════════════════════════════════════════════════
+
+function SectionLabel({ T, children }: { T: Theme; children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: 10, color: T.textMuted, textTransform: 'uppercase',
+      letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10,
+    }}>{children}</div>
+  )
+}
+
+function FieldStack({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>{children}</div>
+}
+
+function FieldRow({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>{children}</div>
+}
+
+function Label({ T, children, hint }: { T: Theme; children: React.ReactNode; hint?: string }) {
+  return (
+    <div style={{ marginBottom: 6 }}>
+      <div style={{ fontSize: 12, color: T.text, fontWeight: 500 }}>{children}</div>
+      {hint && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{hint}</div>}
+    </div>
+  )
+}
+
+function ToggleRow({
+  T, label, hint, value, onChange,
+}: {
+  T: Theme; label: string; hint?: string; value: boolean; onChange: (v: boolean) => void
+}) {
+  return (
+    <div
+      onClick={() => onChange(!value)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 12,
+        padding: '12px 14px',
+        background: T.elevated,
+        border: `1px solid ${T.border}`,
+        borderRadius: 12,
+        cursor: 'pointer',
+      }}
+    >
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 500, color: T.text }}>{label}</div>
+        {hint && <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{hint}</div>}
+      </div>
+      <div style={{
+        width: 38, height: 22, borderRadius: 999,
+        background: value ? T.accent : T.border,
+        position: 'relative', transition: 'background .15s', flexShrink: 0,
+      }}>
+        <div style={{
+          position: 'absolute', top: 2, left: value ? 18 : 2,
+          width: 18, height: 18, borderRadius: 999,
+          background: '#fff', transition: 'left .15s',
+        }} />
+      </div>
+    </div>
+  )
+}
+
+// ── BASICS ──────────────────────────────────────────────────────────
+function BasicsSection({ T, form, setForm, IS }: any) {
+  return (
+    <FieldStack>
+      <SectionLabel T={T}>Destination</SectionLabel>
+      <div>
+        <Label T={T} hint="The full URL visitors will land on.">Destination URL *</Label>
+        <input
+          className="bs-lnk-input"
+          value={form.destination_url || ''}
+          onChange={(e: any) => setForm((f: any) => ({ ...f, destination_url: e.target.value }))}
+          placeholder="https://example.com/landing"
+          style={IS}
+        />
+      </div>
+
+      <div>
+        <Label T={T} hint="Leave blank to auto-generate. Lowercase letters, numbers, and dashes only.">
+          Custom slug
+        </Label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
+          <div style={{
+            height: 42, padding: '0 12px', display: 'flex', alignItems: 'center',
+            background: T.elevated, border: `1px solid ${T.border}`,
+            borderRight: 'none', borderRadius: '10px 0 0 10px',
+            fontSize: 13, color: T.textMuted,
+            fontFamily: "'SF Mono', Menlo, monospace",
+          }}>
+            go.buysub.ng/
+          </div>
+          <input
+            className="bs-lnk-input"
+            value={form.slug || ''}
+            onChange={(e: any) => setForm((f: any) => ({
+              ...f,
+              slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''),
+            }))}
+            placeholder="my-link"
+            style={{ ...IS, borderRadius: '0 10px 10px 0', flex: 1 }}
+          />
+        </div>
+      </div>
+
+      <div>
+        <Label T={T}>Tags</Label>
+        <input
+          className="bs-lnk-input"
+          value={form.tags || ''}
+          onChange={(e: any) => setForm((f: any) => ({ ...f, tags: e.target.value }))}
+          placeholder="campaign, winter-2026"
+          style={IS}
+        />
+      </div>
+
+      <div style={{ height: 1, background: T.border, margin: '8px 0' }} />
+      <SectionLabel T={T}>Expiration</SectionLabel>
+
+      <FieldRow>
+        <div>
+          <Label T={T} hint="Link stops working after this date.">Expires at</Label>
+          <input
+            className="bs-lnk-input"
+            type="datetime-local"
+            value={toDtLocal(form.expires_at)}
+            onChange={(e: any) => setForm((f: any) => ({ ...f, expires_at: fromDtLocal(e.target.value) }))}
+            style={{ ...IS, colorScheme: 'dark' }}
+          />
+        </div>
+        <div>
+          <Label T={T} hint="Stop after N clicks. Blank = no limit.">Click limit</Label>
+          <input
+            className="bs-lnk-input"
+            type="number"
+            min={0}
+            value={form.click_limit ?? ''}
+            onChange={(e: any) => setForm((f: any) => ({
+              ...f,
+              click_limit: e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10)),
+            }))}
+            placeholder="e.g. 100"
+            style={IS}
+          />
+        </div>
+      </FieldRow>
+    </FieldStack>
+  )
+}
+
+// ── TARGETING ───────────────────────────────────────────────────────
+function TargetingSection({ T, form, setForm, IS }: any) {
+  const addRule = () => {
+    setForm((f: any) => ({
+      ...f,
+      rules: [
+        ...f.rules,
+        {
+          priority: (f.rules[f.rules.length - 1]?.priority ?? 50) + 10,
+          match_type: 'country',
+          match_value: '',
+          destination_url: '',
+        },
+      ],
+    }))
+  }
+  const updateRule = (idx: number, patch: Partial<LinkRule>) => {
+    setForm((f: any) => ({
+      ...f,
+      rules: f.rules.map((r: LinkRule, i: number) => i === idx ? { ...r, ...patch } : r),
+    }))
+  }
+  const removeRule = (idx: number) => {
+    setForm((f: any) => ({ ...f, rules: f.rules.filter((_: any, i: number) => i !== idx) }))
+  }
+
+  return (
+    <FieldStack>
+      <SectionLabel T={T}>Targeting rules</SectionLabel>
+      <div style={{
+        padding: 12, borderRadius: 10,
+        background: `rgba(var(--bs-accent-rgb), 0.06)`,
+        border: `1px solid rgba(var(--bs-accent-rgb), 0.2)`,
+        fontSize: 12, color: T.textSecondary, lineHeight: 1.5,
+      }}>
+        Rules are evaluated in <strong>priority order (lowest first)</strong>.
+        The first rule that matches the visitor's country, region, city, or OS wins.
+        If no rule matches, the visitor falls through to the main <strong>Destination URL</strong>.
+      </div>
+
+      {form.rules.length === 0 ? (
+        <div style={{
+          padding: 20, textAlign: 'center', fontSize: 13,
+          color: T.textMuted,
+          background: T.elevated, border: `1px dashed ${T.border}`, borderRadius: 12,
+        }}>
+          No rules yet. All visitors go to the default destination.
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {form.rules.map((rule: LinkRule, idx: number) => (
+            <div key={rule.id || idx} style={{
+              padding: 14, borderRadius: 12,
+              background: T.elevated, border: `1px solid ${T.border}`,
+              display: 'flex', flexDirection: 'column', gap: 10,
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 24, height: 24, borderRadius: 999,
+                  background: 'rgba(var(--bs-accent-rgb), .15)',
+                  color: T.accent, fontSize: 11, fontWeight: 700,
+                  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                }}>{idx + 1}</span>
+                <span style={{ fontSize: 12, color: T.textSecondary, fontWeight: 500 }}>
+                  Rule {idx + 1}
+                </span>
+                <div style={{ flex: 1 }} />
+                <input
+                  className="bs-lnk-input"
+                  type="number"
+                  value={rule.priority}
+                  onChange={(e: any) => updateRule(idx, { priority: parseInt(e.target.value, 10) || 0 })}
+                  title="Priority (lower = evaluated first)"
+                  style={{ ...IS, width: 70, height: 30, fontSize: 12, padding: '0 8px' }}
+                />
+                <button
+                  onClick={() => removeRule(idx)}
+                  className="bs-lnk-ghost-danger"
+                  style={{
+                    height: 30, padding: '0 10px', borderRadius: 999,
+                    background: 'transparent', border: `1px solid ${T.border}`,
+                    color: T.textMuted, fontSize: 11, fontWeight: 600,
+                    cursor: 'pointer',
+                  }}
+                >Remove</button>
               </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: 8 }}>
+                <select
+                  className="bs-lnk-input"
+                  value={rule.match_type}
+                  onChange={(e: any) => updateRule(idx, { match_type: e.target.value as any })}
+                  style={IS}
+                >
+                  <option value="country">If country is…</option>
+                  <option value="region">If region is…</option>
+                  <option value="city">If city is…</option>
+                  <option value="os">If OS is…</option>
+                </select>
+                {rule.match_type === 'os' ? (
+                  <select
+                    className="bs-lnk-input"
+                    value={rule.match_value}
+                    onChange={(e: any) => updateRule(idx, { match_value: e.target.value })}
+                    style={IS}
+                  >
+                    <option value="">Select OS…</option>
+                    <option value="ios">iOS</option>
+                    <option value="android">Android</option>
+                    <option value="desktop">Desktop</option>
+                  </select>
+                ) : (
+                  <input
+                    className="bs-lnk-input"
+                    value={rule.match_value}
+                    onChange={(e: any) => updateRule(idx, { match_value: e.target.value })}
+                    placeholder={
+                      rule.match_type === 'country' ? 'e.g. NG (ISO-2)' :
+                      rule.match_type === 'region'  ? 'e.g. Lagos'      :
+                      'e.g. Ikeja'
+                    }
+                    style={IS}
+                  />
+                )}
+              </div>
+
+              <input
+                className="bs-lnk-input"
+                value={rule.destination_url}
+                onChange={(e: any) => updateRule(idx, { destination_url: e.target.value })}
+                placeholder="Destination URL for matching visitors"
+                style={IS}
+              />
             </div>
           ))}
         </div>
       )}
-      {pagination?.pages>1&&<PaginationBar T={T} pagination={pagination} onPage={p=>load(p)}/>}
+
+      <button
+        onClick={addRule}
+        style={{
+          width: '100%', height: 40,
+          background: 'transparent', border: `1px dashed ${T.border}`,
+          borderRadius: 10, color: T.textSecondary, fontSize: 13, fontWeight: 500,
+          cursor: 'pointer',
+        }}
+      >+ Add rule</button>
+    </FieldStack>
+  )
+}
+
+// ── SECURITY ────────────────────────────────────────────────────────
+function SecuritySection({ T, form, setForm, IS, isEdit }: any) {
+  const alreadyHasPassword = isEdit && (form as any).has_password && !form.clearPassword
+  return (
+    <FieldStack>
+      <SectionLabel T={T}>Access control</SectionLabel>
+
+      <div>
+        <Label T={T} hint="Visitors must enter this password before being redirected.">
+          Password protection
+        </Label>
+        {alreadyHasPassword && !form.password ? (
+          <div style={{
+            padding: 12, borderRadius: 10,
+            background: T.elevated, border: `1px solid ${T.border}`,
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
+          }}>
+            <div style={{ fontSize: 13, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span>🔒</span> Password is set
+            </div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button
+                onClick={() => setForm((f: any) => ({ ...f, password: ' ' }))}
+                style={{
+                  height: 30, padding: '0 12px', borderRadius: 999,
+                  background: 'transparent', border: `1px solid ${T.border}`,
+                  color: T.text, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}
+              >Change</button>
+              <button
+                onClick={() => setForm((f: any) => ({ ...f, clearPassword: true, password: '' }))}
+                style={{
+                  height: 30, padding: '0 12px', borderRadius: 999,
+                  background: 'transparent', border: `1px solid ${T.border}`,
+                  color: T.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                }}
+              >Remove</button>
+            </div>
+          </div>
+        ) : (
+          <input
+            className="bs-lnk-input"
+            type="password"
+            value={form.password === ' ' ? '' : (form.password || '')}
+            onChange={(e: any) => setForm((f: any) => ({ ...f, password: e.target.value, clearPassword: false }))}
+            placeholder={alreadyHasPassword ? 'Enter new password' : 'Enter password (leave blank for none)'}
+            style={IS}
+            autoComplete="new-password"
+          />
+        )}
+      </div>
+
+      <ToggleRow
+        T={T}
+        label="Link cloaking"
+        hint="Keep the short URL in the address bar by loading the destination inside a frame."
+        value={!!form.cloak}
+        onChange={v => setForm((f: any) => ({ ...f, cloak: v }))}
+      />
+
+      <ToggleRow
+        T={T}
+        label="Hide referrer"
+        hint="Strip the Referer header so the destination site doesn't see where visitors came from."
+        value={!!form.hide_referrer}
+        onChange={v => setForm((f: any) => ({ ...f, hide_referrer: v }))}
+      />
+
+      {form.cloak && (
+        <div style={{
+          padding: 12, borderRadius: 10,
+          background: `rgba(var(--bs-warning-rgb), 0.08)`,
+          border: `1px solid rgba(var(--bs-warning-rgb), 0.25)`,
+          fontSize: 12, color: T.textSecondary, lineHeight: 1.5,
+        }}>
+          ⚠ Many sites set <code>X-Frame-Options: DENY</code> which prevents cloaking.
+          Test the link after enabling — if the destination goes blank, disable cloaking.
+        </div>
+      )}
+    </FieldStack>
+  )
+}
+
+// ── DEEP LINKS ──────────────────────────────────────────────────────
+function DeepLinksSection({ T, form, setForm, IS }: any) {
+  return (
+    <FieldStack>
+      <SectionLabel T={T}>iOS</SectionLabel>
+      <div>
+        <Label T={T} hint="e.g. instagram://user?username=buysub">iOS URL scheme</Label>
+        <input
+          className="bs-lnk-input"
+          value={form.deep_link_ios || ''}
+          onChange={(e: any) => setForm((f: any) => ({ ...f, deep_link_ios: e.target.value }))}
+          placeholder="myapp://path"
+          style={IS}
+        />
+      </div>
+      <div>
+        <Label T={T} hint="Used as fallback if the app isn't installed.">App Store ID</Label>
+        <input
+          className="bs-lnk-input"
+          value={form.ios_app_store_id || ''}
+          onChange={(e: any) => setForm((f: any) => ({ ...f, ios_app_store_id: e.target.value }))}
+          placeholder="id1234567890"
+          style={IS}
+        />
+      </div>
+
+      <div style={{ height: 1, background: T.border, margin: '8px 0' }} />
+      <SectionLabel T={T}>Android</SectionLabel>
+      <div>
+        <Label T={T} hint="e.g. intent://... or a custom scheme.">Android deep link</Label>
+        <input
+          className="bs-lnk-input"
+          value={form.deep_link_android || ''}
+          onChange={(e: any) => setForm((f: any) => ({ ...f, deep_link_android: e.target.value }))}
+          placeholder="myapp://path"
+          style={IS}
+        />
+      </div>
+      <div>
+        <Label T={T} hint="Used as Play Store fallback.">Package name</Label>
+        <input
+          className="bs-lnk-input"
+          value={form.android_package || ''}
+          onChange={(e: any) => setForm((f: any) => ({ ...f, android_package: e.target.value }))}
+          placeholder="com.example.app"
+          style={IS}
+        />
+      </div>
+
+      <div style={{
+        padding: 12, borderRadius: 10,
+        background: `rgba(var(--bs-accent-rgb), 0.06)`,
+        border: `1px solid rgba(var(--bs-accent-rgb), 0.2)`,
+        fontSize: 12, color: T.textSecondary, lineHeight: 1.5,
+      }}>
+        Desktop visitors always see the regular destination URL.
+        Mobile visitors will be taken to the app — or to the App Store / Play Store
+        if it isn't installed.
+      </div>
+    </FieldStack>
+  )
+}
+
+// ── UTM ─────────────────────────────────────────────────────────────
+function UtmSection({ T, form, setForm, IS }: any) {
+  const fields = [
+    { key: 'utm_source',   label: 'utm_source',   placeholder: 'e.g. newsletter' },
+    { key: 'utm_medium',   label: 'utm_medium',   placeholder: 'e.g. email' },
+    { key: 'utm_campaign', label: 'utm_campaign', placeholder: 'e.g. black-friday' },
+    { key: 'utm_content',  label: 'utm_content',  placeholder: 'e.g. header-cta' },
+    { key: 'utm_term',     label: 'utm_term',     placeholder: 'e.g. keyword' },
+  ]
+  return (
+    <FieldStack>
+      <SectionLabel T={T}>UTM parameters</SectionLabel>
+      <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 4 }}>
+        Appended to the destination URL when visitors click.
+      </div>
+      {fields.map(f => (
+        <div key={f.key}>
+          <Label T={T}>{f.label}</Label>
+          <input
+            className="bs-lnk-input"
+            value={form[f.key] || ''}
+            onChange={(e: any) => setForm((prev: any) => ({ ...prev, [f.key]: e.target.value }))}
+            placeholder={f.placeholder}
+            style={IS}
+          />
+        </div>
+      ))}
+    </FieldStack>
+  )
+}
+
+// ── QR (inside drawer) ──────────────────────────────────────────────
+function QrSection({ T, form, setForm, IS }: any) {
+  const cfg = form.qr_config || { fg: '#000000', bg: '#ffffff', ecc: 'M' }
+  const shortUrl = form.slug ? `${SHORT_BASE}/${form.slug}` : ''
+
+  const setCfg = (patch: any) =>
+    setForm((f: any) => ({ ...f, qr_config: { ...cfg, ...patch } }))
+
+  return (
+    <FieldStack>
+      <SectionLabel T={T}>QR code</SectionLabel>
+      {!shortUrl ? (
+        <div style={{
+          padding: 20, textAlign: 'center',
+          background: T.elevated, border: `1px solid ${T.border}`,
+          borderRadius: 12, fontSize: 13, color: T.textMuted,
+        }}>
+          Set a slug first to generate a QR code.
+        </div>
+      ) : (
+        <>
+          <div style={{
+            display: 'flex', justifyContent: 'center',
+            padding: 20, background: T.elevated,
+            border: `1px solid ${T.border}`, borderRadius: 16,
+          }}>
+            <QrPreview url={shortUrl} cfg={cfg} size={220} />
+          </div>
+
+          <FieldRow>
+            <div>
+              <Label T={T}>Foreground</Label>
+              <ColorInput T={T} value={cfg.fg || '#000000'} onChange={v => setCfg({ fg: v })} />
+            </div>
+            <div>
+              <Label T={T}>Background</Label>
+              <ColorInput T={T} value={cfg.bg || '#ffffff'} onChange={v => setCfg({ bg: v })} />
+            </div>
+          </FieldRow>
+
+          <div>
+            <Label T={T} hint="Higher = more tolerant of logos/damage, but denser pattern.">
+              Error correction
+            </Label>
+            <div style={{
+              display: 'flex', gap: 4,
+              background: T.elevated, border: `1px solid ${T.border}`,
+              borderRadius: 999, padding: 4,
+            }}>
+              {(['L', 'M', 'Q', 'H'] as const).map(level => (
+                <button
+                  key={level}
+                  onClick={() => setCfg({ ecc: level })}
+                  style={{
+                    flex: 1, height: 32, borderRadius: 999, border: 'none',
+                    background: cfg.ecc === level ? T.accent : 'transparent',
+                    color: cfg.ecc === level ? '#fff' : T.text,
+                    fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                  }}
+                >{level}</button>
+              ))}
+            </div>
+          </div>
+
+          <button
+            onClick={() => downloadQr(shortUrl, cfg)}
+            style={{
+              height: 40, padding: '0 16px', borderRadius: 10,
+              background: 'transparent', border: `1px solid ${T.border}`,
+              color: T.text, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+            }}
+          >⬇ Download QR (PNG)</button>
+        </>
+      )}
+    </FieldStack>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// QR PRIMITIVES
+// ════════════════════════════════════════════════════════════════════
+
+function QrPreview({
+  url, cfg, size = 200,
+}: {
+  url: string
+  cfg: { fg?: string; bg?: string; ecc?: 'L'|'M'|'Q'|'H' }
+  size?: number
+}) {
+  // Use goqr.me service — no external npm dep. Accepts hex colors without #.
+  const fg = (cfg.fg || '#000000').replace('#', '')
+  const bg = (cfg.bg || '#ffffff').replace('#', '')
+  const src = `https://api.qrserver.com/v1/create-qr-code/?` + new URLSearchParams({
+    data: url,
+    size: `${size}x${size}`,
+    color: fg,
+    bgcolor: bg,
+    ecc: cfg.ecc || 'M',
+    margin: '2',
+    format: 'png',
+  }).toString()
+  return (
+    <img
+      src={src}
+      alt="QR code"
+      width={size}
+      height={size}
+      style={{ borderRadius: 12, display: 'block', background: cfg.bg || '#fff' }}
+    />
+  )
+}
+
+async function downloadQr(
+  url: string,
+  cfg: { fg?: string; bg?: string; ecc?: 'L'|'M'|'Q'|'H' }
+) {
+  const fg = (cfg.fg || '#000000').replace('#', '')
+  const bg = (cfg.bg || '#ffffff').replace('#', '')
+  const src = `https://api.qrserver.com/v1/create-qr-code/?` + new URLSearchParams({
+    data: url,
+    size: '1024x1024',
+    color: fg,
+    bgcolor: bg,
+    ecc: cfg.ecc || 'M',
+    margin: '2',
+    format: 'png',
+  }).toString()
+  try {
+    const res = await fetch(src)
+    const blob = await res.blob()
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    const slug = url.split('/').pop() || 'qr'
+    a.download = `buysub-qr-${slug}.png`
+    a.click()
+    setTimeout(() => URL.revokeObjectURL(a.href), 1000)
+  } catch {
+    window.open(src, '_blank')
+  }
+}
+
+function ColorInput({
+  T, value, onChange,
+}: { T: Theme; value: string; onChange: (v: string) => void }) {
+  return (
+    <div style={{
+      display: 'flex', alignItems: 'center', gap: 8,
+      height: 42, padding: '0 10px',
+      background: T.elevated, border: `1px solid ${T.border}`,
+      borderRadius: 10,
+    }}>
+      <input
+        type="color"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          width: 28, height: 28, padding: 0,
+          border: 'none', borderRadius: 6,
+          background: 'transparent', cursor: 'pointer',
+        }}
+      />
+      <input
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{
+          flex: 1, height: 32, padding: '0 6px',
+          background: 'transparent', border: 'none', outline: 'none',
+          color: T.text, fontSize: 13,
+          fontFamily: "'SF Mono', Menlo, monospace",
+        }}
+      />
     </div>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// QR DIALOG (invoked from list row)
+// ════════════════════════════════════════════════════════════════════
+function QrDialog({
+  T, link, onClose, onSaveConfig,
+}: {
+  T: Theme
+  link: LinkRow
+  onClose: () => void
+  onSaveConfig: (cfg: any) => Promise<void>
+}) {
+  const [cfg, setCfg] = useState(link.qr_config || { fg: '#000000', bg: '#ffffff', ecc: 'M' as const })
+  const url = `${SHORT_BASE}/${link.slug}`
+
+  return (
+    <>
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)',
+          zIndex: 250, padding: 16,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}
+      >
+        <div
+          onClick={e => e.stopPropagation()}
+          style={{
+            background: T.card, border: `1px solid ${T.border}`,
+            borderRadius: 20, width: '100%', maxWidth: 420,
+            padding: 24, display: 'flex', flexDirection: 'column', gap: 16,
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
+            <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>QR code</div>
+            <div style={{
+              fontSize: 12, color: T.textMuted,
+              fontFamily: "'SF Mono', Menlo, monospace",
+            }}>/{link.slug}</div>
+          </div>
+
+          <div style={{
+            display: 'flex', justifyContent: 'center',
+            padding: 20, background: T.elevated,
+            border: `1px solid ${T.border}`, borderRadius: 16,
+          }}>
+            <QrPreview url={url} cfg={cfg} size={220} />
+          </div>
+
+          <FieldRow>
+            <div>
+              <Label T={T}>Foreground</Label>
+              <ColorInput T={T} value={cfg.fg || '#000'} onChange={v => setCfg(c => ({ ...c, fg: v }))} />
+            </div>
+            <div>
+              <Label T={T}>Background</Label>
+              <ColorInput T={T} value={cfg.bg || '#fff'} onChange={v => setCfg(c => ({ ...c, bg: v }))} />
+            </div>
+          </FieldRow>
+
+          <div style={{ display: 'flex', gap: 8 }}>
+            <button
+              onClick={onClose}
+              style={{
+                flex: 1, height: 42, borderRadius: 10,
+                background: 'transparent', border: `1px solid ${T.border}`,
+                color: T.textSecondary, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >Close</button>
+            <button
+              onClick={() => downloadQr(url, cfg)}
+              style={{
+                flex: 1, height: 42, borderRadius: 10,
+                background: 'transparent', border: `1px solid ${T.border}`,
+                color: T.text, fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >Download</button>
+            <button
+              onClick={async () => { await onSaveConfig(cfg); onClose() }}
+              style={{
+                flex: 1, height: 42, borderRadius: 10,
+                background: T.accent, border: 'none', color: '#fff',
+                fontSize: 13, fontWeight: 600, cursor: 'pointer',
+              }}
+            >Save</button>
+          </div>
+        </div>
+      </div>
+    </>
+  )
+}
+
+// ════════════════════════════════════════════════════════════════════
+// SMALL SHARED BUTTONS
+// ════════════════════════════════════════════════════════════════════
+function IconBtn({
+  T, onClick, title, children,
+}: { T: Theme; onClick: () => void; title: string; children: React.ReactNode }) {
+  return (
+    <button
+      onClick={onClick}
+      title={title}
+      aria-label={title}
+      className="bs-lnk-ghost"
+      style={{
+        width: 34, height: 34, borderRadius: 10,
+        background: 'transparent', border: `1px solid ${T.border}`,
+        color: T.textSecondary, fontSize: 14, cursor: 'pointer',
+        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
+
+function GhostBtn({
+  T, onClick, children, variant,
+}: {
+  T: Theme
+  onClick: () => void
+  children: React.ReactNode
+  variant?: 'accent' | 'danger'
+}) {
+  const cls =
+    variant === 'danger' ? 'bs-lnk-ghost-danger' :
+    variant === 'accent' ? 'bs-lnk-ghost-accent' :
+    'bs-lnk-ghost'
+  return (
+    <button
+      onClick={onClick}
+      className={cls}
+      style={{
+        height: 34, padding: '0 12px', borderRadius: 10,
+        background: 'transparent', border: `1px solid ${T.border}`,
+        color: T.text, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+      }}
+    >
+      {children}
+    </button>
   )
 }
 
@@ -1094,6 +3137,889 @@ function DiscountsTab({ T }: { T: Theme }) {
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+function NotificationsTab({ T }: { T: Theme }) {
+  const initialForm = {
+    title: '',
+    message: '',
+    type: 'modal',
+    scheduled_for: '',
+    image_url: '',
+    image_position: 'top',
+    expires_at: '',
+    audience: 'all',
+    steps: [] as any[]
+  }
+
+  const [form, setForm] = useState(initialForm)
+  const [sending, setSending] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+
+  const [list, setList] = useState<any[]>([])
+
+  const load = async () => {
+    const r = await apiFetch('/v2/admin/notifications')
+    if (r.ok) setList(r.data || [])
+  }
+
+  const addStep = () => {
+    setForm(f => ({
+      ...f,
+      steps: [...(f.steps || []), { title: '', message: '', image_url: '' }]
+    }))
+  }
+
+  const updateStep = (index: number, key: string, value: string) => {
+    setForm(f => {
+      const steps = [...f.steps]
+      steps[index][key] = value
+      return { ...f, steps }
+    })
+  }
+
+  const removeStep = (index: number) => {
+    setForm(f => ({
+      ...f,
+      steps: f.steps.filter((_: any, i: number) => i !== index)
+    }))
+  }
+
+  useEffect(() => { load() }, [])
+
+  const toggle = async (id: string, active: boolean) => {
+    const r = await apiFetch(`/v2/admin/notifications/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({ active })
+    })
+
+    if (r.ok) {
+      setList(l =>
+        l.map(n => n.id === id ? { ...n, active } : n)
+      )
+    }
+  }
+
+  const startEdit = (n: any) => {
+    setEditingId(n.id)
+    setForm({
+      title: n.title || '',
+      message: n.message || '',
+      type: n.type || 'modal',
+      scheduled_for: n.scheduled_for
+        ? new Date(n.scheduled_for).toISOString().slice(0, 16)
+        : '',
+      image_url: n.image_url || '',
+      image_position: n.image_position || 'top',
+      expires_at: n.expires_at
+        ? new Date(n.expires_at).toISOString().slice(0, 16)
+        : '',
+      audience: n.audience || 'all',
+      steps: Array.isArray(n.steps) ? n.steps : [],
+    })
+
+    // Scroll composer into view on small screens
+    if (typeof window !== 'undefined' && window.scrollTo) {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setForm(initialForm)
+  }
+
+  const send = async () => {
+    // Validate: need either a non-empty message OR a fully-populated steps array
+    const hasValidSteps =
+      Array.isArray(form.steps) &&
+      form.steps.length > 0 &&
+      form.steps.every((s: any) => s?.title?.trim() && s?.message?.trim())
+
+    const hasMessage = !!form.message?.trim()
+
+    if (!hasValidSteps && !hasMessage) {
+      toast.error(
+        form.steps?.length
+          ? 'Each step needs a title and message'
+          : 'Message or steps required'
+      )
+      return
+    }
+
+    setSending(true)
+
+    const payload = {
+      ...form,
+      scheduled_for: form.scheduled_for || null,
+      expires_at: form.expires_at || null,
+      steps: hasValidSteps ? form.steps : null,
+      message: hasValidSteps ? null : form.message,
+    }
+
+    const url = editingId
+      ? `/v2/admin/notifications/${editingId}`
+      : `/v2/admin/notifications`
+    const method = editingId ? 'PATCH' : 'POST'
+
+    const r = await apiFetch(url, {
+      method,
+      body: JSON.stringify(payload),
+    })
+
+    if (r.ok) {
+      toast.success(editingId ? 'Notification updated' : 'Notification sent')
+      setEditingId(null)
+      setForm(initialForm)
+      await load()
+    } else {
+      toast.error(r.error || 'Failed')
+    }
+
+    setSending(false)
+  }
+
+  const IS = inputStyle(T)
+
+  // Panel section label style (uppercase small caps)
+  const sectionLabel: React.CSSProperties = {
+    fontSize: 10,
+    color: T.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: '0.08em',
+    fontWeight: 600,
+    marginBottom: 12,
+  }
+
+  // Sub-panel (step cards) style
+  const stepPanelStyle: React.CSSProperties = {
+    background: T.elevated,
+    border: `1px solid ${T.border}`,
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 10,
+  }
+
+  // History row styles
+  const typeBadgeStyle = (type: string): React.CSSProperties => {
+    const color =
+      type === 'modal' ? T.accent :
+      type === 'banner' ? T.warning :
+      T.success
+    return {
+      display: 'inline-flex',
+      alignItems: 'center',
+      height: 22,
+      padding: '0 10px',
+      borderRadius: 999,
+      fontSize: 11,
+      fontWeight: 600,
+      letterSpacing: '0.06em',
+      textTransform: 'uppercase',
+      color,
+      background: `rgba(var(--bs-${type === 'modal' ? 'accent' : type === 'banner' ? 'warning' : 'success'}-rgb), 0.15)`,
+      border: `1px solid rgba(var(--bs-${type === 'modal' ? 'accent' : type === 'banner' ? 'warning' : 'success'}-rgb), 0.25)`,
+    }
+  }
+
+  const statusPillStyle = (active: boolean): React.CSSProperties => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 6,
+    height: 22,
+    padding: '0 10px',
+    borderRadius: 999,
+    fontSize: 11,
+    fontWeight: 600,
+    color: active ? T.success : T.textMuted,
+    background: active
+      ? 'rgba(var(--bs-success-rgb), 0.12)'
+      : 'rgba(var(--bs-muted-rgb, 100,100,110), 0.15)',
+    border: active
+      ? '1px solid rgba(var(--bs-success-rgb), 0.22)'
+      : `1px solid ${T.border}`,
+  })
+
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, alignItems: 'start' }}>
+      <style>{`
+        .bs-notif-input:focus,
+        .bs-notif-input:focus-visible {
+          outline: none !important;
+          border-color: #7C5CFF !important;
+        }
+        .bs-notif-step-remove:hover {
+          color: var(--bs-error) !important;
+          border-color: rgba(var(--bs-error-rgb), 0.4) !important;
+          background: rgba(var(--bs-error-rgb), 0.06) !important;
+        }
+        .bs-notif-add-step:hover {
+          border-color: #7C5CFF !important;
+          color: #fff !important;
+          background: rgba(var(--bs-accent-rgb), 0.08) !important;
+        }
+        .bs-notif-marquee {
+          display: inline-block;
+          white-space: nowrap;
+          animation: bsNotifMarquee 12s linear infinite;
+          padding-left: 100%;
+        }
+        @keyframes bsNotifMarquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-100%); }
+        }
+      `}</style>
+
+      {/* ============================================================ */}
+      {/* LEFT COLUMN — COMPOSER                                       */}
+      {/* ============================================================ */}
+      <div>
+        <Card T={T} title={editingId ? 'Edit Notification' : 'Send Notification'}>
+
+          {editingId && (
+            <div style={{
+              marginBottom: 16,
+              padding: '10px 14px',
+              borderRadius: 10,
+              background: 'rgba(var(--bs-accent-rgb), 0.08)',
+              border: '1px solid rgba(var(--bs-accent-rgb), 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+            }}>
+              <div style={{ fontSize: 12, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
+                <span style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: 999,
+                  background: T.accent,
+                }} />
+                Editing existing notification
+              </div>
+              <button
+                onClick={cancelEdit}
+                style={{
+                  background: 'transparent',
+                  border: `1px solid ${T.border}`,
+                  color: T.textSecondary,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  padding: '4px 10px',
+                  borderRadius: 999,
+                  cursor: 'pointer',
+                }}
+              >
+                Cancel
+              </button>
+            </div>
+          )}
+
+          {/* ——— BASICS ——— */}
+          <div style={sectionLabel}>Basics</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <FieldLabel label="Type" T={T}>
+              <select
+                className="bs-notif-input"
+                style={IS}
+                value={form.type}
+                onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
+              >
+                <option value="toast">Toast (small popup)</option>
+                <option value="modal">Modal (blocking)</option>
+                <option value="banner">Banner (top scrolling)</option>
+              </select>
+            </FieldLabel>
+
+            <FieldLabel label="Audience" T={T}>
+              <select
+                className="bs-notif-input"
+                style={IS}
+                value={form.audience || "all"}
+                onChange={e => setForm(f => ({ ...f, audience: e.target.value }))}
+              >
+                <option value="all">All users</option>
+                <option value="users">Users only</option>
+                <option value="admins">Admins only</option>
+              </select>
+            </FieldLabel>
+          </div>
+
+          <div style={{ marginBottom: 14 }}>
+            <FieldLabel label="Title (optional)" T={T}>
+              <input
+                className="bs-notif-input"
+                style={IS}
+                value={form.title}
+                onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                placeholder="e.g. New partner added"
+              />
+            </FieldLabel>
+          </div>
+
+          <div style={{ marginBottom: 8 }}>
+            <FieldLabel label="Message" T={T}>
+              <textarea
+                className="bs-notif-input"
+                style={{
+                  ...IS,
+                  height: 96,
+                  padding: '10px 12px',
+                  resize: 'vertical',
+                  lineHeight: 1.6,
+                  fontFamily: 'Inter, sans-serif',
+                }}
+                value={form.message}
+                onChange={e => setForm(f => ({ ...f, message: e.target.value }))}
+                placeholder={form.steps?.length ? 'Ignored — steps will be shown instead' : 'What users will see'}
+                disabled={form.steps?.length > 0}
+              />
+            </FieldLabel>
+            {form.steps?.length > 0 && (
+              <div style={{ fontSize: 11, color: T.textMuted, marginTop: 6 }}>
+                Steps take precedence over message.
+              </div>
+            )}
+          </div>
+
+          {/* ——— STEPS ——— */}
+          <div style={{ height: 1, background: T.border, margin: '20px 0 16px' }} />
+
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: 12,
+          }}>
+            <div style={{ ...sectionLabel, marginBottom: 0 }}>
+              Steps {form.steps?.length ? `· ${form.steps.length}` : '(optional)'}
+            </div>
+          </div>
+
+          {form.steps?.map((step: any, i: number) => (
+            <div key={i} style={stepPanelStyle}>
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                marginBottom: 10,
+              }}>
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: 8,
+                  fontSize: 11,
+                  fontWeight: 600,
+                  color: T.textSecondary,
+                }}>
+                  <span style={{
+                    width: 20,
+                    height: 20,
+                    borderRadius: 999,
+                    background: 'rgba(var(--bs-accent-rgb), 0.15)',
+                    color: T.accent,
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: 10,
+                    fontWeight: 700,
+                  }}>{i + 1}</span>
+                  Step {i + 1}
+                </div>
+
+                <button
+                  className="bs-notif-step-remove"
+                  onClick={() => removeStep(i)}
+                  style={{
+                    background: 'transparent',
+                    border: `1px solid ${T.border}`,
+                    color: T.textMuted,
+                    fontSize: 11,
+                    fontWeight: 500,
+                    padding: '4px 10px',
+                    borderRadius: 999,
+                    cursor: 'pointer',
+                    transition: 'all 0.15s',
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <input
+                  className="bs-notif-input"
+                  placeholder="Title"
+                  value={step.title}
+                  onChange={e => updateStep(i, 'title', e.target.value)}
+                  style={IS}
+                />
+                <input
+                  className="bs-notif-input"
+                  placeholder="Message"
+                  value={step.message}
+                  onChange={e => updateStep(i, 'message', e.target.value)}
+                  style={IS}
+                />
+                <input
+                  className="bs-notif-input"
+                  placeholder="Image URL (optional)"
+                  value={step.image_url}
+                  onChange={e => updateStep(i, 'image_url', e.target.value)}
+                  style={IS}
+                />
+              </div>
+            </div>
+          ))}
+
+          <button
+            className="bs-notif-add-step"
+            onClick={addStep}
+            style={{
+              width: '100%',
+              height: 40,
+              background: 'transparent',
+              border: `1px dashed ${T.border}`,
+              borderRadius: 10,
+              color: T.textSecondary,
+              fontSize: 13,
+              fontWeight: 500,
+              cursor: 'pointer',
+              transition: 'all 0.15s',
+              marginTop: form.steps?.length ? 4 : 0,
+            }}
+          >
+            + Add Step
+          </button>
+
+          {/* ——— MEDIA ——— */}
+          <div style={{ height: 1, background: T.border, margin: '24px 0 16px' }} />
+
+          <div style={sectionLabel}>Media</div>
+
+          <div style={{ marginBottom: 12 }}>
+            <FieldLabel label="Image URL (optional)" T={T}>
+              <input
+                className="bs-notif-input"
+                style={IS}
+                value={form.image_url}
+                onChange={e => setForm(f => ({ ...f, image_url: e.target.value }))}
+                placeholder="https://..."
+              />
+            </FieldLabel>
+          </div>
+
+          <div style={{ marginBottom: 4 }}>
+            <FieldLabel label="Image Position" T={T}>
+              <div style={{
+                display: 'flex',
+                gap: 4,
+                background: T.elevated,
+                border: `1px solid ${T.border}`,
+                borderRadius: 999,
+                padding: 4,
+              }}>
+                {['top', 'left', 'right'].map(pos => {
+                  const active = form.image_position === pos
+                  return (
+                    <button
+                      key={pos}
+                      onClick={() => setForm(f => ({ ...f, image_position: pos }))}
+                      style={{
+                        flex: 1,
+                        height: 32,
+                        borderRadius: 999,
+                        border: 'none',
+                        background: active ? T.accent : 'transparent',
+                        color: active ? '#fff' : T.text,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        textTransform: 'capitalize',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {pos}
+                    </button>
+                  )
+                })}
+              </div>
+            </FieldLabel>
+          </div>
+
+          {/* ——— SCHEDULING ——— */}
+          <div style={{ height: 1, background: T.border, margin: '24px 0 16px' }} />
+
+          <div style={sectionLabel}>Scheduling</div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 4 }}>
+            <FieldLabel label="Schedule (optional)" T={T}>
+              <input
+                className="bs-notif-input"
+                type="datetime-local"
+                style={{ ...IS, colorScheme: 'dark' }}
+                value={form.scheduled_for}
+                onChange={e => setForm(f => ({ ...f, scheduled_for: e.target.value }))}
+              />
+            </FieldLabel>
+
+            <FieldLabel label="Expiry (optional)" T={T}>
+              <input
+                className="bs-notif-input"
+                type="datetime-local"
+                style={{ ...IS, colorScheme: 'dark' }}
+                value={form.expires_at || ""}
+                onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))}
+              />
+            </FieldLabel>
+          </div>
+
+          {/* ——— SEND ——— */}
+          <div style={{ marginTop: 24, display: 'flex', gap: 10 }}>
+            {editingId && (
+              <button
+                onClick={cancelEdit}
+                disabled={sending}
+                style={{
+                  flex: '0 0 auto',
+                  height: 44,
+                  padding: '0 22px',
+                  background: 'transparent',
+                  color: T.textSecondary,
+                  border: `1px solid ${T.border}`,
+                  borderRadius: 10,
+                  fontSize: 14,
+                  fontWeight: 600,
+                  cursor: sending ? 'not-allowed' : 'pointer',
+                  opacity: sending ? 0.6 : 1,
+                }}
+              >
+                Cancel
+              </button>
+            )}
+            <button
+              onClick={send}
+              disabled={sending}
+              style={{
+                flex: 1,
+                height: 44,
+                background: T.accent,
+                color: '#fff',
+                border: 'none',
+                borderRadius: 10,
+                fontSize: 14,
+                fontWeight: 600,
+                cursor: sending ? 'not-allowed' : 'pointer',
+                opacity: sending ? 0.6 : 1,
+                transition: 'opacity 0.15s',
+                letterSpacing: '0.01em',
+              }}
+            >
+              {sending
+                ? (editingId ? 'Saving…' : 'Sending…')
+                : (editingId ? 'Save Changes' : 'Send Notification')}
+            </button>
+          </div>
+        </Card>
+      </div>
+
+      {/* ============================================================ */}
+      {/* RIGHT COLUMN — PREVIEW + HISTORY                             */}
+      {/* ============================================================ */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+        {/* Live preview */}
+        <Card T={T} title="Live Preview">
+          <div style={sectionLabel}>How it will appear</div>
+
+          <div style={{
+            background: T.bg,
+            border: `1px solid ${T.border}`,
+            borderRadius: 12,
+            padding: 20,
+            minHeight: 160,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}>
+            {form.type === 'toast' && (
+              <div style={{
+                width: '100%',
+                maxWidth: 320,
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 12,
+                padding: '12px 14px',
+                boxShadow: '0 8px 28px rgba(0,0,0,0.32)',
+                display: 'flex',
+                alignItems: 'flex-start',
+                gap: 10,
+              }}>
+                <div style={{
+                  width: 8,
+                  height: 8,
+                  borderRadius: 999,
+                  background: T.accent,
+                  marginTop: 6,
+                  flexShrink: 0,
+                }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  {form.title && (
+                    <div style={{ fontSize: 13, fontWeight: 600, color: T.text, marginBottom: 2 }}>
+                      {form.title}
+                    </div>
+                  )}
+                  <div style={{ fontSize: 12, color: T.textSecondary, lineHeight: 1.5 }}>
+                    {form.message || 'Toast preview…'}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {form.type === 'modal' && (
+              <div style={{
+                width: '100%',
+                maxWidth: 340,
+                background: T.card,
+                border: `1px solid ${T.border}`,
+                borderRadius: 16,
+                padding: 20,
+                boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+              }}>
+                <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 6 }}>
+                  {form.title || 'Modal Title'}
+                </div>
+                <div style={{ fontSize: 13, color: T.textSecondary, lineHeight: 1.6, marginBottom: 16 }}>
+                  {form.message || 'Modal message…'}
+                </div>
+                <div style={{
+                  height: 32,
+                  background: T.accent,
+                  borderRadius: 8,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: 12,
+                  fontWeight: 600,
+                  color: '#fff',
+                }}>
+                  Got it
+                </div>
+              </div>
+            )}
+
+            {form.type === 'banner' && (
+              <div style={{
+                width: '100%',
+                height: 36,
+                background: `rgba(var(--bs-accent-rgb), 0.12)`,
+                border: `1px solid rgba(var(--bs-accent-rgb), 0.25)`,
+                borderRadius: 8,
+                overflow: 'hidden',
+                display: 'flex',
+                alignItems: 'center',
+                fontSize: 12,
+                color: T.text,
+                fontWeight: 500,
+              }}>
+                <div className="bs-notif-marquee">
+                  {form.message || 'Scrolling banner message will appear here · ' }
+                </div>
+              </div>
+            )}
+          </div>
+
+          {(form.audience && form.audience !== 'all') || form.scheduled_for || form.expires_at ? (
+            <div style={{
+              marginTop: 12,
+              display: 'flex',
+              flexWrap: 'wrap',
+              gap: 6,
+            }}>
+              {form.audience && form.audience !== 'all' && (
+                <span style={{
+                  fontSize: 10,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: T.elevated,
+                  border: `1px solid ${T.border}`,
+                  color: T.textSecondary,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}>
+                  {form.audience}
+                </span>
+              )}
+              {form.scheduled_for && (
+                <span style={{
+                  fontSize: 10,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: `rgba(var(--bs-accent-rgb), 0.1)`,
+                  border: `1px solid rgba(var(--bs-accent-rgb), 0.22)`,
+                  color: T.accent,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}>
+                  Scheduled
+                </span>
+              )}
+              {form.expires_at && (
+                <span style={{
+                  fontSize: 10,
+                  padding: '3px 8px',
+                  borderRadius: 999,
+                  background: `rgba(var(--bs-warning-rgb), 0.1)`,
+                  border: `1px solid rgba(var(--bs-warning-rgb), 0.22)`,
+                  color: T.warning,
+                  fontWeight: 500,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                }}>
+                  Expires
+                </span>
+              )}
+            </div>
+          ) : null}
+        </Card>
+
+        {/* History */}
+        <Card T={T} title="History">
+          {list.length === 0 ? (
+            <div style={{
+              padding: '32px 16px',
+              textAlign: 'center',
+              fontSize: 13,
+              color: T.textMuted,
+            }}>
+              No notifications yet.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              {list.map((n, idx) => (
+                <div
+                  key={n.id}
+                  style={{
+                    padding: '14px 0',
+                    borderBottom: idx === list.length - 1 ? 'none' : `1px solid ${T.border}`,
+                    display: 'flex',
+                    gap: 14,
+                    alignItems: 'flex-start',
+                  }}
+                >
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 8,
+                      marginBottom: 6,
+                      flexWrap: 'wrap',
+                    }}>
+                      <span style={typeBadgeStyle(n.type)}>
+                        {n.type}
+                      </span>
+                      <span style={statusPillStyle(!!n.active)}>
+                        <span style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: 999,
+                          background: n.active ? T.success : T.textMuted,
+                        }} />
+                        {n.active ? 'Active' : 'Inactive'}
+                      </span>
+                    </div>
+
+                    {n.title && (
+                      <div style={{
+                        fontSize: 13,
+                        fontWeight: 600,
+                        color: T.text,
+                        marginBottom: 2,
+                        lineHeight: 1.4,
+                      }}>
+                        {n.title}
+                      </div>
+                    )}
+
+                    <div style={{
+                      fontSize: 13,
+                      color: T.textSecondary,
+                      lineHeight: 1.5,
+                      display: '-webkit-box',
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: 'vertical',
+                      overflow: 'hidden',
+                    }}>
+                      {n.message || (n.steps?.length ? `${n.steps.length} step${n.steps.length > 1 ? 's' : ''}` : '—')}
+                    </div>
+
+                    <div style={{
+                      fontSize: 11,
+                      color: T.textMuted,
+                      marginTop: 6,
+                    }}>
+                      {new Date(n.created_at).toLocaleString()}
+                    </div>
+                  </div>
+
+                  <div style={{
+                    flexShrink: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                    alignItems: 'stretch',
+                  }}>
+                    <button
+                      onClick={() => startEdit(n)}
+                      disabled={editingId === n.id}
+                      style={{
+                        height: 30,
+                        padding: '0 12px',
+                        background: editingId === n.id
+                          ? 'rgba(var(--bs-accent-rgb), 0.15)'
+                          : 'transparent',
+                        border: editingId === n.id
+                          ? '1px solid rgba(var(--bs-accent-rgb), 0.35)'
+                          : `1px solid ${T.border}`,
+                        borderRadius: 999,
+                        color: editingId === n.id ? T.accent : T.text,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: editingId === n.id ? 'default' : 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {editingId === n.id ? 'Editing…' : 'Edit'}
+                    </button>
+                    <button
+                      onClick={() => toggle(n.id, !n.active)}
+                      style={{
+                        height: 30,
+                        padding: '0 12px',
+                        background: 'transparent',
+                        border: `1px solid ${T.border}`,
+                        borderRadius: 999,
+                        color: n.active ? T.warning : T.success,
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s',
+                      }}
+                    >
+                      {n.active ? 'Deactivate' : 'Activate'}
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
     </div>
   )
 }

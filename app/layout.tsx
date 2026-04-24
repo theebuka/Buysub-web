@@ -1,7 +1,4 @@
 import { CSS_VARS } from '@/lib/constants';
-// import { usePathname } from "next/navigation"
-/* import Navbar from '../components/Navbar'
-import Footer from '../components/Footer' */
 import AppShell from '../components/AppShell'
 import { Toaster } from 'sonner';
 
@@ -11,8 +8,6 @@ export const metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  /* const pathname = usePathname()
-  const isAdmin = pathname.startsWith("/admin") */
 
   return (
     <html lang="en">
@@ -37,6 +32,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           @keyframes fadeIn { from{opacity:0} to{opacity:1} }
           .hide-scrollbar::-webkit-scrollbar { display:none }
           .hide-scrollbar { -ms-overflow-style:none; scrollbar-width:none }
+          @keyframes scroll {
+            from { transform: translateX(100%) }
+            to { transform: translateX(-100%) }
+          }
         `}} />
       </head>
       <body>
