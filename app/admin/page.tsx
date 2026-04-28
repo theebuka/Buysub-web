@@ -10,7 +10,15 @@ const ALL_CATEGORIES = ['all','music streaming','video streaming','security','ai
 // ── Types ──
 interface Stats { total_revenue: number; revenue_today: number; revenue_this_month: number; orders_total: number; orders_today: number; orders_pending_manual: number; orders_paid: number; orders_rejected_pending: number; products_active: number; products_total: number; customers_total: number; partners_pending: number; top_products: { name: string; slug: string; order_count: number; revenue: number }[]; recent_orders: any[]; revenue_by_day: { day: string; revenue: number; orders: number }[] }
 interface Order { id: string; order_ref: string; status: string; total_ngn: number; subtotal_ngn: number; discount_ngn: number; payment_method: string; currency: string; created_at: string; updated_at: string; customer_name: string|null; customer_email: string|null; customer_phone: string|null; notes: string|null; order_items?: any[] }
-interface Product { id: string; name: string; slug: string; category: string; tags: string; price_1m: number; price_3m: number; price_6m: number; price_1y: number; billing_type: string; stock_status: string; status: string; domain: string; short_description: string; description: string; featured: boolean; created_at: string; sort_order: number; image_url: string; category_tagline: string; billing_period: string }
+interface Product { id: string; name: string; slug: string; category: string; tags: string; price_1m: number; price_3m: number; price_6m: number; price_1y: number; billing_type: string; stock_status: string; status: string; domain: string; short_description: string; description: string; featured: boolean; created_at: string; sort_order: number; image_url: string; category_tagline: string; billing_period: string; whatsapp_group_url?: string
+  social_links?: {
+    telegram?: string
+    instagram?: string
+    twitter?: string
+    tiktok?: string
+    discord?: string
+    website?: string
+  } | null }
 interface Customer { id: string; name: string; email: string; phone: string; category: string; source: string; is_active: boolean; created_at: string }
 interface PartnerApp { id: string; legal_name: string; store_name: string; business_email: string; owner_name: string; owner_phone: string; status: string; payout_method: string; payout_frequency: string; state: string; lga: string; created_at: string; reviewer_notes: string|null; business_phone: string; address: string; cac_number: string|null; social_media: string|null; owner_email: string; gender: string|null; contact_method: string|null; bank_name: string|null; account_name: string|null; account_number: string|null; crypto_token: string|null; crypto_chain: string|null; wallet_address: string|null }
 interface Discount { id: string; code: string; type: string; value: number; active: boolean; min_order_ngn: number; max_uses: number|null; times_used: number; expires_at: string|null; active_from: string|null; max_discount_ngn: number|null; included_products: string|null; excluded_products: string|null; included_categories: string|null; excluded_categories: string|null; auto_apply: boolean; scope: string; exclusive: boolean; created_at: string }
@@ -187,6 +195,10 @@ function FieldLabel({ label, T, children }: { label: string; T: Theme; children:
 function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }: { T: Theme; form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
   const IS = inputStyle(T)
   const updateField = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }))
+  const sl = form.social_links || {}
+  const updateSocial = (k: string, v: string) => {
+    setForm((f: any) => ({ ...f, social_links: { ...(f.social_links || {}), [k]: v } }))
+  }
   return (
     <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, padding: '20px 24px', marginBottom: 14 }}>
       <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
@@ -206,6 +218,53 @@ function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }:
         <FieldLabel label="Price 3M (₦)" T={T}><input style={IS} type="number" value={form.price_3m || ''} onChange={e => updateField('price_3m', Number(e.target.value))} /></FieldLabel>
         <FieldLabel label="Price 6M (₦)" T={T}><input style={IS} type="number" value={form.price_6m || ''} onChange={e => updateField('price_6m', Number(e.target.value))} /></FieldLabel>
         <FieldLabel label="Price 1Y (₦)" T={T}><input style={IS} type="number" value={form.price_1y || ''} onChange={e => updateField('price_1y', Number(e.target.value))} /></FieldLabel>
+      </div>
+      {/* ── New: WhatsApp & Social Links ─────────────── */}
+      <div style={{
+        marginTop: 12, padding: '16px 18px',
+        background: T.elevated, border: `1px solid ${T.border}`, borderRadius: 12,
+      }}>
+        <div style={{
+          fontSize: 10, color: T.textMuted, textTransform: 'uppercase',
+          letterSpacing: '0.08em', fontWeight: 600, marginBottom: 12,
+        }}>
+          Product community links
+        </div>
+ 
+        <div style={{ marginBottom: 12 }}>
+          <FieldLabel label="WhatsApp Group URL" T={T}>
+            <input
+              style={IS}
+              value={form.whatsapp_group_url || ''}
+              onChange={e => setForm((f: any) => ({ ...f, whatsapp_group_url: e.target.value }))}
+              placeholder="https://chat.whatsapp.com/…"
+            />
+          </FieldLabel>
+          <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>
+            Shown in the order confirmation email and the admin WA approval message.
+          </div>
+        </div>
+ 
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+          <FieldLabel label="Telegram" T={T}>
+            <input style={IS} value={sl.telegram || ''} onChange={e => updateSocial('telegram', e.target.value)} placeholder="https://t.me/…" />
+          </FieldLabel>
+          <FieldLabel label="Discord" T={T}>
+            <input style={IS} value={sl.discord || ''} onChange={e => updateSocial('discord', e.target.value)} placeholder="https://discord.gg/…" />
+          </FieldLabel>
+          <FieldLabel label="Instagram" T={T}>
+            <input style={IS} value={sl.instagram || ''} onChange={e => updateSocial('instagram', e.target.value)} placeholder="https://instagram.com/…" />
+          </FieldLabel>
+          <FieldLabel label="Twitter / X" T={T}>
+            <input style={IS} value={sl.twitter || ''} onChange={e => updateSocial('twitter', e.target.value)} placeholder="https://x.com/…" />
+          </FieldLabel>
+          <FieldLabel label="TikTok" T={T}>
+            <input style={IS} value={sl.tiktok || ''} onChange={e => updateSocial('tiktok', e.target.value)} placeholder="https://tiktok.com/@…" />
+          </FieldLabel>
+          <FieldLabel label="Website" T={T}>
+            <input style={IS} value={sl.website || ''} onChange={e => updateSocial('website', e.target.value)} placeholder="https://…" />
+          </FieldLabel>
+        </div>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <FieldLabel label="Billing Type" T={T}><select style={IS} value={form.billing_type || 'subscription'} onChange={e => updateField('billing_type', e.target.value)}><option value="subscription">Subscription</option><option value="one_time">One-time</option></select></FieldLabel>
@@ -597,6 +656,8 @@ const EMPTY_PRODUCT = (): Partial<Product> & { [k: string]: any } => ({
   featured: false,
   sort_order: 100,
   image_url: '',
+  whatsapp_group_url: '',
+  social_links: { telegram: '', instagram: '', twitter: '', tiktok: '', discord: '', website: '' },
 })
 
 function ProductsTab({ T }: { T: Theme }) {

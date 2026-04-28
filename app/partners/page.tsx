@@ -31,6 +31,8 @@ const INITIAL_FORM = {
   bank: '', accountName: '', accountNumber: '',
   token: '', chain: '', wallet: '',
   amlAccepted: false, privacyAccepted: false, termsAccepted: false,
+  password: '',
+  passwordConfirm: '',
 }
 
 /* ===============================================================
@@ -55,7 +57,7 @@ const formatHandle = (v: string) => {
   return `@${v}`
 }
 
-const STEP_LABELS = ['Business Details', 'Owner Info', 'Payment & Terms']
+const STEP_LABELS = ['Business Details', 'Owner Info', 'Payment & Terms', 'Account']
 
 /* ===============================================================
    TERMS & CONDITIONS
@@ -166,6 +168,10 @@ export default function PartnerSignupForm() {
     if (!f.amlAccepted) e.amlAccepted = 'Required'
     if (!f.privacyAccepted) e.privacyAccepted = 'Required'
     if (!f.termsAccepted) e.termsAccepted = 'Required'
+    if (!f.password) e.password = 'Required'
+    else if (f.password.length < 8) e.password = 'At least 8 characters'
+    if (!f.passwordConfirm) e.passwordConfirm = 'Required'
+    else if (f.passwordConfirm !== f.password) e.passwordConfirm = 'Passwords do not match'
     return e
   }
 
@@ -175,6 +181,7 @@ export default function PartnerSignupForm() {
     if (s === 1) return ['legalName', 'storeName', 'address', 'lga', 'state', 'businessPhone', 'businessEmail', 'cac', 'alternatePhone']
     if (s === 2) return ['fullName', 'contactEmail', 'contactPhone', 'gender', 'contactMethod']
     if (s === 3) return ['payoutFrequency', 'payoutMethod', 'bank', 'accountName', 'accountNumber', 'token', 'chain', 'wallet', 'amlAccepted', 'privacyAccepted', 'termsAccepted']
+    if (s === 4) return ['password', 'passwordConfirm']
     return []
   }
 
@@ -229,6 +236,7 @@ export default function PartnerSignupForm() {
       aml_accepted: form.amlAccepted,
       privacy_accepted: form.privacyAccepted,
       terms_accepted: form.termsAccepted,
+      password: form.password,
     }
 
     try {
@@ -245,7 +253,11 @@ export default function PartnerSignupForm() {
       setSubmitResult('success')
     } catch (error: any) {
       console.error(error)
-      setSubmitError(error.message || 'An unexpected error occurred.')
+      if (error.message?.includes('already exists') || error.message?.includes('409')) {
+        setSubmitError('An account already exists for this email. Please log in or use a different email.')
+      } else {
+        setSubmitError(error.message || 'An unexpected error occurred.')
+      }
       setSubmitResult('error')
     } finally {
       setIsSubmitting(false)
@@ -274,7 +286,9 @@ export default function PartnerSignupForm() {
             Application submitted
           </div>
           <div style={{ fontSize: 14, color: 'var(--bs-text-secondary, #a0a0b0)', lineHeight: 1.7 }}>
-            Thanks, {submittedName}. Your partner application is under review. We'll reach out within 3–5 business days via your preferred contact method.
+            Thanks, {submittedName}. Your partner application is under review.
+            We'll reach out within 3–5 business days.
+            Once approved, you can log in at <a href="/login" style={{ color: '#7C5CFF' }}>app.buysub.ng/login</a>.
           </div>
           <div style={{ marginTop: 32, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
@@ -313,8 +327,8 @@ export default function PartnerSignupForm() {
   }
 
   /* ───────────────────────── FORM ───────────────────────── */
-  const stepTitle = ['Business details', 'Owner information', 'Payment & compliance'][step - 1]
-  const stepEyebrow = ['Business Information', 'Personal Information', 'Payout Configuration'][step - 1]
+  const stepTitle = ['Business details', 'Owner information', 'Payment & compliance', 'Account access'][step - 1]
+  const stepEyebrow = ['Business Information', 'Personal Information', 'Payout Configuration', 'Login Credentials'][step - 1]
 
   return (
     <SplitLayout>
@@ -546,9 +560,45 @@ export default function PartnerSignupForm() {
         </FormStack>
       )}
 
+      {step === 4 && (
+        <FormStack>
+          <div style={{
+            padding: '14px 16px', borderRadius: 10,
+            background: 'rgba(124,92,255,0.08)',
+            border: '1px solid rgba(124,92,255,0.25)',
+            fontSize: 13, color: 'var(--bs-text-secondary, #a0a0b0)', lineHeight: 1.6,
+          }}>
+            Set a password so you can log in to your partner dashboard
+            once your application is approved. You'll use <strong style={{ color: 'var(--bs-text-primary, #e8e8ec)' }}>{form.contactEmail || 'your email'}</strong> to sign in.
+          </div>
+      
+          <Field label="Choose a password *" error={touched.password && errors.password}>
+            <BsInput
+              type="password"
+              value={form.password}
+              onChange={(v: string) => update('password', v)}
+              onBlur={() => blur('password')}
+              placeholder="At least 8 characters"
+              invalid={!!(touched.password && errors.password)}
+            />
+          </Field>
+      
+          <Field label="Confirm password *" error={touched.passwordConfirm && errors.passwordConfirm}>
+            <BsInput
+              type="password"
+              value={form.passwordConfirm}
+              onChange={(v: string) => update('passwordConfirm', v)}
+              onBlur={() => blur('passwordConfirm')}
+              placeholder="Type it again"
+              invalid={!!(touched.passwordConfirm && errors.passwordConfirm)}
+            />
+          </Field>
+        </FormStack>
+      )}
+
       {/* Footer */}
       <div style={{ marginTop: 36 }}>
-        {step < 3 ? (
+        {step < 4 ? (
           <button style={{ ...S.btnCta, opacity: isCurrentStepValid ? 1 : 0.5, cursor: isCurrentStepValid ? 'pointer' : 'not-allowed' }}
             onClick={next} disabled={!isCurrentStepValid}>
             Continue <span style={{ marginLeft: 6 }}>→</span>
