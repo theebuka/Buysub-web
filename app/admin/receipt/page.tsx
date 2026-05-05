@@ -66,6 +66,7 @@ interface Product {
   tags: string
   isOutright: boolean
   prices: Record<string, number>
+  whatsapp_group_url?: string
 }
 
 interface Customer {
@@ -77,7 +78,7 @@ interface Customer {
 
 interface LineItem {
   id: string; productId: string; name: string; category: string; tags: string
-  period: string; isOutright: boolean; qty: number; unitPriceNGN: number; override: string
+  period: string; isOutright: boolean; qty: number; unitPriceNGN: number; override: string; whatsapp_group_url?: string
 }
 
 interface DiscountResult { code: string; type: string; value: number; display: string; amountNGN: number }
@@ -134,6 +135,7 @@ const loadProducts = async (): Promise<Product[]> => {
     category: p.category || '',
     tags: p.tags || '',
     isOutright: p.billing_type === 'One-time',
+    whatsapp_group_url: p.whatsapp_group_url || '',
     prices: {
       Monthly: Number(p.price_1m) || 0,
       Quarterly: Number(p.price_3m) || 0,
@@ -517,6 +519,7 @@ export default function ReceiptGenerator() {
   const emptyItem = (): LineItem => ({
     id: uid(), productId: '', name: '', category: '', tags: '',
     period: 'Annual', isOutright: false, qty: 1, unitPriceNGN: 0, override: '',
+    whatsapp_group_url: '',
   })
   const [items, setItems] = useState<LineItem[]>([emptyItem()])
   const setItem = (id: string, patch: Partial<LineItem>) =>
@@ -558,6 +561,7 @@ export default function ReceiptGenerator() {
             qty: oi.quantity || 1,
             unitPriceNGN: oi.unit_price_ngn || 0,
             override: '',
+            whatsapp_group_url: oi.whatsapp_group_url || '',
           }))
           setItems(orderItems)
         }
@@ -574,12 +578,13 @@ export default function ReceiptGenerator() {
   }, [])
 
   const onProductSelect = (itemId: string, product: Product | null) => {
-    if (!product) { setItem(itemId, { productId: '', name: '', category: '', tags: '', unitPriceNGN: 0, override: '' }); return }
+    if (!product) { setItem(itemId, { productId: '', name: '', category: '', tags: '', unitPriceNGN: 0, override: '', whatsapp_group_url: '' }); return }
     const period = product.isOutright ? 'One-time' : 'Annual'
     setItem(itemId, {
       productId: product.id, name: product.name, category: product.category,
       tags: product.tags, isOutright: product.isOutright, period,
       unitPriceNGN: product.prices[period] || 0, override: '',
+      whatsapp_group_url: product.whatsapp_group_url || '',
     })
   }
 
@@ -648,8 +653,28 @@ export default function ReceiptGenerator() {
     try { await buildPDF(payload()); setGenerated(true) } catch (e) { console.error(e) }
     finally { setGenerating(false) }
     const wa = toWAPhone(custPhone)
-    const msg = `Thank you for your purchase${custName ? ', ' + custName.split(' ')[0] : ''}. [additional instructions]\n\nYour order reference is *${orderRef}* — please find your receipt attached.\nFor any questions, reply here or email ${BUYSUB_EMAIL}.`
+    /* const msg = `Thank you for your purchase${custName ? ', ' + custName.split(' ')[0] : ''}. [additional instructions]\n\nYour order reference is *${orderRef}* — please find your receipt attached.\nFor any questions, reply here or email ${BUYSUB_EMAIL}.` */
+    const links = items
+      .map((it: LineItem) => {
+        const productLink = products.find(p => p.id === it.productId)?.whatsapp_group_url
+        const link = (it.whatsapp_group_url || productLink || '').trim()
+        if (!link) return null
+        return { name: it.name || 'Product', url: link }
+      })
+      .filter((link): link is { name: string; url: string } => link !== null)
+
+    // const socialText = `Follow us on ${settings?.instagram || ''} | ${settings?.facebook || ''} | ${settings?.x || ''} | ${settings?.tiktok || ''}`
+    const linksText = links.length
+      ? `Please follow the link${links.length > 1 ? 's' : ''} below to join the BuySub community${links.length > 1 ? ' groups' : ''} on WhatsApp for complaint resolution, updates and other important information concerning your subscription:
+
+    ${links.map(l => `• ${l.name}: ${l.url}`).join('\n')}
+    `
+      : ''
+
+    const msg = `Thank you for your purchase${custName ? ', ' + custName.split(' ')[0] : ''}.\n\nYour order reference is *${orderRef}* — please find your receipt attached.\n\nYou will receive login credentials or access instructions for your purchased product(s) here or via email in under 48 hours, usually much sooner.\n\n${linksText}\n\nFor any questions, reply here or email ${BUYSUB_EMAIL}.`
+
     window.open(`https://wa.me/${wa}?text=${encodeURIComponent(msg)}`, '_blank', 'noopener,noreferrer')
+    
     setWaSent(true)
   }
 
@@ -712,7 +737,7 @@ export default function ReceiptGenerator() {
                     id: uid(), productId: oi.product_id || '', name: oi.product_name || '',
                     category: oi.category || '', tags: '', period: oi.billing_period || 'Annual',
                     isOutright: oi.billing_period === 'One-time', qty: oi.quantity || 1,
-                    unitPriceNGN: oi.unit_price_ngn || 0, override: '',
+                    unitPriceNGN: oi.unit_price_ngn || 0, override: '', whatsapp_group_url: oi.whatsapp_group_url || '',
                   }))
                   setItems(orderItems)
                 }
