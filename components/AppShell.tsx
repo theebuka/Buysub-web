@@ -11,7 +11,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const [banner, setBanner] = useState<any>(null)
   const pathname = usePathname()
   const isAdmin = pathname.startsWith("/admin")
-  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners")
+  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard")
   const [stepIndex, setStepIndex] = useState(0)
 
   useEffect(() => {

@@ -32,6 +32,28 @@ const getParam = (key: string, fallback: any) => {
 
 const FX_MODE = "static" as string;
 
+function readSessionForShop(): { name: string; email: string; phone: string } | null {
+    try {
+      for (const key of Object.keys(localStorage)) {
+        if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+          const s = JSON.parse(localStorage.getItem(key) || '{}')
+          if (s?.access_token && s?.user) {
+            if (s.expires_at && s.expires_at * 1000 < Date.now()) {
+              localStorage.removeItem(key)
+              return null
+            }
+            return {
+              email: s.user.email || '',
+              name:  '',   // will be fetched from /v2/me
+              phone: '',
+            }
+          }
+        }
+      }
+    } catch {}
+    return null
+  }
+
 /* ===============================================================
    DISCOUNT FETCH HELPERS
 =============================================================== */
@@ -112,6 +134,45 @@ export default function Marketplace() {
         phone: ""
       })
     const [emailError, setEmailError] = useState("")
+
+    // Pre-fill customer fields from session
+    useEffect(() => {
+        if (!mounted) return
+        const session = readSessionForShop()
+        if (!session) return
+    
+        // Set email immediately from token
+        setCustomer(prev => ({
+        ...prev,
+        email: prev.email || session.email,
+        }))
+    
+        // Fetch full profile for name + phone
+        fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'}/v2/me`, {
+        headers: { Authorization: `Bearer ${((): string => {
+            try {
+            for (const key of Object.keys(localStorage)) {
+                if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+                const s = JSON.parse(localStorage.getItem(key) || '{}')
+                if (s?.access_token) return s.access_token
+                }
+            }
+            } catch {}
+            return ''
+        })()}` },
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data?.ok && data?.data) {
+            setCustomer(prev => ({
+                email: prev.email || data.data.email || '',
+                name:  prev.name  || data.data.full_name || '',
+                phone: prev.phone || data.data.phone || '',
+            }))
+            }
+        })
+        .catch(() => {})
+    }, [mounted])
 
     const fxRate =
         FX_MODE === "live" && liveFX
@@ -1771,7 +1832,7 @@ export default function Marketplace() {
                                 </div>
 
                                 <div style={{ padding: "20px 24px", borderTop: "1px solid #1C1C1F", flexShrink: 0 }}>
-                                    <label style={{ fontSize: 12, color: "var(--bs-text-secondary)", display: "block", marginBottom: 8 }}>Your details</label>
+                                    <SessionCheckoutHeader />
 
                                     <input
                                     placeholder="Full name"
@@ -1852,6 +1913,70 @@ export default function Marketplace() {
         </div>
     )
 }
+
+function SessionCheckoutHeader() {
+    const [isLoggedIn, setIsLoggedIn] = useState(false)
+    const [mounted, setMounted] = useState(false)
+   
+    useEffect(() => {
+      setMounted(true)
+      try {
+        for (const key of Object.keys(localStorage)) {
+          if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
+            const s = JSON.parse(localStorage.getItem(key) || '{}')
+            if (s?.access_token) { setIsLoggedIn(true); return }
+          }
+        }
+      } catch {}
+    }, [])
+   
+    if (!mounted) return (
+      <label style={{ fontSize: 12, color: "var(--bs-text-secondary)", display: "block", marginBottom: 8 }}>
+        Your details
+      </label>
+    )
+   
+    if (isLoggedIn) return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8,
+        marginBottom: 12, padding: '8px 12px',
+        background: 'rgba(22,163,74,0.08)',
+        border: '1px solid rgba(22,163,74,0.18)',
+        borderRadius: 10,
+      }}>
+        <span style={{ fontSize: 14 }}>✓</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, color: '#16a34a', fontWeight: 600 }}>Signed in</div>
+          <div style={{ fontSize: 11, color: 'var(--bs-text-muted)' }}>Your details are pre-filled from your account</div>
+        </div>
+      </div>
+    )
+   
+    return (
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ fontSize: 12, color: "var(--bs-text-secondary)", display: "block", marginBottom: 8 }}>
+          Your details
+        </label>
+        <div style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: '8px 12px', marginBottom: 10,
+          background: 'var(--bs-bg-elevated)',
+          border: '1px solid var(--bs-border-default)',
+          borderRadius: 10,
+        }}>
+          <span style={{ fontSize: 12, color: 'var(--bs-text-muted)' }}>
+            Have an account? Save your details.
+          </span>
+          <a href="/login" style={{
+            fontSize: 12, fontWeight: 600, color: '#7C5CFF',
+            textDecoration: 'none', flexShrink: 0, marginLeft: 8,
+          }}>
+            Sign in →
+          </a>
+        </div>
+      </div>
+    )
+  }
 
 /* ===============================================================
    SMALL COMPONENTS
