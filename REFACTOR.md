@@ -13,7 +13,7 @@ Read this file first in any session. Update it before finishing.
 
 ## Phases
 - [x] 0. Token layer in lib/constants.ts (CSS_VARS)
-- [ ] 1. app/login/page.tsx
+- [x] 1. app/login/page.tsx
 - [ ] 2. app/dashboard/page.tsx
 - [ ] 3. app/partners/page.tsx
 - [ ] 4. app/partners/dashboard/page.tsx
@@ -132,7 +132,62 @@ that re-runs the script.
 - AppShell.tsx:21 hardcodes the production Workers URL instead of using the env
   var.
 - Lifting the /shop theme exclusion is blocked on Marketplace.tsx becoming
-  editable (see Theme mechanism above).
+  editable (see Theme mechanism above). Confirmed concretely in Phase 1: forcing
+  data-theme="light" on /shop turns the product card white while its #1C1C1F
+  border stays dark and the segmented-control text stays white-on-white.
+- app/login/page.tsx links to /terms and /privacy. Neither route exists (app/
+  has only admin, dashboard, login, order/verify, partners, shop), so both 404.
+  Footer.tsx uses absolute buysub.ng URLs for the same destinations. Changing an
+  href is a behaviour change, so it is logged, not fixed.
+- login's session-check effect calls redirectByRole with the loginType captured
+  on first render, so a returning user with a live session is always routed as
+  `customer` regardless of which tab they would have picked.
+
+### Phase 1 — login, and two AppShell mechanism changes
+`app/login/page.tsx` is the first surface on the token layer. `T_DARK`/`T_LIGHT`
+and the `ACCENT` literal are gone; all colour comes from CSS vars, and the theme
+comes from `useTheme()`.
+
+**`/login` joined `isNoShell`.** It is a standalone auth page with its own theme
+toggle and its own centred full-height layout, so the navbar and footer doubled
+up on both — login's toggle and Navbar's were rendering stacked on the exact
+same fixed coordinates. **Phase 11 must not revert this.** A "Back to shop" link
+on the page replaces the navbar's only unique affordance.
+
+**The Footer gate was `!isAdmin`, now `!isNoShell`.** The old condition let the
+footer render on `/partners` and `/dashboard` even though both are no-shell
+routes, contradicting what CLAUDE.md always described. Fixing it for `/login`
+without fixing it generally would have meant adding a second special case beside
+a list that exists for exactly this. Side effect: `/partners` and `/dashboard`
+lose their footer now rather than in their own phases. `/shop` keeps it.
+
+**AppShell now syncs `data-theme` on every pathname change**
+(`syncThemeToRoute` in `lib/theme.ts`). The pre-paint script in `app/layout.tsx`
+only runs on a full document load. Today every navigation is one — there is no
+`next/link`, no `useRouter`, no `router.push` anywhere — so the `/shop`
+exclusion held, but only because of an invariant nothing enforced. AppShell is
+mounted on every route and tracks the pathname, so the exclusion now holds under
+client-side navigation too if it is ever introduced. Caveat: `useEffect` runs
+after paint, so a future client transition into `/shop` would show one frame
+with the attribute still set; `useLayoutEffect` would remove that frame but
+warns during SSR.
+
+Login specifics: 8 emoji replaced with inline stroke SVGs at module level
+following Marketplace's `CartIcon` house style (no new dependency); the two
+ambient radial-gradient blobs deleted along with their off-palette
+`rgba(99,180,255,…)`; the invalid in-body `@import` and the duplicated global
+reset deleted; uppercase tracked micro-labels replaced with sentence-case
+labels; role tabs use accent tint only at 0.15 fill / 0.45 border, up from an
+effective 0.08, with the off-palette blue and amber `grad` values removed;
+`autoFocus` is desktop-only so it stops popping the keyboard on load at 360px.
+
+Measured at a true 360×740: no horizontal overflow, and every interactive
+element is ≥44px except the two inline legal links inside a sentence, which are
+the standard inline-text exception. The page scrolls 147px, but the whole
+primary path — role selector, email, password, Sign in — sits above the fold
+with the Sign in button ending at 672 of 740, with a notification banner
+present. Only the secondary "Create an account" and the legal line need a
+scroll.
 
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
@@ -153,3 +208,10 @@ that re-runs the script.
   a global prefers-reduced-motion rule. New lib/theme.ts, pre-paint script in
   app/layout.tsx scoped away from /shop, `T` token-reference export for inline
   styles. No page or component touched. tsc + build pass.
+- 2026-08-03 — Phase 1. app/login/page.tsx on the token layer: T_DARK/T_LIGHT
+  and ACCENT retired, useTheme() adopted, customer density applied, 8 emoji
+  replaced with module-level inline SVGs, ambient glows and the invalid @import
+  removed, real first-paint / error / forgot-sent states, focus rings on the
+  --bs-ring token. AppShell: /login added to isNoShell, Footer gate corrected
+  from !isAdmin to !isNoShell, and syncThemeToRoute wired to pathname changes.
+  tsc + build pass; verified at a true 360×740 and in both themes.

@@ -5,14 +5,24 @@ import { usePathname } from "next/navigation"
 import Navbar from "./Navbar"
 import Footer from "./Footer"
 import { toast } from "sonner"
+import { syncThemeToRoute } from "@/lib/theme"
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const [modal, setModal] = useState<any>(null)
     const [banner, setBanner] = useState<any>(null)
   const pathname = usePathname()
   const isAdmin = pathname.startsWith("/admin")
-  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard")
+  // /login is a standalone auth page: it has its own theme toggle and its own
+  // centred full-height layout, so the navbar and footer would double up on
+  // both. Phase 11 must not remove it from this list — see REFACTOR.md.
+  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard") || pathname.startsWith("/login")
   const [stepIndex, setStepIndex] = useState(0)
+
+  // Keeps data-theme correct for the current route. The pre-paint script in
+  // app/layout.tsx only runs on a full document load; this covers every route
+  // change, so the /shop exclusion cannot leak into the storefront even if
+  // client-side navigation is introduced later. See lib/theme.ts.
+  useEffect(() => { syncThemeToRoute(pathname) }, [pathname])
 
   useEffect(() => {
     let seenCache = new Set<string>()
@@ -246,7 +256,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   })()
 )}
 
-      {!isAdmin && <Footer />}
+      {/* isNoShell means no chrome at all. This was `!isAdmin`, which let the
+          footer render on /partners and /dashboard despite them being in the
+          no-shell list — see the isNoShell description in CLAUDE.md. */}
+      {!isNoShell && <Footer />}
     </>
   )
 }

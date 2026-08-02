@@ -41,7 +41,7 @@ The big files are structured internally by section-comment banners and module-le
 
 `app/layout.tsx` is the only server component. It injects `CSS_VARS` from `lib/constants.ts` plus a global reset via `dangerouslySetInnerHTML`, loads Inter from Google Fonts, mounts `<Toaster>` (sonner), and injects the Tawk.to live-chat script.
 
-`components/AppShell.tsx` wraps all children and decides chrome by pathname: `/admin`, `/partners`, and `/dashboard` render **without** Navbar/Footer (`isNoShell`); `/admin` also hides the Footer. It additionally polls `GET /v2/notifications` every 15s and renders toast / banner / multi-step modal notifications, filtered by `audience` (`users` vs `admins`) and de-duplicated via `localStorage` keys `notif_<id>`.
+`components/AppShell.tsx` wraps all children and decides chrome by pathname: `/admin`, `/partners`, `/dashboard`, and `/login` render **without** Navbar or Footer (`isNoShell`). Both are gated on the same flag — the Footer used to be gated on `!isAdmin`, which let it render on `/partners` and `/dashboard` despite those being no-shell routes. It also syncs `data-theme` to the route on every pathname change (see Styling below). It additionally polls `GET /v2/notifications` every 15s and renders toast / banner / multi-step modal notifications, filtered by `audience` (`users` vs `admins`) and de-duplicated via `localStorage` keys `notif_<id>`.
 
 ### Auth
 

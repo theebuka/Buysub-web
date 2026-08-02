@@ -40,10 +40,10 @@ function readStoredTheme(): ThemeName {
   }
 }
 
-function applyTheme(theme: ThemeName) {
+function applyTheme(theme: ThemeName, pathname: string) {
   try {
     const root = document.documentElement
-    if (theme === 'light' && isThemeableRoute(window.location.pathname)) {
+    if (theme === 'light' && isThemeableRoute(pathname)) {
       root.setAttribute('data-theme', 'light')
     } else {
       root.removeAttribute('data-theme')
@@ -51,6 +51,22 @@ function applyTheme(theme: ThemeName) {
   } catch {
     /* non-browser or locked-down environment */
   }
+}
+
+/**
+ * Re-asserts the theme attribute for a route. Called by AppShell on every
+ * pathname change.
+ *
+ * The pre-paint script in app/layout.tsx only runs on a full document load.
+ * Today every navigation in this app is one — there is no next/link, no
+ * useRouter, and no router.push anywhere, so raw <a href> tears the document
+ * down each time. But the /shop exclusion protects a file we cannot edit, and
+ * resting it on "nobody ever adds next/link" is not a guard. AppShell is
+ * mounted on every route and tracks the pathname, so it enforces the invariant
+ * whether navigation is a full load or a client transition.
+ */
+export function syncThemeToRoute(pathname: string) {
+  applyTheme(readStoredTheme(), pathname)
 }
 
 /**
@@ -67,7 +83,7 @@ export function useTheme() {
   useEffect(() => {
     const stored = readStoredTheme()
     setTheme(stored)
-    applyTheme(stored)
+    applyTheme(stored, window.location.pathname)
     setMounted(true)
   }, [])
 
@@ -79,7 +95,7 @@ export function useTheme() {
       } catch {
         /* storage unavailable — the attribute still applies for this session */
       }
-      applyTheme(next)
+      applyTheme(next, window.location.pathname)
       return next
     })
   }, [])
