@@ -12,7 +12,7 @@ Read this file first in any session. Update it before finishing.
 - Bugs found go in "Deferred" below. Do not fix them.
 
 ## Phases
-- [ ] 0. Token layer in lib/constants.ts (CSS_VARS)
+- [x] 0. Token layer in lib/constants.ts (CSS_VARS)
 - [ ] 1. app/login/page.tsx
 - [ ] 2. app/dashboard/page.tsx
 - [ ] 3. app/partners/page.tsx
@@ -30,13 +30,126 @@ Read this file first in any session. Update it before finishing.
 - [ ] 13. components/ShopAds.tsx
 
 ## Decisions made
-(record the token scale and any pattern choices here as they're made)
+
+### Scales (Phase 0, in CSS_VARS)
+- **Type — 8 steps, px, floor 11.** 2xs 11 / xs 12 / sm 13 / base 15 / lg 17 /
+  xl 20 / 2xl 24 / 3xl 32. Replaced 18 ad-hoc sizes. Nothing below 11: 9 and 10
+  are unreadable on a 360px Android. 14 is gone on purpose — it splits into
+  base 15 on customer surfaces and sm 13 in admin, which is where the density
+  difference lives.
+- **Weight — 4 steps.** 400 / 500 / 600 / 700, 800 dropped. 600 is the
+  workhorse for UI labels; 700 is reserved for prices, KPI numbers and page
+  titles, so it still reads as emphasis.
+- **Leading — 3 steps.** tight 1.2 display, snug 1.4 UI, relaxed 1.6 prose.
+- **Spacing — strict 4px grid, 8 steps.** 4/8/12/16/20/24/32/48. The old 6, 10,
+  14 and 18 map to their nearest step.
+- **Control height — 4 steps.** sm 32 / md 40 / lg 44 / xl 52. This is what
+  makes the 44px touch target enforceable rather than a thing to remember.
+- **Radius — 6 steps.** sm 6 / md 10 / lg 14 / xl 20 / 2xl 28 / full 999.
+  Taken from Marketplace's own values so the rest of the app inherits the
+  storefront's shape identity instead of inventing one.
+- **Elevation — 4 steps + accent glow + focus ring.** Dark separates by surface
+  and border, not shadow; elev-2 and up are only for things that genuinely
+  float. `--bs-ring` is new — there was no focus ring anywhere before.
+- **Motion — 3 durations, 2 easings.** 120/200/280ms, ease-out for entrances,
+  ease-inout for moves. Plus a global `prefers-reduced-motion` block, which
+  there was none of before.
+
+### Density (same tokens, different steps)
+Customer surfaces are mobile-first at 360px; admin is desktop-first at 1440px
+and dense. They share the token layer and differ only in which steps they use.
+
+| | Customer | Partner dashboard | Admin |
+|---|---|---|---|
+| Body | base 15 | sm 13 | sm 13 |
+| Secondary | xs 12 | xs 12 | 2xs 11 |
+| Controls | lg 44, CTA xl 52 | md 40, primary 44 | sm 32 / md 40 |
+| Block gap | space-4 / 6 | space-3 / 4 | space-2 / 3 |
+| Section gap | space-8 | space-6 | space-4 |
+| Card radius | xl 20 mobile / 2xl 28 desktop | lg 14 | lg 14 |
+
+Every interactive element on a customer surface is control-lg or taller.
+
+### Colour
+Palette unchanged, byte for byte. Three additions:
+- **`*-rgb` companions** for accent / success / error / warning / text-muted.
+  These were already referenced in ~40 places and never defined, so every
+  `rgba(var(--bs-…-rgb), α)` was an invalid declaration and rendered as
+  nothing. Defining them lit up admin's selected rows, invalid-field styling
+  and warning banners, plus 5 sites inside Marketplace.tsx, without editing it.
+- **`--bs-muted-rgb`** is a commented legacy alias for `--bs-text-muted-rgb`.
+  It mirrors text-muted, not bg-muted — admin:4683's own inline fallback of
+  `100,100,110` gives it away, and bg-muted #1A1A22 at α 0.2 over a dark card
+  would be invisible. The alias exists only because Marketplace.tsx:1389 uses
+  that spelling. Prefer the canonical name; delete the alias when Marketplace
+  is next edited.
+- **`--bs-accent-on-surface`** is accent-as-text: #7C5CFF in dark (unchanged),
+  #5B3FD4 in light, where plain #7C5CFF measures 4.0:1 on white and fails AA.
+  Fills, buttons and borders stay #7C5CFF in both themes. Text on an accent
+  fill stays #fff. Do not use this token on an accent background.
+
+Light theme is ported from admin's `light` object with two contrast fixes:
+text-muted #8896a6 (3.20:1) became #66717F (4.71:1), text-faint #b0bac5
+(1.9:1) became #7F8896 (3.40:1). text-faint is decorative and disabled use
+only, never for text a user has to read.
+
+### Theme mechanism
+`data-theme="light"` on `<html>`, set pre-paint by the inline script in
+app/layout.tsx and maintained by `useTheme()` in lib/theme.ts. Storage key and
+value shape are unchanged: a bare `'dark' | 'light'` string, read with
+`=== 'light'`, so absent or garbage means dark. System preference is ignored;
+dark is the product default.
+
+Per-file dark/light objects are **not** removed all at once. They are plain JS
+hex maps that never read a CSS var, so they keep working untouched and each one
+dies in its own phase.
+
+**`/shop` is never themed, and this is permanent.** components/Marketplace.tsx
+is dark-only by construction — 6 fixed #1C1C1F borders, unconditional
+`color:"#fff"` on the mobile period and currency controls (:910, :948),
+`rgba(0,0,0,0.65)` scrim, dark-only ProductLogo swatches, `theme=dark` in the
+logo.dev URL. CSS custom properties inherit into that file but its literals do
+not follow, so any `<html>`-level light theme renders the storefront half-light.
+Both the layout script and lib/theme.ts guard on the pathname. Lifting the guard
+requires editing Marketplace first.
+
+Route-scoping is safe here because there is no client-side navigation:
+app/page.tsx uses server-side `redirect()`, and there is no useRouter,
+router.push or next/link anywhere, so every route change is a full document load
+that re-runs the script.
 
 ## Deferred (logic/perf, do not fix now)
 - Duplicated fmt/fmtDate/statusColor across surfaces
 - Three divergent FX tables
 - Duplicated session-reading (readToken/readSession/getToken)
 - NEXT_PUBLIC_API_URL vs NEXT_PUBLIC_API_BASE split
+- Navbar.tsx:21 writes bs_admin_theme on toggle but never reads it on mount, so
+  the storefront toggle persists a value nothing acts on and resets to dark
+  every load. Behavioural, not visual.
+- ShopAds.tsx:102 rotates the banner carousel on a 6s setInterval. The global
+  reduced-motion CSS cannot stop a JS timer; this needs its own
+  `matchMedia('(prefers-reduced-motion: reduce)')` guard in Phase 13.
+- AppShell.tsx:21 hardcodes the production Workers URL instead of using the env
+  var.
+- Lifting the /shop theme exclusion is blocked on Marketplace.tsx becoming
+  editable (see Theme mechanism above).
+
+## Seams to watch
+- After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
+  keeps its existing styling on the same page. Check it visually before
+  committing that phase. Phase 0 narrows the gap rather than widening it: the
+  radius scale comes from Marketplace's own cardStyle, and the -rgb companions
+  restore the drawer's intended tints.
+- Navbar.tsx:35 references `var(--bs-bg-primary)`, which does not exist and is
+  not being defined — it is a stale name, not a missing token. It should be
+  `--bs-bg-base` so the navbar matches Marketplace's sticky control bar
+  directly below it. Currently resolves to invalid → transparent → body's
+  bg-base shows through, so fixing it in Phase 12 is a visual no-op.
 
 ## Session log
-(append one line per session: date, phase, what landed)
+- 2026-08-02 — Phase 0. Token layer added to CSS_VARS: type, weight, leading,
+  spacing, control-height, radius, elevation and motion scales, the 5 missing
+  *-rgb companions, --bs-accent-on-surface, the [data-theme="light"] block and
+  a global prefers-reduced-motion rule. New lib/theme.ts, pre-paint script in
+  app/layout.tsx scoped away from /shop, `T` token-reference export for inline
+  styles. No page or component touched. tsc + build pass.

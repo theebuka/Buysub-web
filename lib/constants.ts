@@ -164,8 +164,23 @@ export const calcDiscountAmount = (
 };
 
 // ── CSS Variables (injected globally) ──
+//
+// This is the single source of truth for every visual token. Do not add
+// per-file dark/light token objects; consume these instead.
+//
+// Dark is the default and lives on :root. Light is an override applied via
+// data-theme="light" on <html>, set before first paint by the script in
+// app/layout.tsx and maintained by useTheme() in lib/theme.ts.
+//
+// NOTE: /shop is deliberately never themed. components/Marketplace.tsx is
+// dark-only by construction (fixed #1C1C1F borders, unconditional #fff on the
+// mobile segmented controls, dark-only logo swatches, theme=dark in the
+// logo.dev URL), so applying the light block there renders it half-light.
+// Both the layout script and lib/theme.ts guard on the pathname. See
+// REFACTOR.md before removing that guard.
 export const CSS_VARS = `
   :root {
+    /* ── Colour ─────────────────────────────────────────────── */
     --bs-bg-base: #050507;
     --bs-bg-card: #0B0B0F;
     --bs-bg-elevated: #111116;
@@ -184,5 +199,223 @@ export const CSS_VARS = `
     --bs-success: #22C55E;
     --bs-error: #EF4444;
     --bs-warning: #F59E0B;
+
+    /* ── rgb companions, derived from the hex above ─────────── */
+    /* For rgba() tints: rgba(var(--bs-accent-rgb), 0.12)          */
+    --bs-accent-rgb: 124, 92, 255;
+    --bs-success-rgb: 34, 197, 94;
+    --bs-error-rgb: 239, 68, 68;
+    --bs-warning-rgb: 245, 158, 11;
+    --bs-text-muted-rgb: 110, 110, 128;
+    /* Legacy alias. components/Marketplace.tsx:1389 spells it this way and
+       that file is off-limits. Prefer --bs-text-muted-rgb in new code; this
+       can be deleted once Marketplace is next edited. */
+    --bs-muted-rgb: var(--bs-text-muted-rgb);
+
+    /* Accent as TEXT, on a page or card background only.
+       Text sitting on an accent FILL stays #fff in both themes. */
+    --bs-accent-on-surface: #7C5CFF;
+
+    /* ── Type: 8 steps, px, floor 11 ────────────────────────── */
+    --bs-text-2xs: 11px;   /* badges, table column headers, timestamps */
+    --bs-text-xs: 12px;    /* metadata, helper text, captions */
+    --bs-text-sm: 13px;    /* admin body + table cells — dense default */
+    --bs-text-base: 15px;  /* customer body — mobile legibility default */
+    --bs-text-lg: 17px;    /* card titles, section leads */
+    --bs-text-xl: 20px;    /* panel titles, prices */
+    --bs-text-2xl: 24px;   /* KPI values, page titles */
+    --bs-text-3xl: 32px;   /* confirmation moments only */
+
+    --bs-weight-regular: 400;
+    --bs-weight-medium: 500;   /* secondary labels */
+    --bs-weight-semibold: 600; /* UI labels, buttons, active states */
+    --bs-weight-bold: 700;     /* prices, KPI numbers, page titles only */
+
+    --bs-leading-tight: 1.2;   /* display and headings */
+    --bs-leading-snug: 1.4;    /* UI labels, table cells */
+    --bs-leading-relaxed: 1.6; /* descriptions and prose */
+
+    /* ── Spacing: strict 4px grid, 8 steps ──────────────────── */
+    --bs-space-1: 4px;
+    --bs-space-2: 8px;
+    --bs-space-3: 12px;
+    --bs-space-4: 16px;
+    --bs-space-5: 20px;
+    --bs-space-6: 24px;
+    --bs-space-8: 32px;
+    --bs-space-12: 48px;
+
+    /* ── Control heights ────────────────────────────────────── */
+    /* Customer surfaces use lg or taller. 44px is the touch-target floor. */
+    --bs-control-sm: 32px;  /* admin inline actions */
+    --bs-control-md: 40px;  /* admin inputs and buttons */
+    --bs-control-lg: 44px;  /* customer minimum touch target */
+    --bs-control-xl: 52px;  /* primary CTA */
+
+    /* ── Radius: 6 steps, mirroring Marketplace ─────────────── */
+    --bs-radius-sm: 6px;    /* badges, tags, chips */
+    --bs-radius-md: 10px;   /* inputs, buttons, controls */
+    --bs-radius-lg: 14px;   /* panels, logo tiles, line items */
+    --bs-radius-xl: 20px;   /* cards and modals, mobile card scale */
+    --bs-radius-2xl: 28px;  /* desktop card scale */
+    --bs-radius-full: 999px;
+
+    /* ── Elevation ──────────────────────────────────────────── */
+    /* Dark separates by surface + border, not shadow. Reach for elev-2 and
+       above only when something genuinely floats over the page. */
+    --bs-elev-0: none;
+    --bs-elev-1: 0 1px 2px rgba(0,0,0,0.28);
+    --bs-elev-2: 0 4px 16px rgba(0,0,0,0.35);   /* dropdowns, popovers */
+    --bs-elev-3: 0 16px 48px rgba(0,0,0,0.50);  /* drawers, modals */
+    --bs-elev-accent: 0 8px 32px rgba(var(--bs-accent-rgb), 0.45);
+    --bs-ring: 0 0 0 3px rgba(var(--bs-accent-rgb), 0.35);
+
+    /* ── Motion ─────────────────────────────────────────────── */
+    --bs-dur-1: 120ms;  /* hover, active — feedback */
+    --bs-dur-2: 200ms;  /* state change, fades */
+    --bs-dur-3: 280ms;  /* drawer and modal enter */
+    --bs-ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+    --bs-ease-inout: cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* ── Light theme ──────────────────────────────────────────── */
+  /* --bs-text-muted and --bs-text-faint are darker than the values these
+     were ported from: #8896a6 measured 3.20:1 and #b0bac5 1.9:1 against
+     --bs-bg-base, both failing AA. --bs-text-faint is for decorative and
+     disabled use only, never for text a user has to read. */
+  [data-theme="light"] {
+    --bs-bg-base: #F8F9FB;
+    --bs-bg-card: #FFFFFF;
+    --bs-bg-elevated: #F1F3F5;
+    --bs-bg-input: #FFFFFF;
+    --bs-bg-muted: #E8EAED;
+    --bs-bg-subtle: #EEF0F3;
+    --bs-text-primary: #1A1A2E;
+    --bs-text-secondary: #4A5568;
+    --bs-text-muted: #66717F;
+    --bs-text-faint: #7F8896;
+    --bs-border-default: #E2E5E9;
+    --bs-border-subtle: #EEF0F3;
+    --bs-border-strong: #D1D1D6;
+    --bs-accent: #7C5CFF;
+    --bs-accent-hover: #6B4EE6;
+    --bs-success: #059669;
+    --bs-error: #DC2626;
+    --bs-warning: #D97706;
+
+    /* #7C5CFF as text on white is 4.0:1 and fails AA. #5B3FD4 is 6.76:1 on
+       card, 5.61:1 on the darkest light surface. Fills stay #7C5CFF. */
+    --bs-accent-on-surface: #5B3FD4;
+
+    --bs-success-rgb: 5, 150, 105;
+    --bs-error-rgb: 220, 38, 38;
+    --bs-warning-rgb: 217, 119, 6;
+    --bs-text-muted-rgb: 102, 113, 127;
+
+    --bs-elev-1: 0 1px 3px rgba(0,0,0,0.06);
+    --bs-elev-2: 0 4px 12px rgba(0,0,0,0.08);
+    --bs-elev-3: 0 16px 40px rgba(0,0,0,0.12);
+  }
+
+  /* Deliberately global, and it does reach into Marketplace.tsx: an instant
+     drawer is the correct result for someone who asked the OS for reduced
+     motion, and a global rule is the only way to reach those keyframes given
+     that file is off-limits. 1ms rather than none so animationend still fires.
+     This cannot stop JS timers — ShopAds' carousel needs its own guard. */
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 1ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 1ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 `;
+
+// ── Token references for inline style objects ──
+//
+// Holds only var() references, never values, so CSS_VARS above stays the
+// single source of truth. Use as: { fontSize: T.text.sm, padding: T.space[3] }
+export const T = {
+  text: {
+    '2xs': 'var(--bs-text-2xs)',
+    xs: 'var(--bs-text-xs)',
+    sm: 'var(--bs-text-sm)',
+    base: 'var(--bs-text-base)',
+    lg: 'var(--bs-text-lg)',
+    xl: 'var(--bs-text-xl)',
+    '2xl': 'var(--bs-text-2xl)',
+    '3xl': 'var(--bs-text-3xl)',
+  },
+  weight: {
+    regular: 'var(--bs-weight-regular)',
+    medium: 'var(--bs-weight-medium)',
+    semibold: 'var(--bs-weight-semibold)',
+    bold: 'var(--bs-weight-bold)',
+  },
+  leading: {
+    tight: 'var(--bs-leading-tight)',
+    snug: 'var(--bs-leading-snug)',
+    relaxed: 'var(--bs-leading-relaxed)',
+  },
+  space: {
+    1: 'var(--bs-space-1)',
+    2: 'var(--bs-space-2)',
+    3: 'var(--bs-space-3)',
+    4: 'var(--bs-space-4)',
+    5: 'var(--bs-space-5)',
+    6: 'var(--bs-space-6)',
+    8: 'var(--bs-space-8)',
+    12: 'var(--bs-space-12)',
+  },
+  control: {
+    sm: 'var(--bs-control-sm)',
+    md: 'var(--bs-control-md)',
+    lg: 'var(--bs-control-lg)',
+    xl: 'var(--bs-control-xl)',
+  },
+  radius: {
+    sm: 'var(--bs-radius-sm)',
+    md: 'var(--bs-radius-md)',
+    lg: 'var(--bs-radius-lg)',
+    xl: 'var(--bs-radius-xl)',
+    '2xl': 'var(--bs-radius-2xl)',
+    full: 'var(--bs-radius-full)',
+  },
+  elev: {
+    0: 'var(--bs-elev-0)',
+    1: 'var(--bs-elev-1)',
+    2: 'var(--bs-elev-2)',
+    3: 'var(--bs-elev-3)',
+    accent: 'var(--bs-elev-accent)',
+    ring: 'var(--bs-ring)',
+  },
+  color: {
+    bgBase: 'var(--bs-bg-base)',
+    bgCard: 'var(--bs-bg-card)',
+    bgElevated: 'var(--bs-bg-elevated)',
+    bgInput: 'var(--bs-bg-input)',
+    bgMuted: 'var(--bs-bg-muted)',
+    bgSubtle: 'var(--bs-bg-subtle)',
+    textPrimary: 'var(--bs-text-primary)',
+    textSecondary: 'var(--bs-text-secondary)',
+    textMuted: 'var(--bs-text-muted)',
+    textFaint: 'var(--bs-text-faint)',
+    borderDefault: 'var(--bs-border-default)',
+    borderSubtle: 'var(--bs-border-subtle)',
+    borderStrong: 'var(--bs-border-strong)',
+    accent: 'var(--bs-accent)',
+    accentHover: 'var(--bs-accent-hover)',
+    accentOnSurface: 'var(--bs-accent-on-surface)',
+    success: 'var(--bs-success)',
+    error: 'var(--bs-error)',
+    warning: 'var(--bs-warning)',
+  },
+  motion: {
+    dur1: 'var(--bs-dur-1)',
+    dur2: 'var(--bs-dur-2)',
+    dur3: 'var(--bs-dur-3)',
+    easeOut: 'var(--bs-ease-out)',
+    easeInOut: 'var(--bs-ease-inout)',
+  },
+} as const;
