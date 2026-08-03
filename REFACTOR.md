@@ -181,6 +181,32 @@ scannable tables, keyboard reachability, tight vertical rhythm. The skill
 contributes only its AI-tells list (§9) from that point. Do not cite it as
 authority for an admin decision.
 
+### Status colour: `rejected_pending` is a warning, not an unknown
+
+`rejected_pending` maps to `--bs-warning`. It is stage one of a two-stage
+rejection: reversible via `/v2/admin/orders/:id/undo-reject` and awaiting a
+confirm. That is an action-needed state, not a terminal one, and neutral grey
+reads as "no status" on the status that most needs attention. Terminal
+`rejected` and `cancelled` stay on `--bs-error`.
+
+**Apply it per surface, as each copy of `statusColor` is touched in its own
+phase. No cross-surface sweep.** There are two copies:
+
+- `app/dashboard/page.tsx:37` — has no `rejected_pending` branch, so it falls
+  through to the unknown/grey default. **This is the copy that diverged.**
+  Add the branch when the file is next touched.
+- `app/admin/page.tsx:34` — *already* returns the warning family for
+  `rejected_pending` (`rgba(217,119,6,0.08)` / `#92400e`), deliberately dimmer
+  than plain `pending` so the two read as distinct. Phase 7 should preserve
+  that distinction while moving both onto tokens, not flatten them together.
+
+Two things to handle when Phase 7 gets there. Admin's `#92400e` on its dark
+card computes to roughly 2.6:1 — likely failing AA in dark mode — so re-measure
+it rather than porting the value across. And admin's `statusColor` is a general
+status painter, not order-only: it also covers `in_stock`, `active`, `hidden`,
+`suspended`, `archived` and `pending_review`, so any change there is wider than
+orders.
+
 ### Theme mechanism
 `data-theme="light"` on `<html>`, set pre-paint by the inline script in
 app/layout.tsx and maintained by `useTheme()` in lib/theme.ts. Storage key and
@@ -239,17 +265,11 @@ that re-runs the script.
   so the chip shows the full address when the profile has no name. Truncated
   visually in Phase 2; the derivation itself is untouched. Reproduce with
   `FIXTURE_PROFILE=nameless`.
-- **`rejected_pending` renders as an unknown status.** `statusColor` matches
-  `rejected` but not `rejected_pending`, so it falls to the default branch and
-  paints neutral grey (`--bs-text-muted`) while plain `rejected` paints red.
-  The status is live — admin's Rejected tab queries
-  `/v2/admin/orders?status=rejected_pending` — and the workspace CLAUDE.md
-  notes it is missing from the API's `OrderStatus` union too. Surfaced by the
-  fixture in the Phase 2 follow-up. Restyling what `statusColor` *returns* was
-  in scope; deciding which bucket a status belongs to is a semantics call, so
-  it is left alone. Recommendation when you want it changed: map it to
-  `--bs-warning` (rejected, awaiting action) rather than error, and do it in
-  every surface that has its own copy of `statusColor`.
+- **`rejected_pending` renders grey on the dashboard.** Decided: it is a
+  warning — see "Status colour" under Decisions made. Not yet applied to
+  `app/dashboard/page.tsx:37`, which has no branch for it; add that branch the
+  next time the file is touched. Admin already paints it warning-family.
+  Surfaced by the fixture during the Phase 2 follow-up.
 
 ### Phase 1 — login, and two AppShell mechanism changes
 `app/login/page.tsx` is the first surface on the token layer. `T_DARK`/`T_LIGHT`
