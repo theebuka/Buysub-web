@@ -8,7 +8,8 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
+import { T } from '@/lib/constants'
 
 /* ===============================================================
    CONFIG
@@ -63,9 +64,9 @@ const STEP_LABELS = ['Business Details', 'Owner Info', 'Payment & Terms', 'Accou
    TERMS & CONDITIONS
 =============================================================== */
 const TermsContent = () => (
-  <div style={{ padding: '24px 28px', color: 'var(--bs-text-secondary, #a0a0b0)', fontSize: 13, lineHeight: 1.8, overflowY: 'auto', flex: 1 }}>
-    <h2 style={{ fontSize: 20, fontWeight: 700, color: 'var(--bs-text-primary, #e8e8ec)', marginBottom: 4 }}>BuySub Partner Program</h2>
-    <p style={{ color: 'var(--bs-text-muted, #6b6b7e)', fontSize: 12, marginBottom: 24 }}>Terms & Conditions — Effective January 2025</p>
+  <div style={{ padding: T.space[5], color: T.color.textSecondary, fontSize: T.text.base, lineHeight: T.leading.relaxed, overflowY: 'auto', flex: 1 }}>
+    <h2 style={{ fontSize: T.text.lg, fontWeight: T.weight.bold as any, color: T.color.textPrimary, marginBottom: T.space[1] }}>BuySub Partner Program</h2>
+    <p style={{ color: T.color.textMuted, fontSize: T.text.xs, marginBottom: T.space[6] }}>Terms & Conditions — Effective January 2025</p>
     {[
       ['1. Introduction', 'These Terms & Conditions ("Agreement") govern your participation in the BuySub Partner Program ("Program"). By submitting a Partner Application, you agree to be bound by this Agreement in full. BuySub reserves the right to amend these terms at any time with reasonable notice to active partners.'],
       ['2. Eligibility', 'To qualify for the Program, you must: (a) operate a legitimate retail or online business registered in Nigeria; (b) hold a valid CAC registration where applicable; (c) not be engaged in any activity that violates Nigerian law or BuySub\'s policies; and (d) receive formal approval from BuySub following review of your application.'],
@@ -80,9 +81,9 @@ const TermsContent = () => (
       ['11. Governing Law', 'This Agreement is governed by Nigerian law. Disputes are subject to the exclusive jurisdiction of Lagos State courts.'],
       ['12. Contact', `For questions, contact BuySub via WhatsApp at +${WHATSAPP_NUMBER} or through the contact form on the BuySub website.`],
     ].map(([title, content]) => (
-      <div key={title} style={{ marginBottom: 20 }}>
-        <h3 style={{ fontSize: 13, fontWeight: 700, color: 'var(--bs-text-primary, #e8e8ec)', marginBottom: 6 }}>{title}</h3>
-        <p style={{ color: 'var(--bs-text-secondary, #a0a0b0)', margin: 0 }}>{content}</p>
+      <div key={title} style={{ marginBottom: T.space[5] }}>
+        <h3 style={{ fontSize: T.text.base, fontWeight: T.weight.semibold as any, color: T.color.textPrimary, marginBottom: T.space[1] }}>{title}</h3>
+        <p style={{ color: T.color.textSecondary, margin: 0 }}>{content}</p>
       </div>
     ))}
   </div>
@@ -102,6 +103,23 @@ export default function PartnerSignupForm() {
   const [submittedName, setSubmittedName] = useState('')
 
   const [form, setForm] = useState<any>({ ...INITIAL_FORM })
+
+  const termsRef = useRef<HTMLDivElement>(null)
+  const termsTriggerRef = useRef<HTMLElement | null>(null)
+
+  // Terms dialog: Escape closes, focus moves in on open and back to whatever
+  // opened it on close.
+  useEffect(() => {
+    if (!showTerms) return
+    const trigger = termsTriggerRef.current
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowTerms(false) }
+    document.addEventListener('keydown', onKey)
+    termsRef.current?.focus()
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      trigger?.focus()
+    }
+  }, [showTerms])
 
   useEffect(() => {
     try {
@@ -273,30 +291,32 @@ export default function PartnerSignupForm() {
   if (submitResult === 'success') {
     return (
       <SplitLayout>
-        <div style={{ textAlign: 'center', maxWidth: 460, margin: '0 auto', padding: '40px 8px' }}>
+        <div style={{ textAlign: 'center', maxWidth: 460, margin: '0 auto', padding: `${T.space[8]} ${T.space[2]}` }}>
           <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: 'rgba(34,197,94,0.12)',
+            width: 64, height: 64, borderRadius: T.radius.full,
+            background: 'rgba(var(--bs-success-rgb), 0.12)',
+            color: T.color.success,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 24px',
+            margin: `0 auto ${T.space[6]}`,
           }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
           </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--bs-text-primary, #e8e8ec)', marginBottom: 10, letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: T.text['2xl'], fontWeight: T.weight.bold as any, color: T.color.textPrimary, marginBottom: T.space[2], letterSpacing: '-0.02em' }}>
             Application submitted
           </div>
-          <div style={{ fontSize: 14, color: 'var(--bs-text-secondary, #a0a0b0)', lineHeight: 1.7 }}>
+          <div style={{ fontSize: T.text.base, color: T.color.textSecondary, lineHeight: T.leading.relaxed }}>
             Thanks, {submittedName}. Your partner application is under review.
             We'll reach out within 3–5 business days.
-            Once approved, you can log in at <a href="/login" style={{ color: '#7C5CFF' }}>app.buysub.ng/login</a>.
+            Once approved, you can log in at <a href="/login" style={{ color: T.color.accentOnSurface }}>app.buysub.ng/login</a>.
           </div>
-          <div style={{ marginTop: 32, display: 'flex', gap: 10, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div style={{ marginTop: T.space[8], display: 'flex', gap: T.space[3], justifyContent: 'center', flexWrap: 'wrap' }}>
             <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer"
-              style={{ ...S.btnPrimary, background: '#25D366', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+              className="bs-btn"
+              style={{ ...S.btnPrimary, background: '#25D366', textDecoration: 'none', gap: T.space[2] }}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.554 4.116 1.523 5.847L.057 23.57a.75.75 0 0 0 .92.92l5.723-1.466A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.93 0-3.736-.518-5.287-1.42l-.379-.225-3.932 1.007 1.007-3.932-.225-.379A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
               Chat on WhatsApp
             </a>
-            <button onClick={resetForm} style={S.btnSecondary}>Submit another</button>
+            <button type="button" className="bs-btn" onClick={resetForm} style={S.btnSecondary}>Submit another</button>
           </div>
         </div>
       </SplitLayout>
@@ -307,20 +327,21 @@ export default function PartnerSignupForm() {
   if (submitResult === 'error') {
     return (
       <SplitLayout>
-        <div style={{ textAlign: 'center', maxWidth: 460, margin: '0 auto', padding: '40px 8px' }}>
+        <div style={{ textAlign: 'center', maxWidth: 460, margin: '0 auto', padding: `${T.space[8]} ${T.space[2]}` }}>
           <div style={{
-            width: 64, height: 64, borderRadius: '50%',
-            background: 'rgba(239,68,68,0.12)',
+            width: 64, height: 64, borderRadius: T.radius.full,
+            background: 'rgba(var(--bs-error-rgb), 0.12)',
+            color: T.color.error,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            margin: '0 auto 24px',
+            margin: `0 auto ${T.space[6]}`,
           }}>
-            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" /></svg>
           </div>
-          <div style={{ fontSize: 28, fontWeight: 700, color: 'var(--bs-text-primary, #e8e8ec)', marginBottom: 10, letterSpacing: '-0.02em' }}>
+          <div style={{ fontSize: T.text['2xl'], fontWeight: T.weight.bold as any, color: T.color.textPrimary, marginBottom: T.space[2], letterSpacing: '-0.02em' }}>
             Submission failed
           </div>
-          <div style={{ fontSize: 14, color: 'var(--bs-text-secondary, #a0a0b0)', lineHeight: 1.7 }}>{submitError}</div>
-          <button onClick={() => setSubmitResult('idle')} style={{ ...S.btnPrimary, marginTop: 28 }}>Try again</button>
+          <div style={{ fontSize: T.text.base, color: T.color.textSecondary, lineHeight: T.leading.relaxed }}>{submitError}</div>
+          <button type="button" className="bs-btn" onClick={() => setSubmitResult('idle')} style={{ ...S.btnPrimary, marginTop: T.space[6] }}>Try again</button>
         </div>
       </SplitLayout>
     )
@@ -335,10 +356,30 @@ export default function PartnerSignupForm() {
       {/* Terms modal */}
       {showTerms && (
         <div style={S.modalOverlay} onClick={() => setShowTerms(false)}>
-          <div style={S.modal} onClick={e => e.stopPropagation()}>
+          <div
+            ref={termsRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="partner-terms-title"
+            tabIndex={-1}
+            style={S.modal}
+            onClick={e => e.stopPropagation()}
+          >
             <div style={S.modalHeader}>
-              <span style={{ fontSize: 14, fontWeight: 600 }}>Terms & Conditions</span>
-              <button onClick={() => setShowTerms(false)} style={S.modalClose}>×</button>
+              <span id="partner-terms-title" style={{ fontSize: T.text.lg, fontWeight: T.weight.semibold as any }}>
+                Terms &amp; Conditions
+              </span>
+              <button
+                type="button"
+                className="bs-modal-close"
+                onClick={() => setShowTerms(false)}
+                aria-label="Close terms"
+                style={S.modalClose}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                </svg>
+              </button>
             </div>
             <TermsContent />
           </div>
@@ -346,31 +387,32 @@ export default function PartnerSignupForm() {
       )}
 
       {/* Step pill */}
-      <div style={S.stepPill}>Step {step}/3</div>
+      <div style={S.stepPill}>Step {step} of {STEP_LABELS.length}</div>
 
       {/* Eyebrow + title */}
-      <div style={{ marginBottom: 28 }}>
+      <div style={{ marginBottom: T.space[6] }}>
         <div style={S.eyebrow}>{stepEyebrow}</div>
         <h1 style={S.pageTitle}>{stepTitle}</h1>
       </div>
 
       {/* Progress bar */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 32 }}>
+      <div style={{ display: 'flex', gap: T.space[2], marginBottom: T.space[8] }}
+        role="group" aria-label={`Step ${step} of ${STEP_LABELS.length}: ${STEP_LABELS[step - 1]}`}>
         {STEP_LABELS.map((label, i) => {
           const s = i + 1
           const active = s === step
           const done = s < step
           return (
             <div key={s} style={{ flex: 1 }}>
-              <div style={{
-                height: 3, borderRadius: 2,
-                background: done || active ? '#7C5CFF' : 'var(--bs-border-default, #27272e)',
-                transition: 'background .2s',
+              <div aria-hidden="true" style={{
+                height: 3, borderRadius: T.radius.sm,
+                background: done || active ? T.color.accent : T.color.borderDefault,
+                transition: `background var(--bs-dur-2) var(--bs-ease-inout)`,
               }} />
               <div style={{
-                fontSize: 11, marginTop: 8,
-                color: active ? 'var(--bs-text-primary, #e8e8ec)' : 'var(--bs-text-muted, #6b6b7e)',
-                fontWeight: active ? 600 : 400,
+                fontSize: T.text['2xs'], marginTop: T.space[2],
+                color: active ? T.color.textPrimary : T.color.textMuted,
+                fontWeight: (active ? T.weight.semibold : T.weight.regular) as any,
               }}>
                 {label}
               </div>
@@ -448,14 +490,19 @@ export default function PartnerSignupForm() {
                   </div>
                   {form.socialMedia.length > 1 && (
                     <button type="button" onClick={() => { const sm = form.socialMedia.filter((_: any, j: number) => j !== i); update('socialMedia', sm) }}
-                      style={S.iconBtn}>×</button>
+                      className="bs-icon-btn" aria-label={`Remove social channel ${i + 1}`} style={S.iconBtn}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M18 6 6 18" /><path d="m6 6 12 12" />
+                      </svg>
+                    </button>
                   )}
                 </div>
               ))}
               {form.socialMedia.length < 5 && (
                 <button type="button" onClick={() => update('socialMedia', [...form.socialMedia, { platform: '', handle: '' }])}
-                  style={{ alignSelf: 'flex-start', background: 'transparent', border: 'none', color: '#7C5CFF', cursor: 'pointer', fontSize: 13, fontWeight: 500, padding: '4px 0' }}>
-                  + Add channel
+                  className="bs-back"
+                  style={{ alignSelf: 'flex-start', display: 'inline-flex', alignItems: 'center', minHeight: 'var(--bs-control-lg)', background: 'transparent', border: 'none', color: T.color.accentOnSurface, cursor: 'pointer', fontSize: T.text.base, fontWeight: T.weight.medium as any, padding: `0 ${T.space[1]} 0 0`, borderRadius: T.radius.md, fontFamily: 'inherit' }}>
+                  Add another channel
                 </button>
               )}
             </div>
@@ -539,12 +586,12 @@ export default function PartnerSignupForm() {
 
           {/* Consents */}
           <div style={{
-            display: 'flex', flexDirection: 'column', gap: 14,
-            marginTop: 8,
-            padding: '18px 20px',
-            background: 'var(--bs-bg-elevated, #18181c)',
-            borderRadius: 12,
-            border: '1px solid var(--bs-border-default, #27272e)',
+            display: 'flex', flexDirection: 'column', gap: T.space[3],
+            marginTop: T.space[2],
+            padding: T.space[5],
+            background: T.color.bgElevated,
+            borderRadius: T.radius.lg,
+            border: `1px solid ${T.color.borderDefault}`,
           }}>
             <BsCheckbox label="I confirm that I comply with AML/CFT regulations and that all funds are from legitimate sources. *"
               error={touched.amlAccepted && errors.amlAccepted}
@@ -553,7 +600,22 @@ export default function PartnerSignupForm() {
               error={touched.privacyAccepted && errors.privacyAccepted}
               checked={form.privacyAccepted} onChange={v => update('privacyAccepted', v)} />
             <BsCheckbox
-              label={<>I have read and accept the <span style={{ color: '#7C5CFF', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setShowTerms(true)}>Partner Program Terms & Conditions</span>. *</>}
+              // This was a <span onClick> inside the checkbox's <label>, so
+              // clicking through to read the terms also ticked "I accept" —
+              // and it was not keyboard reachable. A <button> is interactive
+              // content, so the label no longer forwards activation to the
+              // checkbox, and stopPropagation guards it either way.
+              label={<>I have read and accept the <button
+                type="button"
+                className="bs-terms-link"
+                onClick={e => { e.preventDefault(); e.stopPropagation(); termsTriggerRef.current = e.currentTarget; setShowTerms(true) }}
+                style={{
+                  background: 'transparent', border: 'none', padding: 0,
+                  font: 'inherit', color: T.color.accentOnSurface,
+                  cursor: 'pointer', textDecoration: 'underline',
+                  borderRadius: T.radius.sm,
+                }}
+              >Partner Program Terms &amp; Conditions</button>. *</>}
               error={touched.termsAccepted && errors.termsAccepted}
               checked={form.termsAccepted} onChange={v => update('termsAccepted', v)} />
           </div>
@@ -563,13 +625,13 @@ export default function PartnerSignupForm() {
       {step === 4 && (
         <FormStack>
           <div style={{
-            padding: '14px 16px', borderRadius: 10,
-            background: 'rgba(124,92,255,0.08)',
-            border: '1px solid rgba(124,92,255,0.25)',
-            fontSize: 13, color: 'var(--bs-text-secondary, #a0a0b0)', lineHeight: 1.6,
+            padding: T.space[4], borderRadius: T.radius.md,
+            background: 'rgba(var(--bs-accent-rgb), 0.10)',
+            border: '1px solid rgba(var(--bs-accent-rgb), 0.28)',
+            fontSize: T.text.base, color: T.color.textSecondary, lineHeight: T.leading.relaxed,
           }}>
             Set a password so you can log in to your partner dashboard
-            once your application is approved. You'll use <strong style={{ color: 'var(--bs-text-primary, #e8e8ec)' }}>{form.contactEmail || 'your email'}</strong> to sign in.
+            once your application is approved. You'll use <strong style={{ color: T.color.textPrimary }}>{form.contactEmail || 'your email'}</strong> to sign in.
           </div>
       
           <Field label="Choose a password *" error={touched.password && errors.password}>
@@ -597,25 +659,25 @@ export default function PartnerSignupForm() {
       )}
 
       {/* Footer */}
-      <div style={{ marginTop: 36 }}>
+      <div style={{ marginTop: T.space[8] }}>
         {step < 4 ? (
-          <button style={{ ...S.btnCta, opacity: isCurrentStepValid ? 1 : 0.5, cursor: isCurrentStepValid ? 'pointer' : 'not-allowed' }}
+          <button type="button" className="bs-cta" style={{ ...S.btnCta, opacity: isCurrentStepValid ? 1 : 0.5, cursor: isCurrentStepValid ? 'pointer' : 'not-allowed' }}
             onClick={next} disabled={!isCurrentStepValid}>
-            Continue <span style={{ marginLeft: 6 }}>→</span>
+            Continue
           </button>
         ) : (
-          <button style={{ ...S.btnCta, opacity: isSubmitting ? 0.6 : isCurrentStepValid ? 1 : 0.5, cursor: (isSubmitting || !isCurrentStepValid) ? 'not-allowed' : 'pointer' }}
+          <button type="button" className="bs-cta" style={{ ...S.btnCta, opacity: isSubmitting ? 0.6 : isCurrentStepValid ? 1 : 0.5, cursor: (isSubmitting || !isCurrentStepValid) ? 'not-allowed' : 'pointer' }}
             onClick={submit} disabled={isSubmitting || !isCurrentStepValid}>
-            {isSubmitting ? 'Submitting…' : <>Submit <span style={{ marginLeft: 6 }}>→</span></>}
+            {isSubmitting ? 'Submitting…' : 'Submit application'}
           </button>
         )}
 
-        <div style={{ marginTop: 20, textAlign: 'center' }}>
+        <div style={{ marginTop: T.space[4], textAlign: 'center' }}>
           {step > 1 ? (
-            <button type="button" onClick={back} style={S.backLink}>Go back</button>
+            <button type="button" className="bs-back" onClick={back} style={S.backLink}>Go back</button>
           ) : (
-            <span style={{ fontSize: 13, color: 'var(--bs-text-muted, #6b6b7e)' }}>
-              Already a partner? <a href="mailto:partners@buysub.ng" style={{ color: '#7C5CFF', textDecoration: 'none', fontWeight: 500 }}>Contact us</a>
+            <span style={{ fontSize: T.text.xs, color: T.color.textMuted }}>
+              Already a partner? <a href="mailto:partners@buysub.ng" className="bs-back" style={{ color: T.color.accentOnSurface, textDecoration: 'none', fontWeight: T.weight.medium as any, borderRadius: T.radius.md }}>Contact us</a>
             </span>
           )}
         </div>
@@ -631,18 +693,38 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
   return (
     <div style={S.page}>
       <style>{`
-        @media (max-width: 900px) {
-          .bs-split-brand { display: none !important; }
-          .bs-split-form { width: 100% !important; padding: 56px 20px 80px !important; }
-        }
         .bs-input:focus, .bs-input:focus-visible,
         .bs-select:focus, .bs-select:focus-visible {
           outline: none !important;
-          border-color: #7C5CFF !important;
-          box-shadow: 0 0 0 3px rgba(124,92,255,0.15) !important;
+          border-color: var(--bs-accent) !important;
+          box-shadow: var(--bs-ring) !important;
         }
-        .bs-cta:hover:not(:disabled) { background: #6B4EE6 !important; }
-        .bs-back:hover { color: #9177ff !important; }
+        /* The real checkbox is visually hidden, so the ring has to move to the
+           box we draw for it. */
+        .bs-checkbox-input:focus-visible + .bs-checkbox-box {
+          box-shadow: var(--bs-ring);
+        }
+        .bs-cta:hover:not(:disabled) { background: var(--bs-accent-hover) !important; }
+        .bs-back:hover { color: var(--bs-accent-hover) !important; }
+
+        .bs-terms-link:focus-visible,
+        .bs-cta:focus-visible,
+        .bs-back:focus-visible,
+        .bs-icon-btn:focus-visible,
+        .bs-modal-close:focus-visible,
+        .bs-btn:focus-visible {
+          outline: none;
+          box-shadow: var(--bs-ring);
+        }
+
+        @media (max-width: 900px) {
+          .bs-split-brand { display: none !important; }
+          .bs-split-form { width: 100% !important; padding: var(--bs-space-8) var(--bs-space-4) var(--bs-space-12) !important; }
+        }
+        /* Paired fields cannot share a 360px row. */
+        @media (max-width: 600px) {
+          .bs-field-row { grid-template-columns: 1fr !important; }
+        }
       `}</style>
 
       {/* ── Left: brand panel ── */}
@@ -665,31 +747,23 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
           <rect width="600" height="600" fill="url(#bs-watermark)" />
         </svg>
 
-        {/* Accent glow */}
-        <div style={{
-          position: 'absolute',
-          top: '-20%', left: '-10%',
-          width: '60%', height: '60%',
-          background: 'radial-gradient(circle, rgba(124,92,255,0.4) 0%, transparent 70%)',
-          filter: 'blur(60px)', pointerEvents: 'none',
-        }} />
-
         {/* Logo / wordmark */}
         <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 14 }}>
           <div style={{
-            width: 44, height: 44, borderRadius: 12,
-            background: '#7C5CFF',
+            width: 44, height: 44, borderRadius: T.radius.lg,
+            background: T.color.accent,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 22, fontWeight: 800, color: '#fff',
-            boxShadow: '0 8px 28px rgba(124,92,255,0.45)',
+            fontSize: T.text.xl, fontWeight: T.weight.bold as any,
+            color: T.brandSlab.fg,
+            boxShadow: T.elev.accent,
           }}>
             B
           </div>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: '#fff', letterSpacing: '-0.01em', lineHeight: 1 }}>
+            <div style={{ fontSize: T.text.xl, fontWeight: T.weight.bold as any, color: T.brandSlab.fg, letterSpacing: '-0.01em', lineHeight: T.leading.tight }}>
               BuySub
             </div>
-            <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 4, letterSpacing: '0.02em' }}>
+            <div style={{ fontSize: T.text['2xs'], color: T.brandSlab.fgDim, marginTop: T.space[1], letterSpacing: '0.02em' }}>
               Africa's Subscription Marketplace
             </div>
           </div>
@@ -697,10 +771,10 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
 
         {/* Tagline at bottom */}
         <div style={{ position: 'relative', marginTop: 'auto' }}>
-          <div style={{ fontSize: 28, fontWeight: 700, color: '#fff', lineHeight: 1.25, letterSpacing: '-0.02em', marginBottom: 14 }}>
+          <div style={{ fontSize: T.text['2xl'], fontWeight: T.weight.bold as any, color: T.brandSlab.fg, lineHeight: T.leading.tight, letterSpacing: '-0.02em', marginBottom: T.space[3] }}>
             Grow with the BuySub Partner Program.
           </div>
-          <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 1.6, maxWidth: 440 }}>
+          <div style={{ fontSize: T.text.base, color: T.brandSlab.fgDim, lineHeight: T.leading.relaxed, maxWidth: 440 }}>
             Earn commission on every qualifying sale. Flexible payouts. Full support. Join hundreds of partners already scaling with us.
           </div>
         </div>
@@ -708,7 +782,7 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
 
       {/* ── Right: form panel ── */}
       <div className="bs-split-form" style={S.formPanel}>
-        <div style={{ maxWidth: '80%', margin: '0 auto', width: '100%' }}>
+        <div style={{ maxWidth: 560, margin: '0 auto', width: '100%' }}>
           {children}
         </div>
       </div>
@@ -720,11 +794,13 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
    FORM PRIMITIVES
 ================================================================ */
 function FormStack({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>{children}</div>
+  return <div style={{ display: 'flex', flexDirection: 'column', gap: T.space[5] }}>{children}</div>
 }
 
 function FieldRow({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>{children}</div>
+  // Collapses to one column under 600px via .bs-field-row — two inputs cannot
+  // share a 360px row.
+  return <div className="bs-field-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: T.space[3] }}>{children}</div>
 }
 
 function Field({
@@ -734,16 +810,16 @@ function Field({
     <div>
       {label && (
         <div style={{
-          fontSize: 13, fontWeight: 500,
-          color: 'var(--bs-text-primary, #e8e8ec)',
-          marginBottom: 8,
+          fontSize: T.text.xs, fontWeight: T.weight.medium as any,
+          color: T.color.textSecondary,
+          marginBottom: T.space[1],
         }}>
           {label}
         </div>
       )}
       {children}
       {error && typeof error === 'string' && (
-        <div style={{ fontSize: 12, color: '#ef4444', marginTop: 6 }}>{error}</div>
+        <div role="alert" style={{ fontSize: T.text.xs, color: T.color.error, marginTop: T.space[1] }}>{error}</div>
       )}
     </div>
   )
@@ -775,7 +851,7 @@ function BsInput({
       maxLength={maxLength}
       style={{
         ...baseFieldStyle,
-        borderColor: invalid ? '#ef4444' : 'var(--bs-border-default, #27272e)',
+        borderColor: invalid ? T.color.error : 'var(--bs-border-default)',
         opacity: disabled ? 0.5 : 1,
       }}
     />
@@ -805,13 +881,13 @@ function BsSelect({
           ...baseFieldStyle,
           appearance: 'none',
           paddingRight: 36,
-          borderColor: invalid ? '#ef4444' : 'var(--bs-border-default, #27272e)',
+          borderColor: invalid ? T.color.error : 'var(--bs-border-default)',
           cursor: 'pointer',
-          color: value ? 'var(--bs-text-primary, #e8e8ec)' : 'var(--bs-text-muted, #6b6b7e)',
+          color: value ? 'var(--bs-text-primary)' : 'var(--bs-text-muted)',
         }}
       >
         {options.map((o: string, i: number) => (
-          <option key={i} value={o} style={{ background: '#14141a', color: '#e8e8ec' }}>
+          <option key={i} value={o} style={{ background: T.color.bgElevated, color: T.color.textPrimary }}>
             {o || (placeholder || 'Select…')}
           </option>
         ))}
@@ -819,7 +895,7 @@ function BsSelect({
       <div style={{
         position: 'absolute', right: 12, top: '50%',
         transform: 'translateY(-50%)', pointerEvents: 'none',
-        color: 'var(--bs-text-muted, #6b6b7e)',
+        color: 'var(--bs-text-muted)',
       }}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <polyline points="6 9 12 15 18 9" />
@@ -843,18 +919,19 @@ function BsPhone({
   return (
     <div style={{
       display: 'flex', alignItems: 'stretch',
-      height: 46,
-      background: 'var(--bs-bg-input, #14141a)',
-      border: `1px solid ${invalid ? '#ef4444' : 'var(--bs-border-default, #27272e)'}`,
-      borderRadius: 10,
+      // No fixed height here: the border would eat 2px off the inner input and
+      // drop the actual tap target to 42. The input sets the height instead.
+      background: T.color.bgInput,
+      border: `1px solid ${invalid ? T.color.error : T.color.borderDefault}`,
+      borderRadius: T.radius.md,
       overflow: 'hidden',
-      transition: 'border-color .15s, box-shadow .15s',
+      transition: `border-color var(--bs-dur-1) var(--bs-ease-inout), box-shadow var(--bs-dur-1) var(--bs-ease-inout)`,
     }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: 6,
-        padding: '0 12px',
-        borderRight: '1px solid var(--bs-border-default, #27272e)',
-        fontSize: 13, color: 'var(--bs-text-secondary, #a0a0b0)',
+        padding: `0 ${T.space[3]}`,
+        borderRight: `1px solid ${T.color.borderDefault}`,
+        fontSize: T.text.base, color: T.color.textSecondary,
       }}>
         <div style={{
           width: 22, height: 16, borderRadius: 3,
@@ -871,11 +948,11 @@ function BsPhone({
         onBlur={onBlur}
         placeholder={placeholder}
         style={{
-          flex: 1, height: '100%', padding: '0 14px',
+          flex: 1, height: 'var(--bs-control-lg)', padding: `0 ${T.space[3]}`,
           background: 'transparent', border: 'none',
-          color: 'var(--bs-text-primary, #e8e8ec)',
-          fontSize: 14, outline: 'none',
-          fontFamily: 'inherit',
+          color: T.color.textPrimary,
+          fontSize: T.text.base, outline: 'none',
+          fontFamily: 'inherit', minWidth: 0,
         }}
       />
     </div>
@@ -893,28 +970,40 @@ function BsCheckbox({
   label, error, checked, onChange,
 }: BsCheckboxProps) {
   return (
-    <label style={{ display: 'flex', gap: 10, alignItems: 'flex-start', cursor: 'pointer', fontSize: 13, color: 'var(--bs-text-primary, #e8e8ec)' }}>
+    <label style={{
+      display: 'flex', gap: T.space[3], alignItems: 'flex-start', cursor: 'pointer',
+      fontSize: T.text.base, color: T.color.textPrimary,
+      minHeight: 'var(--bs-control-lg)', paddingTop: T.space[2], paddingBottom: T.space[2],
+    }}>
+      <input
+        className="bs-checkbox-input"
+        type="checkbox"
+        checked={checked}
+        onChange={e => onChange(e.target.checked)}
+        aria-invalid={!!error}
+        style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }}
+      />
       <span
+        className="bs-checkbox-box"
+        aria-hidden="true"
         style={{
-          width: 18, height: 18, borderRadius: 4,
-          border: `1.5px solid ${error ? '#ef4444' : (checked ? '#7C5CFF' : 'var(--bs-border-strong, #3a3a44)')}`,
-          background: checked ? '#7C5CFF' : 'transparent',
+          width: 20, height: 20, borderRadius: T.radius.sm,
+          border: `1.5px solid ${error ? T.color.error : (checked ? T.color.accent : T.color.borderStrong)}`,
+          background: checked ? T.color.accent : 'transparent',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           flexShrink: 0, marginTop: 1,
-          transition: 'all .15s',
+          transition: `background var(--bs-dur-1) var(--bs-ease-inout), border-color var(--bs-dur-1) var(--bs-ease-inout)`,
         }}
       >
-        <input type="checkbox" checked={checked} onChange={e => onChange(e.target.checked)}
-          style={{ position: 'absolute', opacity: 0, width: 0, height: 0 }} />
         {checked && (
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12" />
           </svg>
         )}
       </span>
-      <span style={{ lineHeight: 1.55 }}>
+      <span style={{ lineHeight: T.leading.snug }}>
         {label}
-        {error && <span style={{ color: '#ef4444', fontSize: 11, marginLeft: 6 }}>{error}</span>}
+        {error && <span style={{ color: T.color.error, fontSize: T.text.xs, marginLeft: T.space[2] }}>{error}</span>}
       </span>
     </label>
   )
@@ -924,36 +1013,37 @@ function BsCheckbox({
    STYLES
 ================================================================ */
 const baseFieldStyle: React.CSSProperties = {
-  height: 46, width: '100%',
-  padding: '0 14px',
-  background: 'var(--bs-bg-input, #14141a)',
-  border: '1px solid var(--bs-border-default, #27272e)',
-  borderRadius: 10,
-  color: 'var(--bs-text-primary, #e8e8ec)',
-  fontSize: 14,
+  height: 'var(--bs-control-lg)', width: '100%',
+  padding: `0 ${T.space[3]}`,
+  background: T.color.bgInput,
+  border: `1px solid ${T.color.borderDefault}`,
+  borderRadius: T.radius.md,
+  color: T.color.textPrimary,
+  fontSize: T.text.base,
   fontFamily: 'inherit',
   boxSizing: 'border-box',
   outline: 'none',
-  transition: 'border-color .15s, box-shadow .15s',
+  transition: `border-color var(--bs-dur-1) var(--bs-ease-inout), box-shadow var(--bs-dur-1) var(--bs-ease-inout)`,
 }
 
 const S: Record<string, React.CSSProperties> = {
   page: {
-    minHeight: '100vh',
+    minHeight: '100dvh',
     display: 'flex',
-    overflow: 'hidden',
-    background: 'var(--bs-bg-base, #0a0a0c)',
-    color: 'var(--bs-text-primary, #e8e8ec)',
-    fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
+    background: T.color.bgBase,
+    color: T.color.textPrimary,
+    fontFamily: 'inherit',
   },
+  // Deliberately dark in BOTH themes — see the --bs-brand-slab-* note in
+  // lib/constants.ts. Nothing here may resolve from a token that flips.
   brandPanel: {
     width: '42%',
-    minHeight: '100vh',
+    minHeight: '100dvh',
     position: 'sticky',
     top: 0,
-    padding: '44px 48px',
-    background: 'linear-gradient(155deg, #1a1432 0%, #0e0a1f 60%, #080510 100%)',
-    borderRight: '1px solid var(--bs-border-subtle, #1c1c22)',
+    padding: `${T.space[8]} ${T.space[12]}`,
+    background: T.brandSlab.bg,
+    borderRight: `1px solid ${T.brandSlab.border}`,
     display: 'flex',
     flexDirection: 'column',
     overflow: 'hidden',
@@ -961,110 +1051,127 @@ const S: Record<string, React.CSSProperties> = {
   formPanel: {
     width: '58%',
     flex: 1,
-    padding: '72px 16px 96px',
-    overflowY: 'auto',
+    padding: `${T.space[12]} ${T.space[4]} ${T.space[12]}`,
   },
   stepPill: {
-    display: 'inline-block',
-    padding: '6px 14px',
-    borderRadius: 999,
-    background: 'rgba(124,92,255,0.12)',
-    border: '1px solid rgba(124,92,255,0.28)',
-    color: '#9b82ff',
-    fontSize: 12,
-    fontWeight: 600,
-    marginBottom: 20,
-    letterSpacing: '0.02em',
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 28,
+    padding: `0 ${T.space[3]}`,
+    borderRadius: T.radius.full,
+    background: 'rgba(var(--bs-accent-rgb), 0.15)',
+    border: '1px solid rgba(var(--bs-accent-rgb), 0.45)',
+    color: T.color.accentOnSurface,
+    fontSize: T.text.xs,
+    fontWeight: T.weight.semibold as any,
+    marginBottom: T.space[5],
   },
   eyebrow: {
-    fontSize: 13,
-    color: 'var(--bs-text-secondary, #a0a0b0)',
-    marginBottom: 6,
-    fontWeight: 400,
+    fontSize: T.text.xs,
+    color: T.color.textSecondary,
+    marginBottom: T.space[1],
+    fontWeight: T.weight.regular as any,
   },
   pageTitle: {
-    fontSize: 36,
-    fontWeight: 700,
-    color: 'var(--bs-text-primary, #e8e8ec)',
+    fontSize: T.text['3xl'],
+    fontWeight: T.weight.bold as any,
+    color: T.color.textPrimary,
     letterSpacing: '-0.025em',
-    lineHeight: 1.1,
+    lineHeight: T.leading.tight,
     margin: 0,
   },
   btnCta: {
     width: '100%',
-    height: 52,
-    padding: '0 24px',
-    borderRadius: 12,
-    background: '#7C5CFF',
+    height: 'var(--bs-control-xl)',
+    padding: `0 ${T.space[6]}`,
+    borderRadius: T.radius.md,
+    background: T.color.accent,
     border: 'none',
     color: '#fff',
-    fontSize: 15,
-    fontWeight: 600,
-    transition: 'background .15s, opacity .15s',
+    fontSize: T.text.base,
+    fontWeight: T.weight.semibold as any,
+    transition: `background var(--bs-dur-1) var(--bs-ease-inout), opacity var(--bs-dur-1) var(--bs-ease-inout)`,
     display: 'inline-flex',
     alignItems: 'center',
     justifyContent: 'center',
+    gap: T.space[2],
     fontFamily: 'inherit',
-    boxShadow: '0 10px 28px rgba(124,92,255,0.28)',
   },
   backLink: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 'var(--bs-control-lg)',
+    padding: `0 ${T.space[4]}`,
+    borderRadius: T.radius.md,
     background: 'transparent',
     border: 'none',
-    color: '#7C5CFF',
-    fontSize: 13,
-    fontWeight: 500,
+    color: T.color.accentOnSurface,
+    fontSize: T.text.base,
+    fontWeight: T.weight.medium as any,
     cursor: 'pointer',
-    textDecoration: 'underline',
     fontFamily: 'inherit',
-    padding: '8px 16px',
-    transition: 'color .15s',
+    transition: `color var(--bs-dur-1) var(--bs-ease-inout)`,
   },
   btnPrimary: {
-    height: 44, padding: '0 24px', borderRadius: 10,
-    background: '#7C5CFF', border: 'none', color: '#fff',
-    cursor: 'pointer', fontSize: 14, fontWeight: 500,
+    minHeight: 'var(--bs-control-lg)', padding: `0 ${T.space[6]}`,
+    borderRadius: T.radius.md,
+    background: T.color.accent, border: 'none', color: '#fff',
+    cursor: 'pointer', fontSize: T.text.base,
+    fontWeight: T.weight.semibold as any,
     fontFamily: 'inherit',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   },
   btnSecondary: {
-    height: 44, padding: '0 20px', borderRadius: 10,
+    minHeight: 'var(--bs-control-lg)', padding: `0 ${T.space[5]}`,
+    borderRadius: T.radius.md,
     background: 'transparent',
-    border: '1px solid var(--bs-border-default, #27272e)',
-    color: 'var(--bs-text-secondary, #a0a0b0)',
-    cursor: 'pointer', fontSize: 14,
+    border: `1px solid ${T.color.borderDefault}`,
+    color: T.color.textSecondary,
+    cursor: 'pointer', fontSize: T.text.base,
     fontFamily: 'inherit',
+    display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
   },
   iconBtn: {
-    width: 38, height: 46, borderRadius: 10,
+    width: 'var(--bs-control-lg)', height: 'var(--bs-control-lg)',
+    borderRadius: T.radius.md,
     background: 'transparent',
-    border: '1px solid var(--bs-border-default, #27272e)',
-    color: 'var(--bs-text-muted, #6b6b7e)',
-    cursor: 'pointer', fontSize: 18,
+    border: `1px solid ${T.color.borderDefault}`,
+    color: T.color.textMuted,
+    cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
     fontFamily: 'inherit',
   },
   modalOverlay: {
     position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', zIndex: 1000,
-    display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    padding: T.space[5],
   },
   modal: {
-    background: 'var(--bs-bg-card, #111114)', borderRadius: 16,
-    border: '1px solid var(--bs-border-default, #27272e)',
-    maxWidth: 600, width: '100%', maxHeight: '80vh',
+    background: T.color.bgCard,
+    borderRadius: T.radius.xl,
+    border: `1px solid ${T.color.borderDefault}`,
+    boxShadow: T.elev[3],
+    maxWidth: 600, width: '100%', maxHeight: '80dvh',
     display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    outline: 'none',
   },
   modalHeader: {
     display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-    padding: '16px 20px',
-    borderBottom: '1px solid var(--bs-border-subtle, #1c1c22)',
+    gap: T.space[3],
+    padding: `${T.space[4]} ${T.space[5]}`,
+    borderBottom: `1px solid ${T.color.borderSubtle}`,
   },
   modalClose: {
-    width: 32, height: 32, borderRadius: 8,
+    width: 'var(--bs-control-lg)', height: 'var(--bs-control-lg)',
+    borderRadius: T.radius.md,
     background: 'transparent',
-    border: '1px solid var(--bs-border-default, #27272e)',
-    color: 'var(--bs-text-muted, #6b6b7e)',
-    cursor: 'pointer', fontSize: 18,
+    border: `1px solid ${T.color.borderDefault}`,
+    color: T.color.textMuted,
+    cursor: 'pointer',
     display: 'flex', alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
     fontFamily: 'inherit',
   },
 }

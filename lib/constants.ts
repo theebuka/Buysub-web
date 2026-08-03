@@ -216,6 +216,21 @@ export const CSS_VARS = `
        Text sitting on an accent FILL stays #fff in both themes. */
     --bs-accent-on-surface: #7C5CFF;
 
+    /* ── Brand slab ─────────────────────────────────────────── */
+    /* Deliberately dark in BOTH themes. Defined here only, and intentionally
+       NOT listed in the [data-theme="light"] block below, which is what makes
+       them theme-invariant — that block overrides only what it names.
+       Do not "complete the set" by adding light values.
+
+       Never build this surface out of --bs-bg-*, --bs-text-* or --bs-border-*:
+       all of those flip under light and would split the page in half. The
+       gradient ends on the dark base value as a pinned literal for the same
+       reason. Used by the brand panel in app/partners/page.tsx. */
+    --bs-brand-slab: linear-gradient(155deg, #17123A 0%, #0C0A1C 58%, #050507 100%);
+    --bs-brand-slab-fg: #FFFFFF;
+    --bs-brand-slab-fg-dim: rgba(255, 255, 255, 0.70);
+    --bs-brand-slab-border: #1C1C1F;
+
     /* ── Type: 8 steps, px, floor 11 ────────────────────────── */
     --bs-text-2xs: 11px;   /* badges, table column headers, timestamps */
     --bs-text-xs: 12px;    /* metadata, helper text, captions */
@@ -315,6 +330,9 @@ export const CSS_VARS = `
     --bs-elev-1: 0 1px 3px rgba(0,0,0,0.06);
     --bs-elev-2: 0 4px 12px rgba(0,0,0,0.08);
     --bs-elev-3: 0 16px 40px rgba(0,0,0,0.12);
+
+    /* --bs-brand-slab-* and --bs-accent-rgb are deliberately absent here.
+       They must stay dark/identical under light — see the note in :root. */
   }
 
   /* Deliberately global, and it does reach into Marketplace.tsx: an instant
@@ -410,6 +428,12 @@ export const T = {
     success: 'var(--bs-success)',
     error: 'var(--bs-error)',
     warning: 'var(--bs-warning)',
+  },
+  brandSlab: {
+    bg: 'var(--bs-brand-slab)',
+    fg: 'var(--bs-brand-slab-fg)',
+    fgDim: 'var(--bs-brand-slab-fg-dim)',
+    border: 'var(--bs-brand-slab-border)',
   },
   motion: {
     dur1: 'var(--bs-dur-1)',

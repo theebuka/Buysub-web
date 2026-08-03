@@ -75,7 +75,7 @@ Read this file first in any session. Update it before finishing.
 - [x] 0. Token layer in lib/constants.ts (CSS_VARS)
 - [x] 1. app/login/page.tsx
 - [x] 2. app/dashboard/page.tsx
-- [ ] 3. app/partners/page.tsx
+- [x] 3. app/partners/page.tsx
 - [ ] 4. app/partners/dashboard/page.tsx
 - [ ] 5. app/order/verify/VerifyContent.tsx
 - [ ] 6. app/admin — shared primitives only (buttons, inputs, tables, badges)
@@ -200,12 +200,57 @@ phase. No cross-surface sweep.** There are two copies:
   than plain `pending` so the two read as distinct. Phase 7 should preserve
   that distinction while moving both onto tokens, not flatten them together.
 
-Two things to handle when Phase 7 gets there. Admin's `#92400e` on its dark
-card computes to roughly 2.6:1 — likely failing AA in dark mode — so re-measure
-it rather than porting the value across. And admin's `statusColor` is a general
-status painter, not order-only: it also covers `in_stock`, `active`, `hidden`,
-`suspended`, `archived` and `pending_review`, so any change there is wider than
-orders.
+Admin's `statusColor` is a general status painter, not order-only: it also
+covers `in_stock`, `active`, `hidden`, `suspended`, `archived` and
+`pending_review`, so any change there is wider than orders.
+
+#### Measured contrast of admin's badge colours
+
+Badge text is 11px / weight 500, so **AA needs 4.5:1**. Measured by compositing
+each `rgba()` tint over the real surface on a canvas and sampling the pixel, so
+these are true composites rather than estimates. Badges appear on two surfaces:
+`T.card` inside `Card`, and `T.bg` in bare tables.
+
+`statusColor` takes no theme argument, so the same values render in both
+themes.
+
+| status family | text | dark card | dark bg | light card | light bg |
+|---|---|---|---|---|---|
+| success — paid, approved, in_stock, active | `#16a34a` | **5.30** | **5.56** | 2.89 | 2.73 |
+| warning — pending, pending_manual, pending_review | `#d97706` | **5.49** | **5.76** | 2.79 | 2.64 |
+| error — cancelled, rejected, out_of_stock, hidden, suspended, archived | `#dc2626` | 3.79 | 3.95 | 4.01 | 3.79 |
+| rejected_pending | `#92400e` | 2.59 | 2.71 | **6.51** | **6.17** |
+| default / unknown | `#6b6b7e` | 3.46 | 3.61 | 4.46 | 4.22 |
+
+**Four of twenty combinations pass.** Bold = passes AA.
+
+`rejected_pending`'s `#92400e` is the tell: it is the *only* value that passes
+in light and the worst in dark. It was tuned against a light background. The
+rest were tuned against dark.
+
+#### Phase 7 is re-deriving these, not porting them
+
+Swapping in the palette tokens at the same 0.12 tint fixes dark and does not
+fix light:
+
+| family | token, dark card / bg | token, light card / bg |
+|---|---|---|
+| success | `#22C55E` → **7.39 / 7.78** | `#059669` → 3.25 / 3.08 |
+| warning | `#F59E0B` → **7.77 / 8.19** | `#D97706` → 2.79 / 2.64 |
+| error | `#EF4444` → **4.76 / 4.97** | `#DC2626` → 4.01 / 3.79 |
+| unknown | `#6E6E80` → 3.60 / 3.77 | `#66717F` → 4.26 / 4.03 |
+
+Dark goes from 2/5 passing to 3/4. **Light fails across the board**, because a
+12% tint barely darkens white, so mid-saturation state colours sit on an almost
+white field. This is the `--bs-accent-on-surface` problem again, generalised:
+the state tokens are tuned as foreground colours on the *base* surface, not as
+text over a weak tint of themselves.
+
+So Phase 7 needs one of: `--bs-success-on-surface` / `--bs-warning-on-surface` /
+`--bs-error-on-surface` darker siblings for light mode, mirroring what
+`--bs-accent-on-surface` already does; or solid-filled badges instead of tinted
+ones; or a much stronger tint in light. Decide before touching the tabs, since
+every tab renders badges.
 
 ### Theme mechanism
 `data-theme="light"` on `<html>`, set pre-paint by the inline script in
@@ -379,6 +424,49 @@ the first time — `aria-modal`, `aria-labelledby` resolving to the subject,
 focus into the dialog on open, Escape to close, focus returned to the
 triggering card.
 
+### Phase 3 — partner application form
+Best-structured customer surface so far: module-level primitives, an `S` style
+record, and a real 900px media query already existed. The work was tokens and
+structure, not a rebuild.
+
+**`/partners` gets its footer back.** It is a public application form and the
+footer is its only navigation; Phase 1's `!isAdmin` → `!isNoShell` correction
+removed it as a side effect. The condition is an exact match, not a
+`startsWith`, because `/partners/dashboard` is authenticated and keeps no
+chrome. `isNoShell` itself is unchanged, so the navbar stays hidden.
+
+**Brand slab tokens.** The left panel is deliberately dark in both themes. It
+uses `--bs-brand-slab`, `-fg`, `-fg-dim` and `-border`, defined in `:root` only
+and deliberately absent from `[data-theme="light"]` — that absence is what makes
+them invariant, since the light block overrides only what it names. Do not
+"complete the set". The gradient ends on `#050507` as a pinned literal, not
+`var(--bs-bg-base)`, which flips. Verified: the panel's background, border and
+wordmark colour are byte-identical across themes while the page background and
+form text do flip.
+
+A sixth private palette is gone: every `var(--bs-x, #hex)` fallback had drifted
+from the token it shadowed (`#e8e8ec` vs `#F0F0F5`, `#27272e` vs `#1E1E28`, and
+so on). The vars all resolved, so the fallbacks were dead but misleading.
+
+Also removed: the ambient accent glow with its 60px blur, matching what login
+lost in Phase 1. The hexagon watermark stays — a brand-specific mark, and a
+knowing exception to the skill's discouragement of decorative SVG. Dropping the
+glow also removed the reason `S.page` carried `overflow: hidden`, which would
+have broken the sticky brand panel once the footer made the page scroll.
+
+Two defects found while verifying:
+
+- The `.bs-cta` class was never applied to either CTA button, so its hover rule
+  had always been dead. Now wired.
+- **The Terms link was a `<span onClick>` inside the acceptance checkbox's
+  `<label>`, so clicking through to read the terms also ticked "I have read and
+  accept".** It was also not keyboard reachable. It is now a `<button>`, which
+  is interactive content, so the label no longer forwards activation. This is a
+  behaviour change with a compliance edge — flagged, not silent.
+
+The phone input measured 42px because a fixed 44px wrapper with 1px borders left
+only 42 inside; the input now sets the height itself.
+
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
   keeps its existing styling on the same page. Check it visually before
@@ -416,3 +504,11 @@ triggering card.
   throwaway dead-API build, then rebuilt clean. Not verified: the message modal
   (needs real messages) and focus rings (the automated tab never holds document
   focus).
+- 2026-08-03 — Phase 3. app/partners/page.tsx onto the token layer: stale
+  var() fallbacks stripped, customer density applied, brand panel moved onto
+  theme-invariant --bs-brand-slab-* tokens, ambient glow removed, Terms modal
+  given dialog semantics with Escape and focus restore, Terms link promoted
+  from span to button (it was ticking the acceptance checkbox), field rows
+  stacked under 600px, all controls to 44px. /partners restored to the footer
+  in AppShell. tsc + build pass; verified at a true 360×740, both themes, and
+  draft persistence round-trips under partner_signup_draft_v4.

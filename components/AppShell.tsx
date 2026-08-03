@@ -256,10 +256,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   })()
 )}
 
-      {/* isNoShell means no chrome at all. This was `!isAdmin`, which let the
-          footer render on /partners and /dashboard despite them being in the
-          no-shell list — see the isNoShell description in CLAUDE.md. */}
-      {!isNoShell && <Footer />}
+      {/* isNoShell means no navbar. The footer is a separate decision: this was
+          `!isAdmin`, which let it render on /partners and /dashboard despite
+          them being no-shell routes. /partners is the one exception — a public
+          application form whose only navigation IS the footer. /partners/dashboard
+          is authenticated and keeps no chrome, so this cannot be a startsWith. */}
+      {(!isNoShell || pathname === '/partners' || pathname === '/partners/') && <Footer />}
     </>
   )
 }
