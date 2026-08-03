@@ -277,6 +277,36 @@ app/page.tsx uses server-side `redirect()`, and there is no useRouter,
 router.push or next/link anywhere, so every route change is a full document load
 that re-runs the script.
 
+## For the owner — not a code issue, not a later phase
+
+**Existing partner terms-acceptance records are unreliable.** Until Phase 3
+(commit `7f2a4b9`, 2026-08-03) the "I have read and accept the Partner Program
+Terms & Conditions" link was a `<span onClick>` nested inside that checkbox's
+own `<label>`. Clicking the link to *open* the terms therefore forwarded label
+activation to the checkbox and toggled it.
+
+The failure is asymmetric, and only one direction reaches the database:
+
+- **unchecked → clicked the link → became checked.** The applicant never
+  deliberately accepted, validation passes, and the application submits with
+  `terms_accepted: true`. This one persists.
+- **checked → clicked the link to re-read → became unchecked.** Validation then
+  blocks submission with "Required" until they tick it again, so this one
+  self-corrects and never reaches the database.
+
+So every `terms_accepted` value submitted by this form before that commit can
+mean either "read and deliberately accepted" or "clicked the link", and the two
+are indistinguishable after the fact. The stray tick also survived reloads,
+since the draft persists to `partner_signup_draft_v4`.
+
+Scope is narrow: only `termsAccepted`. `amlAccepted`, `privacyAccepted` and
+`sameAsLegal` take plain-string labels with no interactive child, so they were
+never affected. The value travels as `terms_accepted` in the `POST /v2/partners`
+payload; what it is stored as is the API repo's business.
+
+Nothing to change in this repo. Flagged because it is a records question, not
+an engineering one.
+
 ## Deferred (logic/perf, do not fix now)
 - Duplicated fmt/fmtDate/statusColor across surfaces
 - Three divergent FX tables
