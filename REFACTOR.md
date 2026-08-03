@@ -22,11 +22,35 @@ Read this file first in any session. Update it before finishing.
   only the region you need.
 - Authenticated surfaces (/dashboard, /admin, /partners/dashboard) redirect on
   401, so they cannot be measured with a fake session against the real API.
-  **Verify against a populated fixture API, never an empty one.** Stand up a
-  throwaway node http server on :8787 that answers the surface's endpoints with
-  `{ok:true, data:[...]}` and permissive CORS, build with
-  `NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787 npm run build`, then seed a fake
-  `sb-*-auth-token` in localStorage. Keep the stub outside the repo.
+  **Verify against a populated fixture API, never an empty one.** Use
+  `scripts/fixture-api.js`:
+
+  ```bash
+  node scripts/fixture-api.js                                  # :8787
+  NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787 npm run build
+  npm run start
+  ```
+
+  Then seed any non-empty session in the browser console (the server never
+  checks Authorization):
+
+  ```js
+  localStorage.setItem('sb-fixture-auth-token', JSON.stringify({
+    access_token: 'fixture',
+    expires_at: Math.floor(Date.now()/1000) + 86400,
+    user: { id: 'fixture-user', email: 'ada.okonkwo@example.com' },
+  }))
+  ```
+
+  Variants for singular endpoints that cannot show two states at once. These
+  are server-side, so switching them needs no rebuild — restart the fixture
+  and reload:
+  `FIXTURE_PROFILE=nameless` (empty full_name, so display names fall back to
+  the email address), `FIXTURE_WALLET=zero`, `PORT=9001`.
+
+  The list endpoints carry the awkward cases inline: a 101-character product
+  name, ₦9,876,543, a zero amount, an `amount_ngn` that arrives as a string,
+  and one order per status including `rejected_pending`.
   A dead API (connection refused) also avoids the redirect, but every list then
   renders its *empty state* — so no rows, no amounts, no modal, and defects in
   populated markup go unseen. That is exactly how the Phase 2 money-colour bug
@@ -213,7 +237,19 @@ that re-runs the script.
   comment; the render coerces with `Number(...)`.
 - dashboard `firstName` uses `split(' ')[0]` on a value that may be an email,
   so the chip shows the full address when the profile has no name. Truncated
-  visually in Phase 2; the derivation itself is untouched.
+  visually in Phase 2; the derivation itself is untouched. Reproduce with
+  `FIXTURE_PROFILE=nameless`.
+- **`rejected_pending` renders as an unknown status.** `statusColor` matches
+  `rejected` but not `rejected_pending`, so it falls to the default branch and
+  paints neutral grey (`--bs-text-muted`) while plain `rejected` paints red.
+  The status is live — admin's Rejected tab queries
+  `/v2/admin/orders?status=rejected_pending` — and the workspace CLAUDE.md
+  notes it is missing from the API's `OrderStatus` union too. Surfaced by the
+  fixture in the Phase 2 follow-up. Restyling what `statusColor` *returns* was
+  in scope; deciding which bucket a status belongs to is a semantics call, so
+  it is left alone. Recommendation when you want it changed: map it to
+  `--bs-warning` (rejected, awaiting action) rather than error, and do it in
+  every surface that has its own copy of `statusColor`.
 
 ### Phase 1 — login, and two AppShell mechanism changes
 `app/login/page.tsx` is the first surface on the token layer. `T_DARK`/`T_LIGHT`

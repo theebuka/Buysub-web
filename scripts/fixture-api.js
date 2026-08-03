@@ -1,0 +1,231 @@
+#!/usr/bin/env node
+/*
+ * BUYSUB — fixture API for UI verification
+ * =========================================
+ *
+ * A dependency-free stand-in for the Workers API, used only to verify UI work.
+ * It exists because the authenticated surfaces (/dashboard, /admin,
+ * /partners/dashboard) redirect to /login on 401, so they cannot be inspected
+ * with a fake session against the real API.
+ *
+ * Pointing the app at a *dead* host also avoids the redirect, but then every
+ * list renders its empty state — no rows, no amounts, no modals. A money-colour
+ * bug shipped in Phase 2 for exactly that reason. Verify against populated data.
+ *
+ *   node scripts/fixture-api.js
+ *   NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787 npm run build
+ *   npm run start
+ *
+ * Then seed a session in the browser console (any non-empty token works — this
+ * server never checks Authorization):
+ *
+ *   localStorage.setItem('sb-fixture-auth-token', JSON.stringify({
+ *     access_token: 'fixture',
+ *     expires_at: Math.floor(Date.now()/1000) + 86400,
+ *     user: { id: 'fixture-user', email: 'ada.okonkwo@example.com' },
+ *   }))
+ *
+ * ALWAYS rebuild without NEXT_PUBLIC_API_BASE before committing, and confirm:
+ *   grep -rho "127\.0\.0\.1:8787" .next/static/chunks/app/<route>/*.js
+ *
+ * Variants (singular endpoints that cannot show two states at once):
+ *   FIXTURE_PROFILE=nameless   full_name is empty, so anything deriving a
+ *                              display name falls back to the email address
+ *   FIXTURE_WALLET=zero        wallet balance is 0
+ *   PORT=9001                  listen elsewhere
+ *
+ * The list endpoints always carry their awkward cases inline: a very long
+ * product name, a very large amount, a zero amount, and one order per status
+ * including rejected_pending (live in the DB, absent from the API's
+ * OrderStatus union — see the workspace CLAUDE.md).
+ */
+
+const http = require('http')
+
+const PORT = Number(process.env.PORT || 8787)
+const NAMELESS = process.env.FIXTURE_PROFILE === 'nameless'
+const ZERO_WALLET = process.env.FIXTURE_WALLET === 'zero'
+
+// ── awkward values, kept in one place so they are easy to reuse ──────────
+const LONG_NAME =
+  'Adobe Creative Cloud All Apps with Firefly Premium, Extra Seat and 1TB Cloud Storage (Annual, Prepaid)'
+const HUGE = 9876543   // digit grouping + layout pressure
+const TINY = 0
+
+// ── customer fixtures ───────────────────────────────────────────────────
+// One order per status the UI can encounter, including rejected_pending.
+const ORDERS = [
+  {
+    id: 'o-paid', order_ref: 'BS-24118', status: 'paid',
+    total_ngn: 62700, subtotal_ngn: 68000, discount_ngn: 5300,
+    payment_method: 'paystack', currency: 'NGN',
+    created_at: '2026-07-28T10:14:00Z',
+    order_items: [
+      { product_name: LONG_NAME, billing_period: 'Annual', quantity: 1, total_price_ngn: 45000 },
+      { product_name: 'Apple Music', billing_period: 'Quarterly', quantity: 2, total_price_ngn: 23000 },
+    ],
+  },
+  {
+    id: 'o-approved', order_ref: 'BS-24090', status: 'approved',
+    total_ngn: HUGE, subtotal_ngn: HUGE, discount_ngn: 0,
+    payment_method: 'bank_transfer', currency: 'NGN',
+    created_at: '2026-07-25T14:03:00Z',
+    order_items: [
+      { product_name: 'Enterprise bundle, 40 seats', billing_period: 'Annual', quantity: 40, total_price_ngn: HUGE },
+    ],
+  },
+  {
+    id: 'o-pending-manual', order_ref: 'BS-23904', status: 'pending_manual',
+    total_ngn: 100500, subtotal_ngn: 100500, discount_ngn: 0,
+    payment_method: 'whatsapp', currency: 'NGN',
+    created_at: '2026-07-19T08:02:00Z',
+    order_items: [
+      { product_name: 'Netflix Premium', billing_period: 'Annual', quantity: 1, total_price_ngn: 100500 },
+    ],
+  },
+  {
+    id: 'o-pending', order_ref: 'BS-23880', status: 'pending',
+    total_ngn: 18000, subtotal_ngn: 18000, discount_ngn: 0,
+    payment_method: 'paystack', currency: 'NGN',
+    created_at: '2026-07-17T19:47:00Z', order_items: [],
+  },
+  {
+    id: 'o-rejected-pending', order_ref: 'BS-23812', status: 'rejected_pending',
+    total_ngn: 7500, subtotal_ngn: 7500, discount_ngn: 0,
+    payment_method: 'whatsapp', currency: 'NGN',
+    created_at: '2026-07-08T11:26:00Z',
+    order_items: [
+      { product_name: 'Spotify Duo', billing_period: 'Quarterly', quantity: 1, total_price_ngn: 7500 },
+    ],
+  },
+  {
+    id: 'o-rejected', order_ref: 'BS-23790', status: 'rejected',
+    total_ngn: 4200, subtotal_ngn: 4200, discount_ngn: 0,
+    payment_method: 'whatsapp', currency: 'NGN',
+    created_at: '2026-07-02T13:09:00Z', order_items: [],
+  },
+  {
+    id: 'o-cancelled', order_ref: 'BS-23771', status: 'cancelled',
+    total_ngn: TINY, subtotal_ngn: 14250, discount_ngn: 14250,
+    payment_method: 'paystack', currency: 'NGN',
+    created_at: '2026-06-30T16:41:00Z', order_items: [],
+  },
+]
+
+const MESSAGES = [
+  {
+    id: 'm-unread', subject: 'Your Netflix Premium login is ready',
+    product_name: 'Netflix Premium', product_domain: 'netflix.com',
+    body: 'Email: shared.acct@buysub.ng\nPassword: correct-horse-battery\nProfile: Slot 3\n\nDo not change the password or the household settings.',
+    is_read: false, created_at: '2026-07-28T11:00:00Z',
+    expires_at: '2027-07-28T11:00:00Z',
+  },
+  {
+    id: 'm-long', subject: LONG_NAME,
+    product_name: LONG_NAME, product_domain: 'adobe.com',
+    body: 'Your plan renews on 28 October 2026. Reply here if the seat has not appeared in your Adobe account within 24 hours.',
+    is_read: true, created_at: '2026-07-12T09:30:00Z', expires_at: null,
+  },
+  {
+    id: 'm-nodomain', subject: 'Scheduled maintenance on 2 August',
+    product_name: null, product_domain: null,
+    body: 'Wallet top-ups will be paused between 01:00 and 03:00 WAT.',
+    is_read: true, created_at: '2026-07-01T07:15:00Z', expires_at: null,
+  },
+]
+
+const TXNS = [
+  { id: 't-large',  type: 'credit', amount_ngn: HUGE, source: 'admin_topup', reference: 'admin_topup', note: 'Enterprise prepayment', created_at: '2026-07-26T09:00:00Z' },
+  { id: 't-refund', type: 'credit', amount_ngn: 5300, source: 'refund', reference: 'refund', note: 'Order BS-23904 partial refund', created_at: '2026-07-20T12:00:00Z' },
+  { id: 't-debit',  type: 'debit',  amount_ngn: 2000, source: 'order', reference: null, note: null, created_at: '2026-07-18T15:20:00Z' },
+  // amount_ngn arrives as a string from some paths — the UI coerces with Number()
+  { id: 't-string', type: 'credit', amount_ngn: '1500.50', source: 'promotion', reference: 'promotion', note: 'Referral bonus', created_at: '2026-07-05T10:10:00Z' },
+  { id: 't-zero',   type: 'credit', amount_ngn: TINY, source: 'compensation', reference: 'compensation', note: 'Goodwill adjustment, no value', created_at: '2026-07-03T08:00:00Z' },
+]
+
+const PROFILE = {
+  full_name: NAMELESS ? '' : 'Ada Okonkwo',
+  phone: '08031229041',
+  email: 'ada.okonkwo@example.com',
+  avatar_url: null,
+}
+
+const PARTNER_ME = {
+  id: 'p-1', legal_name: 'Okonkwo Digital Ltd', store_name: 'Okonkwo Digital',
+  status: 'approved', reviewer_notes: null,
+  email: 'ada.okonkwo@example.com', phone: '08031229041',
+}
+
+// ── admin fixtures ──────────────────────────────────────────────────────
+// Only /v2/admin/stats is filled in; it is the one admin shape verified so
+// far. The list endpoints return a correctly-shaped empty page. Fill these in
+// at Phase 6, when each tab's row shape has actually been read.
+const ADMIN_STATS = {
+  revenue_today: 184500, revenue_this_month: 4820750, total_revenue: 61944210,
+  orders_today: 12, orders_pending_manual: 3,
+  products_active: 268, products_total: 275,
+  customers_total: 1841, partners_pending: 2,
+  top_products: [
+    { name: LONG_NAME, order_count: 214, revenue: HUGE },
+    { name: 'Netflix Premium', order_count: 198, revenue: 3120400 },
+    { name: 'Spotify Duo', order_count: 87, revenue: 402150 },
+  ],
+  recent_orders: ORDERS.slice(0, 5).map(o => ({
+    order_ref: o.order_ref, status: o.status, total_ngn: o.total_ngn,
+    customer_name: NAMELESS ? '' : 'Ada Okonkwo',
+    customer_email: 'ada.okonkwo@example.com', created_at: o.created_at,
+  })),
+  revenue_by_day: Array.from({ length: 30 }, (_, i) => ({
+    day: new Date(Date.UTC(2026, 6, i + 1)).toISOString().slice(0, 10),
+    revenue: [0, 12000, 48000, 155000, 91000][i % 5],
+  })),
+}
+
+const page = (rows = []) => ({
+  ok: true, data: rows,
+  meta: { pagination: { page: 1, limit: 20, total: rows.length, pages: rows.length ? 1 : 0 } },
+})
+
+// ── routing ─────────────────────────────────────────────────────────────
+const ROUTES = [
+  [/^\/v2\/me$/,                        () => ({ ok: true, data: PROFILE })],
+  [/^\/v2\/me\/orders$/,                () => ({ ok: true, data: ORDERS })],
+  [/^\/v2\/me\/messages$/,              () => ({ ok: true, data: MESSAGES })],
+  [/^\/v2\/me\/messages\/[^/]+\/read$/, () => ({ ok: true })],
+  [/^\/v2\/me\/wallet$/,                () => ({ ok: true, data: { balance_ngn: ZERO_WALLET ? 0 : 18300 } })],
+  [/^\/v2\/me\/wallet\/transactions$/,  () => ({ ok: true, data: TXNS })],
+  [/^\/v2\/partners\/me$/,              () => ({ ok: true, data: PARTNER_ME })],
+  [/^\/v2\/notifications$/,             () => ({ ok: true, data: [] })],
+  [/^\/v2\/admin\/stats$/,              () => ({ ok: true, data: ADMIN_STATS })],
+  // Phase 6: replace with real row shapes per tab.
+  [/^\/v2\/admin\//,                    () => page([])],
+]
+
+const server = http.createServer((req, res) => {
+  const path = req.url.split('?')[0]
+  const headers = {
+    'Content-Type': 'application/json',
+    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Headers': '*',
+    'Access-Control-Allow-Methods': 'GET,POST,PATCH,PUT,DELETE,OPTIONS',
+  }
+  if (req.method === 'OPTIONS') { res.writeHead(204, headers); return res.end() }
+
+  // Writes are acknowledged so optimistic UI paths complete.
+  if (req.method !== 'GET') {
+    res.writeHead(200, headers)
+    return res.end(JSON.stringify({ ok: true }))
+  }
+
+  const hit = ROUTES.find(([re]) => re.test(path))
+  const body = hit ? hit[1]() : { ok: true, data: [] }
+  res.writeHead(200, headers)
+  res.end(JSON.stringify(body))
+})
+
+server.listen(PORT, () => {
+  console.log(`fixture api → http://127.0.0.1:${PORT}`)
+  console.log(`  profile: ${NAMELESS ? 'nameless (falls back to email)' : 'Ada Okonkwo'}`)
+  console.log(`  wallet:  ${ZERO_WALLET ? '0' : '18,300'}`)
+  console.log(`  orders:  ${ORDERS.length} (one per status, incl. rejected_pending)`)
+})
