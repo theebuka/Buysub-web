@@ -29,6 +29,14 @@ Read this file first in any session. Update it before finishing.
   radius, elevation, motion) is the skill's call.
 - Gates after every phase: `npx tsc --noEmit` and `npm run build`.
 - Bugs found go in "Deferred" below. Do not fix them.
+- **Committing is pre-approved; pushing never is.** `git add` and `git commit`
+  are on the allow list in `../.claude/settings.local.json`, so a finished
+  phase is committed without asking. One commit per phase, on `redesign/ui`,
+  after both gates pass.
+- **Never run `git push`.** The owner pushes manually. `Bash(git push:*)` is on
+  the deny list in the same file, so it is refused rather than prompted — do
+  not work around it by other means (no `gh`, no configuring a remote helper,
+  no aliasing). Finish at the commit and say so.
 - Before verifying any phase, kill stale dev servers first:
   `lsof -ti:3000 | xargs kill -9 2>/dev/null; true`
   Then start exactly one `npm run dev`. Measuring against a stale server from a
