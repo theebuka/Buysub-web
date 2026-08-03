@@ -76,7 +76,7 @@ Read this file first in any session. Update it before finishing.
 - [x] 1. app/login/page.tsx
 - [x] 2. app/dashboard/page.tsx
 - [x] 3. app/partners/page.tsx
-- [ ] 4. app/partners/dashboard/page.tsx
+- [x] 4. app/partners/dashboard/page.tsx
 - [ ] 5. app/order/verify/VerifyContent.tsx
 - [ ] 6. app/admin — shared primitives only (buttons, inputs, tables, badges)
 - [ ] 7. app/admin — tabs 1–4
@@ -123,12 +123,22 @@ and dense. They share the token layer and differ only in which steps they use.
 |---|---|---|---|
 | Body | base 15 | sm 13 | sm 13 |
 | Secondary | xs 12 | xs 12 | 2xs 11 |
-| Controls | lg 44, CTA xl 52 | md 40, primary 44 | sm 32 / md 40 |
+| Controls | lg 44, CTA xl 52 | **lg 44, primary xl 52** | sm 32 / md 40 |
 | Block gap | space-4 / 6 | space-3 / 4 | space-2 / 3 |
 | Section gap | space-8 | space-6 | space-4 |
 | Card radius | xl 20 mobile / 2xl 28 desktop | lg 14 | lg 14 |
 
-Every interactive element on a customer surface is control-lg or taller.
+**44px is a floor on every mobile-first surface, not a tier variable.** Controls
+drop below 44 only on admin, which is desktop-first. Density on the partner
+tier comes from type, gaps and radius — 13px body, 12px labels, `space-3`/`4`
+gaps, `radius-lg` cards — never from shrinking tap targets.
+
+*Amended in Phase 4.* The Controls row originally read `md 40, primary 44` for
+the partner tier. That table was written in Phase 0, before a single surface had
+been built, and the row did not survive contact with a phone-first one: taken
+literally it put the theme toggle, the Discard button and both form inputs at
+40px on a device where the brief calls for 44. Density and tap area are
+independent axes and the original row conflated them.
 
 ### Colour
 Palette unchanged, byte for byte. Three additions:
@@ -497,6 +507,35 @@ Two defects found while verifying:
 The phone input measured 42px because a fixed 44px wrapper with 1px borders left
 only 42 inside; the input now sets the height itself.
 
+### Phase 4 — partner dashboard
+A theme port like login. `T_DARK`/`T_LIGHT` are gone, the local `bs_admin_theme`
+read/write is replaced by `useTheme()`, and the `T` prop stops being threaded
+through twelve helpers — `Center`, `Banner`, `StatCard`, `TabBtn`, `Section`,
+`F`, `Inp`, `Sel`, `btnPrimary`, `btnGhost`, `iconBtn` and the page body. The
+local `T` had to be deleted before the token `T` was imported, or those helper
+parameters would have shadowed the import and resolved to `undefined` without
+erroring.
+
+The page is now darker, as expected: `bg` `#0a0a0c` → `#050507`, `card`
+`#111114` → `#0B0B0F`, `elev` `#14141a` → `#111116`, while `text` brightens
+`#e8e8ec` → `#F0F0F5`. Light mode gains most: `muted` `#6e6e78` → `#4A5568` and
+`faint` `#8e8e96` → `#66717F`.
+
+This file had **three** text tiers where the layer has four; `text`/`muted`/
+`faint` map to primary/secondary/muted and `--bs-text-faint` correctly goes
+unused, since it is documented as decorative/disabled only.
+
+Copy link now reports both outcomes. Reporting only success would have left the
+exact silence it was meant to fix, because `navigator.clipboard.writeText`
+rejects whenever the document lacks focus or permission — so the button also has
+a "Copy failed" state that reveals the URL as selectable text, both announced
+via `aria-live`.
+
+Also: labels wired to controls with `htmlFor`/`id` (17 pairs), tabs given
+`role="tablist"`/`tab`/`aria-selected`, paired fields stacked under 600px, the
+uppercase micro-labels on `StatCard` and `Section` dropped, and the bare
+`Loading…` replaced with the branded boot gate.
+
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
   keeps its existing styling on the same page. Check it visually before
@@ -542,3 +581,14 @@ only 42 inside; the input now sets the height itself.
   stacked under 600px, all controls to 44px. /partners restored to the footer
   in AppShell. tsc + build pass; verified at a true 360×740, both themes, and
   draft persistence round-trips under partner_signup_draft_v4.
+- 2026-08-03 — Phase 4. app/partners/dashboard/page.tsx ported off
+  T_DARK/T_LIGHT onto the token layer and useTheme(); the T prop removed from
+  twelve helpers; 44px floor applied per the amended density row; copy-link
+  given success *and* failure feedback; boot gate, tab semantics, label
+  associations and 600px field stacking added. scripts/fixture-api.js corrected
+  — /v2/partners/me was returning a flat profile where the page reads
+  data.profile and data.affiliate, so it would have rendered the "No partner
+  profile" branch and every measurement would have been of the wrong screen;
+  /v2/partners/me/stats added, plus a FIXTURE_PARTNER variant. Density table
+  amended: 44px is a floor on mobile-first surfaces, not a tier variable.
+  tsc + build pass; verified at a true 360×740 in both themes.

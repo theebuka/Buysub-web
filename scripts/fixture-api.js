@@ -32,6 +32,9 @@
  *   FIXTURE_PROFILE=nameless   full_name is empty, so anything deriving a
  *                              display name falls back to the email address
  *   FIXTURE_WALLET=zero        wallet balance is 0
+ *   FIXTURE_PARTNER=pending    partner status: approved (default) | pending |
+ *                              rejected | none. `none` returns no profile, which
+ *                              is the "No partner profile" branch.
  *   PORT=9001                  listen elsewhere
  *
  * The list endpoints always carry their awkward cases inline: a very long
@@ -45,6 +48,7 @@ const http = require('http')
 const PORT = Number(process.env.PORT || 8787)
 const NAMELESS = process.env.FIXTURE_PROFILE === 'nameless'
 const ZERO_WALLET = process.env.FIXTURE_WALLET === 'zero'
+const PARTNER = process.env.FIXTURE_PARTNER || 'approved'
 
 // ── awkward values, kept in one place so they are easy to reuse ──────────
 const LONG_NAME =
@@ -150,10 +154,57 @@ const PROFILE = {
   avatar_url: null,
 }
 
-const PARTNER_ME = {
-  id: 'p-1', legal_name: 'Okonkwo Digital Ltd', store_name: 'Okonkwo Digital',
-  status: 'approved', reviewer_notes: null,
-  email: 'ada.okonkwo@example.com', phone: '08031229041',
+// app/partners/dashboard/page.tsx reads j.data.profile and j.data.affiliate,
+// NOT a flat profile — returning the flat shape renders the "No partner
+// profile" branch and every measurement is of the wrong screen.
+const PARTNER_STATUS = {
+  approved: 'approved',
+  pending: 'pending_review',
+  rejected: 'rejected',
+}[PARTNER] || 'approved'
+
+const PARTNER_PROFILE = PARTNER === 'none' ? null : {
+  id: 'p-1',
+  legal_name: 'Okonkwo Digital Ltd',
+  store_name: 'Okonkwo Digital',
+  status: PARTNER_STATUS,
+  reviewer_notes: PARTNER === 'rejected'
+    ? 'CAC registration could not be verified against the number supplied.'
+    : null,
+  business_email: 'partners@okonkwodigital.example',
+  business_phone: '08031229041',
+  alternate_phone: '',
+  owner_name: NAMELESS ? '' : 'Ada Okonkwo',
+  owner_email: 'ada.okonkwo@example.com',
+  owner_phone: '08031229042',
+  owner_location: 'Yaba, Lagos',
+  contact_method: 'WhatsApp',
+  address: '14 Herbert Macaulay Way, Sabo',
+  lga: 'Lagos Mainland',
+  state: 'Lagos',
+  payout_frequency: 'Monthly',
+  payout_method: 'Bank Transfer',
+  bank_name: 'Guaranty Trust Bank',
+  account_name: 'Okonkwo Digital Ltd',
+  account_number: '0123456789',
+  crypto_token: '', crypto_chain: '', wallet_address: '',
+  social_media: 'Instagram: @okonkwodigital',
+}
+
+// Only an approved partner has an affiliate record.
+const PARTNER_AFFILIATE = PARTNER === 'approved' ? {
+  id: 'aff-1',
+  referral_code: 'OKONKWO-DIGITAL-2026',   // long enough to test wrapping
+  status: 'active',
+  display_name: 'Okonkwo Digital',
+} : null
+
+const PARTNER_STATS = {
+  affiliate_id: PARTNER_AFFILIATE ? 'aff-1' : null,
+  clicks: 4820,
+  conversions: 0,          // a zero next to a large number
+  earnings_ngn: HUGE,
+  pending_ngn: 47500,
 }
 
 // ── admin fixtures ──────────────────────────────────────────────────────
@@ -194,7 +245,8 @@ const ROUTES = [
   [/^\/v2\/me\/messages\/[^/]+\/read$/, () => ({ ok: true })],
   [/^\/v2\/me\/wallet$/,                () => ({ ok: true, data: { balance_ngn: ZERO_WALLET ? 0 : 18300 } })],
   [/^\/v2\/me\/wallet\/transactions$/,  () => ({ ok: true, data: TXNS })],
-  [/^\/v2\/partners\/me$/,              () => ({ ok: true, data: PARTNER_ME })],
+  [/^\/v2\/partners\/me\/stats$/,        () => ({ ok: true, data: PARTNER_STATS })],
+  [/^\/v2\/partners\/me$/,              () => ({ ok: true, data: { profile: PARTNER_PROFILE, affiliate: PARTNER_AFFILIATE } })],
   [/^\/v2\/notifications$/,             () => ({ ok: true, data: [] })],
   [/^\/v2\/admin\/stats$/,              () => ({ ok: true, data: ADMIN_STATS })],
   // Phase 6: replace with real row shapes per tab.
@@ -228,4 +280,5 @@ server.listen(PORT, () => {
   console.log(`  profile: ${NAMELESS ? 'nameless (falls back to email)' : 'Ada Okonkwo'}`)
   console.log(`  wallet:  ${ZERO_WALLET ? '0' : '18,300'}`)
   console.log(`  orders:  ${ORDERS.length} (one per status, incl. rejected_pending)`)
+  console.log(`  partner: ${PARTNER}${PARTNER_PROFILE ? ` (${PARTNER_STATUS})` : ' — no profile'}`)
 })
