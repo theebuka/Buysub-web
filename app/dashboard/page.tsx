@@ -6,16 +6,18 @@
 //
 // Tabs: Orders · Messages · Wallet · Profile
 // Auth: Supabase session from localStorage (same domain)
-// Theme: BuySub design tokens (CSS variables)
+// Renders without the app shell — see isNoShell in components/AppShell.tsx.
+// Tokens come from CSS_VARS via `T`. Customer density, mobile-first at 360px.
 // ================================================================
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { createClient } from '@supabase/supabase-js'
+import { T, LOGO_DEV_TOKEN } from '@/lib/constants'
+import { useTheme } from '@/lib/theme'
 
 const SUPABASE_URL  = process.env.NEXT_PUBLIC_SUPABASE_URL  || ''
 const SUPABASE_ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 const API           = process.env.NEXT_PUBLIC_API_BASE || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'
-const LOGO_DEV_TOKEN = 'pk_S77F38yQR6WQWErhPEEp1w'
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON)
 
@@ -33,10 +35,10 @@ const initials = (name: string) =>
   (name || '?').split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase()
 
 const statusColor = (s: string) => {
-  if (s === 'paid' || s === 'approved') return { bg: 'rgba(22,163,74,0.12)', color: '#16a34a' }
-  if (s === 'pending_manual' || s === 'pending') return { bg: 'rgba(217,119,6,0.12)', color: '#d97706' }
-  if (s === 'cancelled' || s === 'rejected') return { bg: 'rgba(220,38,38,0.12)', color: '#dc2626' }
-  return { bg: 'rgba(107,107,126,0.12)', color: '#6b6b7e' }
+  if (s === 'paid' || s === 'approved') return { bg: 'rgba(var(--bs-success-rgb), 0.12)', color: T.color.success }
+  if (s === 'pending_manual' || s === 'pending') return { bg: 'rgba(var(--bs-warning-rgb), 0.12)', color: T.color.warning }
+  if (s === 'cancelled' || s === 'rejected') return { bg: 'rgba(var(--bs-error-rgb), 0.12)', color: T.color.error }
+  return { bg: 'rgba(var(--bs-text-muted-rgb), 0.12)', color: T.color.textMuted }
 }
 
 // ── read Supabase token from localStorage ────────────────────────
@@ -103,11 +105,234 @@ interface Profile {
 }
 
 // ================================================================
+// ICONS (module-level, house style: 24×24, currentColor, stroke 2)
+// ================================================================
+type IconProps = { size?: number }
+const svgBase = (size: number) => ({
+  width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+  stroke: 'currentColor', strokeWidth: 2,
+  strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const,
+})
+
+const IconPackage = ({ size = 24 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true">
+    <path d="m7.5 4.27 9 5.15" />
+    <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" />
+    <path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" />
+  </svg>
+)
+const IconInbox = ({ size = 24 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true">
+    <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+    <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11Z" />
+  </svg>
+)
+const IconMail = ({ size = 24 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true">
+    <rect x="2" y="4" width="20" height="16" rx="2" /><path d="m22 7-10 6L2 7" />
+  </svg>
+)
+const IconClock = ({ size = 16 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true">
+    <circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" />
+  </svg>
+)
+const IconCard = ({ size = 24 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true">
+    <rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20" />
+  </svg>
+)
+const IconChevron = ({ size = 18 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+)
+const IconX = ({ size = 18 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+)
+const IconAlert = ({ size = 16 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true">
+    <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+    <path d="M12 9v4" /><path d="M12 17h.01" />
+  </svg>
+)
+const IconCheck = ({ size = 16 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true"><path d="M20 6 9 17l-5-5" /></svg>
+)
+const IconSun = ({ size = 16 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true">
+    <circle cx="12" cy="12" r="4" />
+    <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+  </svg>
+)
+const IconMoon = ({ size = 16 }: IconProps) => (
+  <svg {...svgBase(size)} aria-hidden="true">
+    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+  </svg>
+)
+
+// ================================================================
+// SHARED STYLES (module-level)
+// ================================================================
+const inputStyle: React.CSSProperties = {
+  height: 'var(--bs-control-lg)', padding: `0 ${T.space[3]}`,
+  borderRadius: T.radius.md, fontSize: T.text.base,
+  width: '100%', background: T.color.bgInput,
+  border: `1px solid ${T.color.borderDefault}`,
+  color: T.color.textPrimary, boxSizing: 'border-box', outline: 'none',
+  fontFamily: 'inherit',
+  transition: `border-color var(--bs-dur-1) var(--bs-ease-inout), box-shadow var(--bs-dur-1) var(--bs-ease-inout)`,
+}
+const primaryBtn: React.CSSProperties = {
+  height: 'var(--bs-control-lg)', padding: `0 ${T.space[6]}`,
+  borderRadius: T.radius.md, background: T.color.accent,
+  border: 'none', color: '#fff', fontSize: T.text.base,
+  fontWeight: T.weight.semibold as any, cursor: 'pointer',
+  fontFamily: 'inherit',
+  transition: `background var(--bs-dur-1) var(--bs-ease-inout)`,
+}
+const cardStyle = (isMobile: boolean): React.CSSProperties => ({
+  background: T.color.bgCard,
+  border: `1px solid ${T.color.borderSubtle}`,
+  borderRadius: isMobile ? T.radius.xl : T.radius['2xl'],
+})
+
+// ================================================================
+// SUB-COMPONENTS (module-level — never define these inside the page)
+// ================================================================
+function BrandMark({ size = 40 }: { size?: number }) {
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: T.radius.lg,
+      background: T.color.accent, display: 'flex',
+      alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+    }}>
+      <span style={{ fontSize: T.text.lg, fontWeight: T.weight.bold as any, color: '#fff', lineHeight: 1 }}>B</span>
+    </div>
+  )
+}
+
+function BootGate({ message }: { message: string }) {
+  return (
+    <div style={{
+      minHeight: '100dvh', display: 'flex', flexDirection: 'column',
+      alignItems: 'center', justifyContent: 'center', gap: T.space[4],
+      background: T.color.bgBase, padding: T.space[6],
+    }}>
+      <BrandMark />
+      <div style={{ display: 'flex', alignItems: 'center', gap: T.space[2] }}>
+        <span className="bs-spinner" />
+        <span style={{ fontSize: T.text.base, color: T.color.textMuted }}>{message}</span>
+      </div>
+    </div>
+  )
+}
+
+function Alert({ kind, children }: { kind: 'error' | 'success'; children: React.ReactNode }) {
+  const rgb = kind === 'error' ? '--bs-error-rgb' : '--bs-success-rgb'
+  const fg  = kind === 'error' ? T.color.error : T.color.success
+  return (
+    <div
+      role={kind === 'error' ? 'alert' : 'status'}
+      style={{
+        display: 'flex', alignItems: 'flex-start', gap: T.space[2],
+        padding: T.space[3], borderRadius: T.radius.md,
+        background: `rgba(var(${rgb}), 0.10)`,
+        border: `1px solid rgba(var(${rgb}), 0.28)`,
+        fontSize: T.text.base, lineHeight: T.leading.snug, color: fg,
+      }}
+    >
+      <span style={{ flexShrink: 0, display: 'flex', paddingTop: 2 }}>
+        {kind === 'error' ? <IconAlert /> : <IconCheck />}
+      </span>
+      <span>{children}</span>
+    </div>
+  )
+}
+
+function RowSkeleton({ height }: { height: number }) {
+  return (
+    <div className="bs-pulse" style={{
+      height, borderRadius: T.radius.lg,
+      background: T.color.bgCard,
+      border: `1px solid ${T.color.borderSubtle}`,
+    }} />
+  )
+}
+
+function LoadingRows({ height = 76, count = 3 }: { height?: number; count?: number }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: T.space[2] }}>
+      {Array.from({ length: count }).map((_, i) => <RowSkeleton key={i} height={height} />)}
+    </div>
+  )
+}
+
+function EmptyState({ Icon, title, sub, cta, ctaHref }: {
+  Icon: (p: IconProps) => JSX.Element
+  title: string; sub: string; cta?: string; ctaHref?: string
+}) {
+  return (
+    <div style={{ padding: `${T.space[12]} ${T.space[5]}`, textAlign: 'center' }}>
+      <div style={{
+        width: 56, height: 56, borderRadius: T.radius.lg,
+        background: 'rgba(var(--bs-accent-rgb), 0.10)',
+        color: T.color.accentOnSurface,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        margin: `0 auto ${T.space[4]}`,
+      }}>
+        <Icon size={26} />
+      </div>
+      <div style={{
+        fontSize: T.text.lg, fontWeight: T.weight.semibold as any,
+        color: T.color.textPrimary, marginBottom: T.space[1],
+      }}>{title}</div>
+      <div style={{
+        fontSize: T.text.base, color: T.color.textMuted,
+        marginBottom: cta ? T.space[5] : 0, lineHeight: T.leading.relaxed,
+      }}>{sub}</div>
+      {cta && ctaHref && (
+        <a href={ctaHref} className="bs-primary-btn" style={{
+          ...primaryBtn, display: 'inline-flex', alignItems: 'center',
+          justifyContent: 'center', textDecoration: 'none',
+        }}>{cta}</a>
+      )}
+    </div>
+  )
+}
+
+function SectionCard({ title, isMobile, children }: {
+  title: string; isMobile: boolean; children: React.ReactNode
+}) {
+  return (
+    <div style={{ ...cardStyle(isMobile), padding: isMobile ? T.space[5] : T.space[6] }}>
+      <div style={{
+        fontSize: T.text.base, fontWeight: T.weight.semibold as any,
+        color: T.color.textPrimary, marginBottom: T.space[4],
+      }}>{title}</div>
+      {children}
+    </div>
+  )
+}
+
+function FieldGroup({ id, label, children }: { id: string; label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label htmlFor={id} style={{
+        display: 'block', fontSize: T.text.xs, color: T.color.textSecondary,
+        marginBottom: T.space[1], fontWeight: T.weight.medium as any,
+      }}>{label}</label>
+      {children}
+    </div>
+  )
+}
+
+// ================================================================
 // MAIN COMPONENT
 // ================================================================
 export default function CustomerDashboard() {
+  const { isDark, toggle: toggleTheme } = useTheme()
   const [session, setSession]   = useState<ReturnType<typeof readSession>>(null)
   const [mounted, setMounted]   = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const [tab, setTab]           = useState<Tab>('orders')
 
   // data
@@ -128,12 +353,23 @@ export default function CustomerDashboard() {
   const [pwSuccess,     setPwSuccess]     = useState('')
   const [pwLoading,     setPwLoading]     = useState(false)
 
+  const modalRef       = useRef<HTMLDivElement>(null)
+  const lastTriggerRef = useRef<HTMLElement | null>(null)
+
   // ── mount: read session ────────────────────────────────────────
   useEffect(() => {
     setMounted(true)
     const s = readSession()
     if (!s) { window.location.href = '/login'; return }
     setSession(s)
+  }, [])
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)')
+    setIsMobile(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches)
+    mq.addEventListener('change', handler)
+    return () => mq.removeEventListener('change', handler)
   }, [])
 
   // ── load data for current tab ──────────────────────────────────
@@ -169,6 +405,19 @@ export default function CustomerDashboard() {
     if (!session) return
     loadTab(tab, session.token)
   }, [session, tab])
+
+  // ── message modal: Escape to close, focus in and back out ──────
+  useEffect(() => {
+    if (!openMessage) return
+    const trigger = lastTriggerRef.current
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpenMessage(null) }
+    document.addEventListener('keydown', onKey)
+    modalRef.current?.focus()
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      trigger?.focus()
+    }
+  }, [openMessage])
 
   // ── mark message read ──────────────────────────────────────────
   const markRead = async (msg: Message) => {
@@ -218,471 +467,673 @@ export default function CustomerDashboard() {
     window.location.href = '/login'
   }
 
-  if (!mounted) return null
+  if (!mounted) return (<><DashStyles /><BootGate message="Loading your dashboard" /></>)
 
   const firstName = (profile?.full_name || session?.email || '').split(' ')[0] || 'You'
   const unreadCount = messages.filter(m => !m.is_read).length
+  const gutter = isMobile ? T.space[4] : T.space[6]
+
+  const TABS: { id: Tab; label: string }[] = [
+    { id: 'orders',   label: 'Orders' },
+    { id: 'messages', label: 'Messages' },
+    { id: 'wallet',   label: 'Wallet' },
+    { id: 'profile',  label: 'Profile' },
+  ]
 
   // ── RENDER ────────────────────────────────────────────────────
   return (
-    <div style={{
-      background: 'var(--bs-bg-base)',
-      minHeight: '100vh',
-      color: 'var(--bs-text-primary)',
-      fontFamily: 'Inter, sans-serif',
-    }}>
-      <style>{`
-        .bs-dash-tab:hover { color: var(--bs-text-primary) !important; }
-        .bs-dash-card { transition: border-color .15s; }
-        .bs-dash-card:hover { border-color: var(--bs-border-strong) !important; }
-        .bs-dash-input:focus { outline: none; border-color: #7C5CFF !important; }
-        @keyframes bsDashFade { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-        .bs-dash-animate { animation: bsDashFade .2s ease; }
-      `}</style>
-
-      {/* ── NAV ─────────────────────────────────────────────────── */}
-      <nav style={{
-        height: 64, borderBottom: '1px solid var(--bs-border-default)',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '0 24px', background: 'var(--bs-bg-card)',
-        position: 'sticky', top: 0, zIndex: 50,
+    <>
+      <DashStyles />
+      <div style={{
+        background: T.color.bgBase,
+        minHeight: '100dvh',
+        color: T.color.textPrimary,
       }}>
-        <a href="/shop" style={{ fontWeight: 700, fontSize: 18, color: 'var(--bs-text-primary)', textDecoration: 'none' }}>
-          BuySub
-        </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <a href="/shop" style={{ fontSize: 13, color: 'var(--bs-text-secondary)', textDecoration: 'none' }}>Shop</a>
-          {/* Avatar chip */}
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 8,
-            background: 'var(--bs-bg-elevated)', border: '1px solid var(--bs-border-default)',
-            borderRadius: 999, padding: '6px 14px 6px 8px', cursor: 'pointer',
-          }} onClick={signOut} title="Sign out">
-            <div style={{
-              width: 28, height: 28, borderRadius: 999, background: '#7C5CFF',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 11, fontWeight: 700, color: '#fff', flexShrink: 0,
-            }}>
-              {initials(profile?.full_name || session?.email || '')}
-            </div>
-            <span style={{ fontSize: 13, color: 'var(--bs-text-primary)', fontWeight: 500 }}>{firstName}</span>
-          </div>
-        </div>
-      </nav>
-
-      {/* ── LAYOUT ──────────────────────────────────────────────── */}
-      <div style={{ maxWidth: 860, margin: '0 auto', padding: '32px 20px 80px' }}>
-        
-        {/* Header */}
-        <div style={{ marginBottom: 28 }}>
-          <div style={{ fontSize: 22, fontWeight: 700, color: 'var(--bs-text-primary)' }}>My Dashboard</div>
-          <div style={{ fontSize: 13, color: 'var(--bs-text-muted)', marginTop: 4 }}>{session?.email}</div>
-        </div>
-
-        {/* Tab bar */}
-        <div style={{
-          display: 'flex', gap: 0, borderBottom: '1px solid var(--bs-border-default)',
-          marginBottom: 28, overflowX: 'auto',
+        {/* ── NAV ─────────────────────────────────────────────── */}
+        <nav style={{
+          height: 64, borderBottom: `1px solid ${T.color.borderDefault}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          padding: `0 ${gutter}`, background: T.color.bgCard,
+          position: 'sticky', top: 0, zIndex: 50, gap: T.space[3],
         }}>
-          {([
-            { id: 'orders',   label: 'Orders' },
-            { id: 'messages', label: unreadCount > 0 ? `Messages  ${unreadCount}` : 'Messages' },
-            { id: 'wallet',   label: 'Wallet' },
-            { id: 'profile',  label: 'Profile' },
-          ] as { id: Tab; label: string }[]).map(t => (
-            <button key={t.id} onClick={() => setTab(t.id)} className="bs-dash-tab" style={{
-              padding: '12px 20px', fontSize: 13, border: 'none', cursor: 'pointer',
-              background: 'transparent', whiteSpace: 'nowrap',
-              color: tab === t.id ? '#7C5CFF' : 'var(--bs-text-muted)',
-              borderBottom: tab === t.id ? '2px solid #7C5CFF' : '2px solid transparent',
-              fontWeight: tab === t.id ? 600 : 400, transition: 'all .15s',
-              fontFamily: 'Inter, sans-serif',
-            }}>{t.label}</button>
-          ))}
-        </div>
+          <a href="/shop" className="bs-quiet-link" style={{
+            fontWeight: T.weight.bold as any, fontSize: T.text.lg,
+            color: T.color.textPrimary, textDecoration: 'none',
+            display: 'inline-flex', alignItems: 'center',
+            minHeight: 'var(--bs-control-lg)', borderRadius: T.radius.md,
+          }}>
+            BuySub
+          </a>
+          <div style={{ display: 'flex', alignItems: 'center', gap: T.space[2] }}>
+            <button
+              type="button"
+              className="bs-icon-btn"
+              onClick={toggleTheme}
+              aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+              style={iconBtnStyle}
+            >
+              {isDark ? <IconSun /> : <IconMoon />}
+            </button>
+            <button
+              type="button"
+              className="bs-chip-btn"
+              onClick={signOut}
+              aria-label={`Sign out of ${firstName}'s account`}
+              style={{
+                display: 'flex', alignItems: 'center', gap: T.space[2],
+                background: T.color.bgElevated,
+                border: `1px solid ${T.color.borderDefault}`,
+                borderRadius: T.radius.full,
+                minHeight: 'var(--bs-control-lg)',
+                padding: `0 ${T.space[3]} 0 ${T.space[1]}`,
+                cursor: 'pointer', fontFamily: 'inherit', minWidth: 0,
+                transition: `border-color var(--bs-dur-1) var(--bs-ease-inout)`,
+              }}
+            >
+              <span style={{
+                width: 32, height: 32, borderRadius: T.radius.full,
+                background: T.color.accent,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: T.text.xs, fontWeight: T.weight.bold as any,
+                color: '#fff', flexShrink: 0,
+              }} aria-hidden="true">
+                {initials(profile?.full_name || session?.email || '')}
+              </span>
+              {/* firstName falls back to the full email when the profile has
+                  no name, and an email has no spaces to split on — so this must
+                  truncate or it pushes the page wider than the viewport. */}
+              <span style={{
+                fontSize: T.text.base, color: T.color.textPrimary,
+                fontWeight: T.weight.medium as any, whiteSpace: 'nowrap',
+                overflow: 'hidden', textOverflow: 'ellipsis',
+                maxWidth: isMobile ? 92 : 160, minWidth: 0,
+              }}>{firstName}</span>
+            </button>
+          </div>
+        </nav>
 
-        {/* ── ORDERS ────────────────────────────────────────────── */}
-        {tab === 'orders' && (
-          <div className="bs-dash-animate">
-            {loading ? <LoadingState /> : orders.length === 0 ? (
-              <EmptyState icon="📦" title="No orders yet" sub="Your purchase history will appear here." cta="Browse shop" ctaHref="/shop" />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                {orders.map(o => {
-                  const sc = statusColor(o.status)
-                  const isExp = expandedOrder === o.id
-                  return (
-                    <div key={o.id} className="bs-dash-card" style={{
-                      background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-subtle)',
-                      borderRadius: 16, overflow: 'hidden',
-                    }}>
-                      {/* Compact row */}
-                      <div onClick={() => setExpandedOrder(isExp ? null : o.id)} style={{
-                        padding: '16px 20px', cursor: 'pointer',
-                        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12,
-                      }}>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <span style={{ fontSize: 13, fontWeight: 600, fontFamily: 'monospace', color: 'var(--bs-text-primary)' }}>{o.order_ref}</span>
-                            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 999, background: sc.bg, color: sc.color, fontWeight: 500 }}>
-                              {o.status.replace(/_/g, ' ')}
+        {/* ── LAYOUT ──────────────────────────────────────────── */}
+        <div style={{
+          maxWidth: 860, margin: '0 auto',
+          padding: `${T.space[6]} ${gutter} ${T.space[12]}`,
+        }}>
+          {/* Header */}
+          <div style={{ marginBottom: T.space[6] }}>
+            <h1 style={{
+              fontSize: T.text['2xl'], fontWeight: T.weight.bold as any,
+              color: T.color.textPrimary, lineHeight: T.leading.tight,
+            }}>My dashboard</h1>
+            <div style={{ fontSize: T.text.xs, color: T.color.textMuted, marginTop: T.space[1] }}>
+              {session?.email}
+            </div>
+          </div>
+
+          {/* Tab bar */}
+          <div
+            role="tablist"
+            aria-label="Dashboard sections"
+            className="bs-scroll-x"
+            style={{
+              display: 'flex', gap: 0,
+              borderBottom: `1px solid ${T.color.borderDefault}`,
+              marginBottom: T.space[6], overflowX: 'auto',
+            }}
+          >
+            {TABS.map(t => {
+              const active = tab === t.id
+              return (
+                <button
+                  key={t.id}
+                  role="tab"
+                  id={`tab-${t.id}`}
+                  aria-selected={active}
+                  aria-controls={`panel-${t.id}`}
+                  onClick={() => setTab(t.id)}
+                  className="bs-tab"
+                  style={{
+                    display: 'inline-flex', alignItems: 'center', gap: T.space[2],
+                    minHeight: 'var(--bs-control-lg)',
+                    padding: `0 ${T.space[4]}`,
+                    fontSize: T.text.base, border: 'none', cursor: 'pointer',
+                    background: 'transparent', whiteSpace: 'nowrap',
+                    color: active ? T.color.accentOnSurface : T.color.textMuted,
+                    borderBottom: `2px solid ${active ? T.color.accent : 'transparent'}`,
+                    fontWeight: active ? T.weight.semibold as any : T.weight.regular as any,
+                    fontFamily: 'inherit',
+                    transition: `color var(--bs-dur-1) var(--bs-ease-inout)`,
+                  }}
+                >
+                  {t.label}
+                  {t.id === 'messages' && unreadCount > 0 && (
+                    <span
+                      style={{
+                        minWidth: 20, height: 20, borderRadius: T.radius.full,
+                        background: T.color.accent, color: '#fff',
+                        fontSize: T.text['2xs'], fontWeight: T.weight.bold as any,
+                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                        padding: `0 ${T.space[1]}`,
+                      }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+
+          {/* ── ORDERS ────────────────────────────────────────── */}
+          {tab === 'orders' && (
+            <div role="tabpanel" id="panel-orders" aria-labelledby="tab-orders" className="bs-animate">
+              {loading ? <LoadingRows /> : orders.length === 0 ? (
+                <EmptyState Icon={IconPackage} title="No orders yet"
+                  sub="Your purchase history will appear here."
+                  cta="Browse shop" ctaHref="/shop" />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: T.space[2] }}>
+                  {orders.map(o => {
+                    const sc = statusColor(o.status)
+                    const isExp = expandedOrder === o.id
+                    return (
+                      <div key={o.id} className="bs-card" style={{ ...cardStyle(isMobile), overflow: 'hidden' }}>
+                        <button
+                          type="button"
+                          className="bs-row-btn"
+                          onClick={() => setExpandedOrder(isExp ? null : o.id)}
+                          aria-expanded={isExp}
+                          aria-controls={`order-${o.id}`}
+                          style={{
+                            width: '100%', minHeight: 'var(--bs-control-lg)',
+                            padding: `${T.space[4]} ${T.space[5]}`, cursor: 'pointer',
+                            display: 'flex', alignItems: 'center',
+                            justifyContent: 'space-between', gap: T.space[3],
+                            background: 'transparent', border: 'none',
+                            textAlign: 'left', fontFamily: 'inherit',
+                          }}
+                        >
+                          <span style={{ minWidth: 0 }}>
+                            <span style={{ display: 'flex', alignItems: 'center', gap: T.space[2], flexWrap: 'wrap' }}>
+                              <span style={{
+                                fontSize: T.text.base, fontWeight: T.weight.semibold as any,
+                                fontFamily: 'ui-monospace, Menlo, monospace',
+                                color: T.color.textPrimary,
+                              }}>{o.order_ref}</span>
+                              <span style={{
+                                fontSize: T.text['2xs'], padding: `2px ${T.space[2]}`,
+                                borderRadius: T.radius.full, background: sc.bg, color: sc.color,
+                                fontWeight: T.weight.medium as any, textTransform: 'capitalize',
+                              }}>
+                                {o.status.replace(/_/g, ' ')}
+                              </span>
                             </span>
-                          </div>
-                          <div style={{ fontSize: 12, color: 'var(--bs-text-muted)', marginTop: 4 }}>{fmtDate(o.created_at)}</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
-                          <span style={{ fontSize: 16, fontWeight: 700 }}>{fmt(o.total_ngn)}</span>
-                          <span style={{ color: 'var(--bs-text-muted)', fontSize: 12 }}>{isExp ? '▾' : '▸'}</span>
-                        </div>
-                      </div>
+                            <span style={{
+                              display: 'block', fontSize: T.text.xs,
+                              color: T.color.textMuted, marginTop: T.space[1],
+                            }}>{fmtDate(o.created_at)}</span>
+                          </span>
+                          <span style={{ display: 'flex', alignItems: 'center', gap: T.space[2], flexShrink: 0 }}>
+                            <span style={{ fontSize: T.text.lg, fontWeight: T.weight.bold as any }}>{fmt(o.total_ngn)}</span>
+                            <span style={{
+                              display: 'flex', color: T.color.textMuted,
+                              transform: isExp ? 'rotate(180deg)' : 'none',
+                              transition: `transform var(--bs-dur-2) var(--bs-ease-inout)`,
+                            }}>
+                              <IconChevron />
+                            </span>
+                          </span>
+                        </button>
 
-                      {/* Expanded */}
-                      {isExp && (
-                        <div style={{ borderTop: '1px solid var(--bs-border-subtle)', padding: '16px 20px' }}>
-                          {o.order_items && o.order_items.length > 0 && (
-                            <div style={{ marginBottom: 14 }}>
-                              {o.order_items.map((it: any, i: number) => (
-                                <div key={i} style={{
-                                  display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                                  padding: '8px 0', borderBottom: i < o.order_items!.length - 1 ? '1px solid var(--bs-border-subtle)' : 'none', gap: 10,
-                                }}>
-                                  <div style={{ minWidth: 0 }}>
-                                    <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--bs-text-primary)' }}>{it.product_name}</div>
-                                    <div style={{ fontSize: 11, color: 'var(--bs-text-muted)' }}>
-                                      {it.billing_period} · ×{it.quantity}
+                        {isExp && (
+                          <div id={`order-${o.id}`} style={{
+                            borderTop: `1px solid ${T.color.borderSubtle}`,
+                            padding: `${T.space[4]} ${T.space[5]}`,
+                          }}>
+                            {o.order_items && o.order_items.length > 0 && (
+                              <div style={{ marginBottom: T.space[4] }}>
+                                {o.order_items.map((it: any, i: number) => (
+                                  <div key={i} style={{
+                                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                                    padding: `${T.space[2]} 0`,
+                                    borderBottom: i < o.order_items!.length - 1 ? `1px solid ${T.color.borderSubtle}` : 'none',
+                                    gap: T.space[3],
+                                  }}>
+                                    <div style={{ minWidth: 0 }}>
+                                      <div style={{ fontSize: T.text.base, fontWeight: T.weight.medium as any, color: T.color.textPrimary }}>{it.product_name}</div>
+                                      <div style={{ fontSize: T.text.xs, color: T.color.textMuted }}>
+                                        {it.billing_period} · ×{it.quantity}
+                                      </div>
                                     </div>
+                                    <span style={{ fontSize: T.text.base, fontWeight: T.weight.semibold as any, flexShrink: 0 }}>
+                                      {fmt(it.total_price_ngn || it.unit_price_ngn * it.quantity)}
+                                    </span>
                                   </div>
-                                  <span style={{ fontSize: 13, fontWeight: 600, flexShrink: 0 }}>{fmt(it.total_price_ngn || it.unit_price_ngn * it.quantity)}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, borderTop: '1px solid var(--bs-border-subtle)', paddingTop: 12 }}>
-                            {o.discount_ngn > 0 && (
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#16a34a' }}>
-                                <span>Discount</span><span>−{fmt(o.discount_ngn)}</span>
+                                ))}
                               </div>
                             )}
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, fontWeight: 600 }}>
-                              <span>Total paid</span><span>{fmt(o.total_ngn)}</span>
-                            </div>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: 'var(--bs-text-muted)' }}>
-                              <span>Payment</span><span style={{ textTransform: 'capitalize' }}>{(o.payment_method || '').replace(/_/g, ' ')}</span>
+                            <div style={{
+                              display: 'flex', flexDirection: 'column', gap: T.space[1],
+                              borderTop: `1px solid ${T.color.borderSubtle}`, paddingTop: T.space[3],
+                            }}>
+                              {o.discount_ngn > 0 && (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.text.xs, color: T.color.success }}>
+                                  <span>Discount</span><span>−{fmt(o.discount_ngn)}</span>
+                                </div>
+                              )}
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.text.base, fontWeight: T.weight.semibold as any }}>
+                                <span>Total paid</span><span>{fmt(o.total_ngn)}</span>
+                              </div>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.text.xs, color: T.color.textMuted }}>
+                                <span>Payment</span><span style={{ textTransform: 'capitalize' }}>{(o.payment_method || '').replace(/_/g, ' ')}</span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* ── MESSAGES ──────────────────────────────────────────── */}
-        {tab === 'messages' && (
-          <div className="bs-dash-animate">
-            {loading ? <LoadingState /> : messages.length === 0 ? (
-              <EmptyState icon="📬" title="No messages" sub="Product details and delivery info from BuySub will appear here." />
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                {messages.map(m => (
-                  <div key={m.id} className="bs-dash-card" onClick={() => markRead(m)} style={{
-                    background: 'var(--bs-bg-card)', border: `1px solid ${m.is_read ? 'var(--bs-border-subtle)' : '#7C5CFF44'}`,
-                    borderRadius: 16, padding: '16px 20px', cursor: 'pointer',
-                    display: 'flex', gap: 14, alignItems: 'flex-start',
-                    opacity: m.is_read ? 0.85 : 1,
-                  }}>
-                    {/* Product logo or envelope */}
-                    <div style={{
-                      width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                      background: m.product_domain ? 'var(--bs-bg-elevated)' : 'rgba(124,92,255,0.1)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      overflow: 'hidden', border: '1px solid var(--bs-border-subtle)',
-                    }}>
-                      {m.product_domain ? (
-                        <img src={`https://img.logo.dev/${m.product_domain}?token=${LOGO_DEV_TOKEN}&size=64&theme=dark`} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                      ) : (
-                        <span style={{ fontSize: 18 }}>📨</span>
-                      )}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 3 }}>
-                        {!m.is_read && (
-                          <div style={{ width: 7, height: 7, borderRadius: 999, background: '#7C5CFF', flexShrink: 0 }} />
                         )}
-                        <div style={{ fontSize: 13, fontWeight: m.is_read ? 500 : 700, color: 'var(--bs-text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {m.subject}
-                        </div>
-                      </div>
-                      {m.product_name && (
-                        <div style={{ fontSize: 11, color: '#7C5CFF', marginBottom: 3 }}>{m.product_name}</div>
-                      )}
-                      <div style={{ fontSize: 12, color: 'var(--bs-text-muted)' }}>{fmtDate(m.created_at)}</div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Message detail modal */}
-            {openMessage && (
-              <>
-                <div onClick={() => setOpenMessage(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 200 }} />
-                <div style={{
-                  position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
-                  width: 'min(560px, calc(100vw - 32px))', maxHeight: '80vh',
-                  background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-default)',
-                  borderRadius: 20, zIndex: 201, display: 'flex', flexDirection: 'column',
-                  boxShadow: '0 24px 64px rgba(0,0,0,0.5)',
-                }}>
-                  <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid var(--bs-border-subtle)', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexShrink: 0 }}>
-                    <div style={{ minWidth: 0, flex: 1, paddingRight: 12 }}>
-                      <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--bs-text-primary)', marginBottom: 3 }}>{openMessage.subject}</div>
-                      {openMessage.product_name && <div style={{ fontSize: 12, color: '#7C5CFF' }}>{openMessage.product_name}</div>}
-                      <div style={{ fontSize: 11, color: 'var(--bs-text-muted)', marginTop: 4 }}>{fmtFull(openMessage.created_at)}</div>
-                    </div>
-                    <button onClick={() => setOpenMessage(null)} style={{ background: 'transparent', border: 'none', color: 'var(--bs-text-muted)', cursor: 'pointer', fontSize: 20, lineHeight: 1, flexShrink: 0 }}>×</button>
-                  </div>
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-                    <pre style={{
-                      whiteSpace: 'pre-wrap', wordBreak: 'break-word',
-                      fontSize: 13, lineHeight: 1.8, color: 'var(--bs-text-primary)',
-                      fontFamily: 'ui-monospace, "Cascadia Code", Menlo, monospace',
-                      background: 'var(--bs-bg-elevated)', border: '1px solid var(--bs-border-subtle)',
-                      borderRadius: 12, padding: 16, margin: 0,
-                    }}>
-                      {openMessage.body}
-                    </pre>
-                    {openMessage.expires_at && (
-                      <div style={{ marginTop: 12, fontSize: 11, color: 'var(--bs-text-muted)' }}>
-                        ⏱ Expires {fmtDate(openMessage.expires_at)}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── WALLET ────────────────────────────────────────────── */}
-        {tab === 'wallet' && (
-          <div className="bs-dash-animate">
-            {loading ? <LoadingState /> : (
-              <>
-                {/* Balance card */}
-                <div style={{
-                  background: 'linear-gradient(135deg, #7C5CFF 0%, #5B3FD4 100%)',
-                  borderRadius: 20, padding: '28px 28px 24px',
-                  marginBottom: 24, color: '#fff',
-                }}>
-                  <div style={{ fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', opacity: 0.8, marginBottom: 10 }}>
-                    BuySub Wallet
-                  </div>
-                  <div style={{ fontSize: 36, fontWeight: 700, letterSpacing: '-0.5px', marginBottom: 4 }}>
-                    {fmt(wallet?.balance_ngn ?? 0)}
-                  </div>
-                  <div style={{ fontSize: 12, opacity: 0.7 }}>
-                    Available credit · can be used at checkout
-                  </div>
-                </div>
-
-                {/* Transactions */}
-                <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--bs-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>
-                  Transaction History
-                </div>
-                {txns.length === 0 ? (
-                  <EmptyState icon="💳" title="No transactions yet" sub="Wallet top-ups and credits will appear here." />
-                ) : (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {txns.map(tx =>  {
-                    const amount = Number(tx.amount_ngn)
-
-                    return (
-                      <div key={tx.id} style={{
-                        background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-subtle)',
-                        borderRadius: 14, padding: '14px 18px',
-                        display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10,
-                      }}>
-                        <div>
-                            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--bs-text-primary)', textTransform: 'capitalize' }}>
-                                {(() => {
-                                    const labelMap: Record<string, string> = {
-                                        admin_topup: 'Manual Top-up',
-                                        refund: 'Order Refund',
-                                        promotion: 'Promotion/Bonus',
-                                        compensation: 'Compensation',
-                                    }
-
-                                    const raw = tx.reference || tx.note || tx.source || tx.type
-                                    return (labelMap[raw] || raw).replace(/_/g, ' ')
-                                })()}
-                            </div>
-                            {tx.note && <div style={{ fontSize: 11, color: 'var(--bs-text-muted)', marginTop: 2 }}>{tx.note}</div>}
-                            <div style={{ fontSize: 11, color: 'var(--bs-text-muted)', marginTop: 2 }}>{fmtFull(tx.created_at)}</div>
-                        </div>
-                        <div style={{
-                            fontSize: 15, fontWeight: 700, flexShrink: 0,
-                            color: tx.type === 'debit' ? '#dc2626' : '#16a34a',
-                        }}>
-                            {tx.type === 'debit' ? '−' : '+'}{fmt(amount)}
-                        </div>
                       </div>
                     )
-                    })}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        )}
-
-        {/* ── PROFILE ───────────────────────────────────────────── */}
-        {tab === 'profile' && (
-          <div className="bs-dash-animate">
-            {loading ? <LoadingState /> : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-                
-                {/* Avatar + name */}
-                <div style={{
-                  background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-subtle)',
-                  borderRadius: 20, padding: '24px',
-                  display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap',
-                }}>
-                  <div style={{
-                    width: 64, height: 64, borderRadius: 999, background: '#7C5CFF',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 22, fontWeight: 700, color: '#fff', flexShrink: 0,
-                  }}>
-                    {initials(profile?.full_name || session?.email || '')}
-                  </div>
-                  <div>
-                    <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--bs-text-primary)' }}>
-                      {profile?.full_name || session?.email}
-                    </div>
-                    <div style={{ fontSize: 13, color: 'var(--bs-text-muted)', marginTop: 2 }}>{session?.email}</div>
-                  </div>
+                  })}
                 </div>
+              )}
+            </div>
+          )}
 
-                {/* Edit form */}
-                <SectionCard title="Personal Info">
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 14 }}>
-                    <FieldGroup label="Full Name">
-                      <input className="bs-dash-input" style={inputStyle} value={profileForm.full_name}
-                        onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))} placeholder="Your name" />
-                    </FieldGroup>
-                    <FieldGroup label="Phone">
-                      <input className="bs-dash-input" style={inputStyle} value={profileForm.phone}
-                        onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))} placeholder="080..." />
-                    </FieldGroup>
-                    <FieldGroup label="Email">
-                      <input className="bs-dash-input" style={{ ...inputStyle, opacity: 0.5, cursor: 'not-allowed' }}
-                        value={profileForm.email} disabled placeholder="Email" />
-                    </FieldGroup>
-                  </div>
-                  <div style={{ marginTop: 16 }}>
-                    <button onClick={saveProfile} disabled={profileSaving} style={primaryBtn}>
-                      {profileSaving ? 'Saving…' : 'Save Changes'}
+          {/* ── MESSAGES ──────────────────────────────────────── */}
+          {tab === 'messages' && (
+            <div role="tabpanel" id="panel-messages" aria-labelledby="tab-messages" className="bs-animate">
+              {loading ? <LoadingRows /> : messages.length === 0 ? (
+                <EmptyState Icon={IconInbox} title="No messages"
+                  sub="Product details and delivery info from BuySub will appear here." />
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: T.space[2] }}>
+                  {messages.map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      className="bs-card bs-row-btn"
+                      onClick={e => { lastTriggerRef.current = e.currentTarget; markRead(m) }}
+                      aria-label={`${m.is_read ? 'Read' : 'Unread'} message: ${m.subject}`}
+                      style={{
+                        ...cardStyle(isMobile),
+                        borderColor: m.is_read ? T.color.borderSubtle : 'rgba(var(--bs-accent-rgb), 0.4)',
+                        padding: `${T.space[4]} ${T.space[5]}`, cursor: 'pointer',
+                        display: 'flex', gap: T.space[3], alignItems: 'flex-start',
+                        textAlign: 'left', fontFamily: 'inherit', width: '100%',
+                        minHeight: 'var(--bs-control-lg)',
+                      }}
+                    >
+                      <span style={{
+                        width: 40, height: 40, borderRadius: T.radius.md, flexShrink: 0,
+                        background: m.product_domain ? T.color.bgElevated : 'rgba(var(--bs-accent-rgb), 0.10)',
+                        color: T.color.accentOnSurface,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        overflow: 'hidden', border: `1px solid ${T.color.borderSubtle}`,
+                      }}>
+                        {m.product_domain ? (
+                          <img src={`https://img.logo.dev/${m.product_domain}?token=${LOGO_DEV_TOKEN}&size=64&theme=dark`} alt="" style={{ width: '100%', height: '100%', objectFit: 'contain' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                        ) : (
+                          <IconMail size={20} />
+                        )}
+                      </span>
+                      <span style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: T.space[2], marginBottom: 2 }}>
+                          {!m.is_read && (
+                            <span style={{
+                              width: 7, height: 7, borderRadius: T.radius.full,
+                              background: T.color.accent, flexShrink: 0,
+                            }} aria-hidden="true" />
+                          )}
+                          <span style={{
+                            fontSize: T.text.base,
+                            fontWeight: (m.is_read ? T.weight.medium : T.weight.bold) as any,
+                            color: T.color.textPrimary, overflow: 'hidden',
+                            textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                          }}>{m.subject}</span>
+                        </span>
+                        {m.product_name && (
+                          <span style={{ display: 'block', fontSize: T.text.xs, color: T.color.accentOnSurface, marginBottom: 2 }}>{m.product_name}</span>
+                        )}
+                        <span style={{ display: 'block', fontSize: T.text.xs, color: T.color.textMuted }}>{fmtDate(m.created_at)}</span>
+                      </span>
                     </button>
-                  </div>
-                </SectionCard>
+                  ))}
+                </div>
+              )}
 
-                {/* Change password */}
-                <SectionCard title="Change Password">
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                    <FieldGroup label="Current Password">
-                      <input className="bs-dash-input" style={inputStyle} type="password"
-                        value={pwForm.current} onChange={e => setPwForm(p => ({ ...p, current: e.target.value }))} placeholder="••••••••" />
-                    </FieldGroup>
-                    <FieldGroup label="New Password">
-                      <input className="bs-dash-input" style={inputStyle} type="password"
-                        value={pwForm.next} onChange={e => setPwForm(p => ({ ...p, next: e.target.value }))} placeholder="Min 8 characters" />
-                    </FieldGroup>
-                    <FieldGroup label="Confirm New Password">
-                      <input className="bs-dash-input" style={inputStyle} type="password"
-                        value={pwForm.confirm} onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))} placeholder="Repeat new password" />
-                    </FieldGroup>
-                    {pwError   && <div style={{ fontSize: 12, color: '#dc2626', padding: '8px 12px', background: 'rgba(220,38,38,0.08)', borderRadius: 8 }}>{pwError}</div>}
-                    {pwSuccess && <div style={{ fontSize: 12, color: '#16a34a', padding: '8px 12px', background: 'rgba(22,163,74,0.08)', borderRadius: 8 }}>{pwSuccess}</div>}
-                    <button onClick={changePassword} disabled={pwLoading} style={primaryBtn}>
-                      {pwLoading ? 'Updating…' : 'Update Password'}
-                    </button>
+              {/* Message detail modal */}
+              {openMessage && (
+                <>
+                  <div onClick={() => setOpenMessage(null)} style={{
+                    position: 'fixed', inset: 0,
+                    background: 'rgba(0,0,0,0.6)', zIndex: 200,
+                  }} />
+                  <div
+                    ref={modalRef}
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="msg-title"
+                    tabIndex={-1}
+                    style={{
+                      position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+                      width: `min(560px, calc(100vw - ${T.space[8]}))`, maxHeight: '80dvh',
+                      background: T.color.bgCard, border: `1px solid ${T.color.borderDefault}`,
+                      borderRadius: isMobile ? T.radius.xl : T.radius['2xl'],
+                      zIndex: 201, display: 'flex', flexDirection: 'column',
+                      boxShadow: T.elev[3], outline: 'none',
+                    }}
+                  >
+                    <div style={{
+                      padding: `${T.space[5]} ${T.space[5]} ${T.space[4]}`,
+                      borderBottom: `1px solid ${T.color.borderSubtle}`,
+                      display: 'flex', justifyContent: 'space-between',
+                      alignItems: 'flex-start', flexShrink: 0, gap: T.space[3],
+                    }}>
+                      <div style={{ minWidth: 0, flex: 1 }}>
+                        <div id="msg-title" style={{
+                          fontSize: T.text.lg, fontWeight: T.weight.bold as any,
+                          color: T.color.textPrimary, marginBottom: 2,
+                        }}>{openMessage.subject}</div>
+                        {openMessage.product_name && (
+                          <div style={{ fontSize: T.text.xs, color: T.color.accentOnSurface }}>{openMessage.product_name}</div>
+                        )}
+                        <div style={{ fontSize: T.text.xs, color: T.color.textMuted, marginTop: T.space[1] }}>
+                          {fmtFull(openMessage.created_at)}
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        className="bs-icon-btn"
+                        onClick={() => setOpenMessage(null)}
+                        aria-label="Close message"
+                        style={{ ...iconBtnStyle, background: 'transparent' }}
+                      >
+                        <IconX />
+                      </button>
+                    </div>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: T.space[5] }}>
+                      <pre style={{
+                        whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+                        fontSize: T.text.sm, lineHeight: T.leading.relaxed,
+                        color: T.color.textPrimary,
+                        fontFamily: 'ui-monospace, "Cascadia Code", Menlo, monospace',
+                        background: T.color.bgElevated,
+                        border: `1px solid ${T.color.borderSubtle}`,
+                        borderRadius: T.radius.md, padding: T.space[4], margin: 0,
+                      }}>
+                        {openMessage.body}
+                      </pre>
+                      {openMessage.expires_at && (
+                        <div style={{
+                          marginTop: T.space[3], fontSize: T.text.xs, color: T.color.textMuted,
+                          display: 'flex', alignItems: 'center', gap: T.space[2],
+                        }}>
+                          <IconClock />
+                          Expires {fmtDate(openMessage.expires_at)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </SectionCard>
+                </>
+              )}
+            </div>
+          )}
 
-                {/* Sign out */}
-                <button onClick={signOut} style={{
-                  width: '100%', height: 44, borderRadius: 12, background: 'transparent',
-                  border: '1px solid var(--bs-border-default)', color: 'var(--bs-text-muted)',
-                  fontSize: 14, cursor: 'pointer', fontFamily: 'Inter, sans-serif',
-                }}>Sign Out</button>
-              </div>
-            )}
-          </div>
-        )}
+          {/* ── WALLET ────────────────────────────────────────── */}
+          {tab === 'wallet' && (
+            <div role="tabpanel" id="panel-wallet" aria-labelledby="tab-wallet" className="bs-animate">
+              {loading ? <LoadingRows /> : (
+                <>
+                  {/* Balance card */}
+                  <div style={{
+                    background: `linear-gradient(135deg, ${T.color.accent} 0%, ${T.color.accentHover} 100%)`,
+                    borderRadius: isMobile ? T.radius.xl : T.radius['2xl'],
+                    padding: isMobile ? T.space[5] : T.space[6],
+                    marginBottom: T.space[6], color: '#fff',
+                  }}>
+                    <div style={{ fontSize: T.text.xs, opacity: 0.85, marginBottom: T.space[2] }}>
+                      BuySub wallet
+                    </div>
+                    <div style={{
+                      fontSize: T.text['3xl'], fontWeight: T.weight.bold as any,
+                      letterSpacing: '-0.02em', marginBottom: T.space[1],
+                      lineHeight: T.leading.tight,
+                    }}>
+                      {fmt(wallet?.balance_ngn ?? 0)}
+                    </div>
+                    <div style={{ fontSize: T.text.xs, opacity: 0.75 }}>
+                      Available credit · can be used at checkout
+                    </div>
+                  </div>
+
+                  {/* Transactions */}
+                  <div style={{
+                    fontSize: T.text.base, fontWeight: T.weight.semibold as any,
+                    color: T.color.textPrimary, marginBottom: T.space[3],
+                  }}>
+                    Transaction history
+                  </div>
+                  {txns.length === 0 ? (
+                    <EmptyState Icon={IconCard} title="No transactions yet"
+                      sub="Wallet top-ups and credits will appear here." />
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: T.space[2] }}>
+                      {txns.map(tx => {
+                        const amount = Number(tx.amount_ngn)
+                        const isDebit = tx.type === 'debit'
+                        return (
+                          <div key={tx.id} style={{
+                            ...cardStyle(isMobile),
+                            borderRadius: T.radius.lg,
+                            padding: `${T.space[3]} ${T.space[4]}`,
+                            display: 'flex', justifyContent: 'space-between',
+                            alignItems: 'center', gap: T.space[3],
+                          }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{
+                                fontSize: T.text.base, fontWeight: T.weight.medium as any,
+                                color: T.color.textPrimary, textTransform: 'capitalize',
+                              }}>
+                                {(() => {
+                                  const labelMap: Record<string, string> = {
+                                    admin_topup: 'Manual Top-up',
+                                    refund: 'Order Refund',
+                                    promotion: 'Promotion/Bonus',
+                                    compensation: 'Compensation',
+                                  }
+                                  const raw = tx.reference || tx.note || tx.source || tx.type
+                                  return (labelMap[raw] || raw).replace(/_/g, ' ')
+                                })()}
+                              </div>
+                              {tx.note && <div style={{ fontSize: T.text.xs, color: T.color.textMuted, marginTop: 2 }}>{tx.note}</div>}
+                              <div style={{ fontSize: T.text.xs, color: T.color.textMuted, marginTop: 2 }}>{fmtFull(tx.created_at)}</div>
+                            </div>
+                            <div style={{
+                              fontSize: T.text.lg, fontWeight: T.weight.bold as any, flexShrink: 0,
+                              color: isDebit ? T.color.error : T.color.success,
+                            }}>
+                              {isDebit ? '−' : '+'}{fmt(amount)}
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          )}
+
+          {/* ── PROFILE ───────────────────────────────────────── */}
+          {tab === 'profile' && (
+            <div role="tabpanel" id="panel-profile" aria-labelledby="tab-profile" className="bs-animate">
+              {loading ? <LoadingRows height={120} count={2} /> : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: T.space[5] }}>
+
+                  {/* Avatar + name */}
+                  <div style={{
+                    ...cardStyle(isMobile),
+                    padding: isMobile ? T.space[5] : T.space[6],
+                    display: 'flex', alignItems: 'center', gap: T.space[5], flexWrap: 'wrap',
+                  }}>
+                    <div style={{
+                      width: 64, height: 64, borderRadius: T.radius.full,
+                      background: T.color.accent,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: T.text.xl, fontWeight: T.weight.bold as any,
+                      color: '#fff', flexShrink: 0,
+                    }} aria-hidden="true">
+                      {initials(profile?.full_name || session?.email || '')}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{
+                        fontSize: T.text.lg, fontWeight: T.weight.bold as any,
+                        color: T.color.textPrimary,
+                      }}>
+                        {profile?.full_name || session?.email}
+                      </div>
+                      <div style={{ fontSize: T.text.xs, color: T.color.textMuted, marginTop: 2 }}>{session?.email}</div>
+                    </div>
+                  </div>
+
+                  {/* Edit form */}
+                  <SectionCard title="Personal info" isMobile={isMobile}>
+                    <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fit, minmax(220px, 1fr))', gap: T.space[3] }}>
+                      <FieldGroup id="full_name" label="Full name">
+                        <input id="full_name" className="bs-input" style={inputStyle} value={profileForm.full_name}
+                          onChange={e => setProfileForm(p => ({ ...p, full_name: e.target.value }))} placeholder="Your name" autoComplete="name" />
+                      </FieldGroup>
+                      <FieldGroup id="phone" label="Phone">
+                        <input id="phone" className="bs-input" style={inputStyle} value={profileForm.phone}
+                          onChange={e => setProfileForm(p => ({ ...p, phone: e.target.value }))} placeholder="080..." autoComplete="tel" />
+                      </FieldGroup>
+                      <FieldGroup id="email" label="Email">
+                        <input id="email" className="bs-input" style={{ ...inputStyle, opacity: 0.5, cursor: 'not-allowed' }}
+                          value={profileForm.email} disabled placeholder="Email" />
+                      </FieldGroup>
+                    </div>
+                    <div style={{ marginTop: T.space[4] }}>
+                      <button className="bs-primary-btn" onClick={saveProfile} disabled={profileSaving} style={primaryBtn}>
+                        {profileSaving ? 'Saving…' : 'Save changes'}
+                      </button>
+                    </div>
+                  </SectionCard>
+
+                  {/* Change password */}
+                  <SectionCard title="Change password" isMobile={isMobile}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: T.space[3] }}>
+                      <FieldGroup id="pw-current" label="Current password">
+                        <input id="pw-current" className="bs-input" style={inputStyle} type="password" autoComplete="current-password"
+                          value={pwForm.current} onChange={e => setPwForm(p => ({ ...p, current: e.target.value }))} placeholder="••••••••" />
+                      </FieldGroup>
+                      <FieldGroup id="pw-next" label="New password">
+                        <input id="pw-next" className="bs-input" style={inputStyle} type="password" autoComplete="new-password"
+                          value={pwForm.next} onChange={e => setPwForm(p => ({ ...p, next: e.target.value }))} placeholder="Min 8 characters" />
+                      </FieldGroup>
+                      <FieldGroup id="pw-confirm" label="Confirm new password">
+                        <input id="pw-confirm" className="bs-input" style={inputStyle} type="password" autoComplete="new-password"
+                          value={pwForm.confirm} onChange={e => setPwForm(p => ({ ...p, confirm: e.target.value }))} placeholder="Repeat new password" />
+                      </FieldGroup>
+                      {pwError   && <Alert kind="error">{pwError}</Alert>}
+                      {pwSuccess && <Alert kind="success">{pwSuccess}</Alert>}
+                      <div>
+                        <button className="bs-primary-btn" onClick={changePassword} disabled={pwLoading} style={primaryBtn}>
+                          {pwLoading ? 'Updating…' : 'Update password'}
+                        </button>
+                      </div>
+                    </div>
+                  </SectionCard>
+
+                  {/* Sign out */}
+                  <button className="bs-secondary-btn" onClick={signOut} style={{
+                    width: '100%', minHeight: 'var(--bs-control-lg)',
+                    borderRadius: T.radius.md, background: 'transparent',
+                    border: `1px solid ${T.color.borderDefault}`,
+                    color: T.color.textSecondary,
+                    fontSize: T.text.base, cursor: 'pointer', fontFamily: 'inherit',
+                    transition: `border-color var(--bs-dur-1) var(--bs-ease-inout)`,
+                  }}>Sign out</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
-// ── shared style constants ────────────────────────────────────────
-const inputStyle: React.CSSProperties = {
-  height: 42, padding: '0 14px', borderRadius: 10, fontSize: 13,
-  width: '100%', background: 'var(--bs-bg-input)', border: '1px solid var(--bs-border-default)',
-  color: 'var(--bs-text-primary)', boxSizing: 'border-box', outline: 'none',
-  fontFamily: 'Inter, sans-serif',
-}
-const primaryBtn: React.CSSProperties = {
-  height: 42, padding: '0 24px', borderRadius: 10, background: '#7C5CFF',
-  border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: 'pointer',
-  fontFamily: 'Inter, sans-serif',
-}
-
-// ── micro components ─────────────────────────────────────────────
-function LoadingState() {
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-      {[1, 2, 3].map(i => (
-        <div key={i} style={{
-          height: 72, borderRadius: 14, background: 'var(--bs-bg-card)',
-          border: '1px solid var(--bs-border-subtle)',
-          animation: 'pulse 1.5s ease-in-out infinite',
-        }} />
-      ))}
-      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }`}</style>
-    </div>
-  )
+// 44px tap area for a glyph-sized control.
+const iconBtnStyle: React.CSSProperties = {
+  width: 'var(--bs-control-lg)',
+  height: 'var(--bs-control-lg)',
+  borderRadius: T.radius.md,
+  background: T.color.bgElevated,
+  border: `1px solid ${T.color.borderDefault}`,
+  color: T.color.textSecondary,
+  cursor: 'pointer',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexShrink: 0,
+  transition: `border-color var(--bs-dur-1) var(--bs-ease-inout)`,
 }
 
-function EmptyState({ icon, title, sub, cta, ctaHref }: { icon: string; title: string; sub: string; cta?: string; ctaHref?: string }) {
+// ================================================================
+// Pseudo-classes and keyframes
+// ================================================================
+function DashStyles() {
   return (
-    <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-      <div style={{ fontSize: 40, marginBottom: 14 }}>{icon}</div>
-      <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--bs-text-primary)', marginBottom: 6 }}>{title}</div>
-      <div style={{ fontSize: 13, color: 'var(--bs-text-muted)', marginBottom: 20 }}>{sub}</div>
-      {cta && ctaHref && (
-        <a href={ctaHref} style={{ display: 'inline-block', padding: '10px 24px', borderRadius: 10, background: '#7C5CFF', color: '#fff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>{cta}</a>
-      )}
-    </div>
-  )
-}
+    <style>{`
+      .bs-input:focus-visible,
+      .bs-input:focus {
+        border-color: var(--bs-accent) !important;
+        box-shadow: var(--bs-ring);
+      }
+      .bs-input::placeholder { color: var(--bs-text-faint); }
 
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div style={{ background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-subtle)', borderRadius: 20, padding: '20px 24px' }}>
-      <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--bs-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16 }}>{title}</div>
-      {children}
-    </div>
-  )
-}
+      .bs-card { transition: border-color var(--bs-dur-1) var(--bs-ease-inout); }
+      .bs-card:hover { border-color: var(--bs-border-strong); }
 
-function FieldGroup({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <div style={{ fontSize: 11, color: 'var(--bs-text-secondary)', marginBottom: 5 }}>{label}</div>
-      {children}
-    </div>
+      .bs-tab:hover { color: var(--bs-text-primary); }
+      .bs-primary-btn:hover:not(:disabled) { background: var(--bs-accent-hover); }
+      .bs-primary-btn:active:not(:disabled) { transform: scale(0.99); }
+      .bs-primary-btn:disabled { opacity: 0.55; cursor: not-allowed; }
+      .bs-secondary-btn:hover { border-color: var(--bs-border-strong); color: var(--bs-text-primary); }
+      .bs-icon-btn:hover { border-color: var(--bs-border-strong); color: var(--bs-text-primary); }
+      .bs-chip-btn:hover { border-color: var(--bs-border-strong); }
+      .bs-quiet-link:hover { color: var(--bs-accent-on-surface); }
+
+      .bs-input:focus-visible,
+      .bs-tab:focus-visible,
+      .bs-primary-btn:focus-visible,
+      .bs-secondary-btn:focus-visible,
+      .bs-icon-btn:focus-visible,
+      .bs-chip-btn:focus-visible,
+      .bs-row-btn:focus-visible,
+      .bs-quiet-link:focus-visible {
+        outline: none;
+        box-shadow: var(--bs-ring);
+      }
+
+      .bs-scroll-x::-webkit-scrollbar { display: none; }
+      .bs-scroll-x { -ms-overflow-style: none; scrollbar-width: none; }
+
+      @keyframes bsFadeUp {
+        from { opacity: 0; transform: translateY(6px); }
+        to   { opacity: 1; transform: translateY(0); }
+      }
+      .bs-animate { animation: bsFadeUp var(--bs-dur-2) var(--bs-ease-out) both; }
+
+      @keyframes bsPulse { 0%,100% { opacity: 1 } 50% { opacity: .45 } }
+      .bs-pulse { animation: bsPulse 1.5s ease-in-out infinite; }
+
+      @keyframes bsSpin { to { transform: rotate(360deg); } }
+      .bs-spinner {
+        width: 16px; height: 16px; flex-shrink: 0;
+        border: 2px solid var(--bs-border-strong);
+        border-top-color: var(--bs-accent);
+        border-radius: var(--bs-radius-full);
+        animation: bsSpin 0.7s linear infinite;
+        display: inline-block;
+      }
+    `}</style>
   )
 }
