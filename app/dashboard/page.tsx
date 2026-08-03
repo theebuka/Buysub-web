@@ -527,6 +527,7 @@ export default function CustomerDashboard() {
                 minHeight: 'var(--bs-control-lg)',
                 padding: `0 ${T.space[3]} 0 ${T.space[1]}`,
                 cursor: 'pointer', fontFamily: 'inherit', minWidth: 0,
+                color: T.color.textPrimary,
                 transition: `border-color var(--bs-dur-1) var(--bs-ease-inout)`,
               }}
             >
@@ -649,6 +650,10 @@ export default function CustomerDashboard() {
                             justifyContent: 'space-between', gap: T.space[3],
                             background: 'transparent', border: 'none',
                             textAlign: 'left', fontFamily: 'inherit',
+                            // <button> does not inherit color — the UA sets
+                            // `color: buttontext`. Without this, any child
+                            // without its own color renders UA black.
+                            color: T.color.textPrimary,
                           }}
                         >
                           <span style={{ minWidth: 0 }}>
@@ -672,7 +677,10 @@ export default function CustomerDashboard() {
                             }}>{fmtDate(o.created_at)}</span>
                           </span>
                           <span style={{ display: 'flex', alignItems: 'center', gap: T.space[2], flexShrink: 0 }}>
-                            <span style={{ fontSize: T.text.lg, fontWeight: T.weight.bold as any }}>{fmt(o.total_ngn)}</span>
+                            <span className="bs-amount" style={{
+                              fontSize: T.text.lg, fontWeight: T.weight.bold as any,
+                              color: T.color.textPrimary,
+                            }}>{fmt(o.total_ngn)}</span>
                             <span style={{
                               display: 'flex', color: T.color.textMuted,
                               transform: isExp ? 'rotate(180deg)' : 'none',
@@ -703,7 +711,10 @@ export default function CustomerDashboard() {
                                         {it.billing_period} · ×{it.quantity}
                                       </div>
                                     </div>
-                                    <span style={{ fontSize: T.text.base, fontWeight: T.weight.semibold as any, flexShrink: 0 }}>
+                                    <span className="bs-amount" style={{
+                                      fontSize: T.text.base, fontWeight: T.weight.semibold as any,
+                                      flexShrink: 0, color: T.color.textPrimary,
+                                    }}>
                                       {fmt(it.total_price_ngn || it.unit_price_ngn * it.quantity)}
                                     </span>
                                   </div>
@@ -716,11 +727,16 @@ export default function CustomerDashboard() {
                             }}>
                               {o.discount_ngn > 0 && (
                                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.text.xs, color: T.color.success }}>
-                                  <span>Discount</span><span>−{fmt(o.discount_ngn)}</span>
+                                  <span>Discount</span><span className="bs-amount">−{fmt(o.discount_ngn)}</span>
                                 </div>
                               )}
-                              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.text.base, fontWeight: T.weight.semibold as any }}>
-                                <span>Total paid</span><span>{fmt(o.total_ngn)}</span>
+                              <div style={{
+                                display: 'flex', justifyContent: 'space-between',
+                                fontSize: T.text.base, fontWeight: T.weight.semibold as any,
+                                color: T.color.textPrimary,
+                              }}>
+                                <span>Total paid</span>
+                                <span className="bs-amount">{fmt(o.total_ngn)}</span>
                               </div>
                               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: T.text.xs, color: T.color.textMuted }}>
                                 <span>Payment</span><span style={{ textTransform: 'capitalize' }}>{(o.payment_method || '').replace(/_/g, ' ')}</span>
@@ -758,6 +774,7 @@ export default function CustomerDashboard() {
                         display: 'flex', gap: T.space[3], alignItems: 'flex-start',
                         textAlign: 'left', fontFamily: 'inherit', width: '100%',
                         minHeight: 'var(--bs-control-lg)',
+                        color: T.color.textPrimary,
                       }}
                     >
                       <span style={{
@@ -896,7 +913,7 @@ export default function CustomerDashboard() {
                       letterSpacing: '-0.02em', marginBottom: T.space[1],
                       lineHeight: T.leading.tight,
                     }}>
-                      {fmt(wallet?.balance_ngn ?? 0)}
+                      <span className="bs-amount">{fmt(wallet?.balance_ngn ?? 0)}</span>
                     </div>
                     <div style={{ fontSize: T.text.xs, opacity: 0.75 }}>
                       Available credit · can be used at checkout
@@ -949,7 +966,7 @@ export default function CustomerDashboard() {
                               fontSize: T.text.lg, fontWeight: T.weight.bold as any, flexShrink: 0,
                               color: isDebit ? T.color.error : T.color.success,
                             }}>
-                              {isDebit ? '−' : '+'}{fmt(amount)}
+                              <span className="bs-amount">{isDebit ? '−' : '+'}{fmt(amount)}</span>
                             </div>
                           </div>
                         )
@@ -1082,6 +1099,19 @@ const iconBtnStyle: React.CSSProperties = {
 function DashStyles() {
   return (
     <style>{`
+      /* Mobile browsers run data detectors over digit strings and wrap them in
+         their own <a>, which then takes the UA link colour. That is why the
+         amounts rendered blue on mobile and UA black on desktop: the <button>
+         they sit in does not inherit colour either. Colours are now explicit,
+         and any injected link inherits rather than overriding. */
+      .bs-amount a,
+      a[x-apple-data-detectors],
+      a[href^="tel:"], a[href^="sms:"] {
+        color: inherit !important;
+        text-decoration: inherit !important;
+        -webkit-text-fill-color: inherit !important;
+      }
+
       .bs-input:focus-visible,
       .bs-input:focus {
         border-color: var(--bs-accent) !important;

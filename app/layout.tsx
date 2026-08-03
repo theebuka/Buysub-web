@@ -13,6 +13,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en" suppressHydrationWarning>
       <head>
         {/*
+          Stops mobile browsers running data detectors over prices, order refs
+          and dates and wrapping them in their own <a>, which then paints them
+          the UA link colour. Prevention only — it changes no styling.
+        */}
+        <meta name="format-detection" content="telephone=no, date=no, address=no, email=no" />
+        {/*
           Sets data-theme before first paint so light-mode users do not see a
           dark flash. Everything is inside try/catch: localStorage throws in
           Safari private mode, and an uncaught throw in a head script blocks

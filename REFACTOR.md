@@ -22,12 +22,22 @@ Read this file first in any session. Update it before finishing.
   only the region you need.
 - Authenticated surfaces (/dashboard, /admin, /partners/dashboard) redirect on
   401, so they cannot be measured with a fake session against the real API.
-  Build a throwaway bundle with a dead API instead —
-  `NEXT_PUBLIC_API_BASE=http://127.0.0.1:9 npm run build` — so apiFetch throws,
-  is caught, and returns `{ok:false}` without redirecting. Every tab then
-  renders its empty state. **Always rebuild without that var before
-  committing**, and confirm with
-  `grep -rho "127\.0\.0\.1:9" .next/static/chunks/app/<route>/*.js`.
+  **Verify against a populated fixture API, never an empty one.** Stand up a
+  throwaway node http server on :8787 that answers the surface's endpoints with
+  `{ok:true, data:[...]}` and permissive CORS, build with
+  `NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787 npm run build`, then seed a fake
+  `sb-*-auth-token` in localStorage. Keep the stub outside the repo.
+  A dead API (connection refused) also avoids the redirect, but every list then
+  renders its *empty state* — so no rows, no amounts, no modal, and defects in
+  populated markup go unseen. That is exactly how the Phase 2 money-colour bug
+  shipped. Fixtures must include at least one row per list, real amounts, one
+  unread and one read message, and a mix of order statuses.
+  **Always rebuild without that var before committing**, and confirm with
+  `grep -rho "127\.0\.0\.1:8787" .next/static/chunks/app/<route>/*.js`.
+- Text colour must be explicit on `<button>`, `<a>`, `<input>` and `<select>`:
+  they do not inherit `color` (the UA sets `buttontext` / `-webkit-link`).
+  Scan a finished file for style objects that set `fontSize` but no `color`,
+  and for those four tags whose style omits `color`.
 - When measuring inside an iframe, use the iframe's own
   `contentWindow.getComputedStyle`. The outer window's version resolves
   `var()` against the *outer* document's root, so a light-themed iframe reports
@@ -288,6 +298,30 @@ and no cap that pushed the document 28px wider than a 360px viewport. The label
 now truncates with a `maxWidth`.
 
 `readSession()` untouched, as instructed.
+
+**Phase 2 follow-up — money rendered blue on mobile, UA black on desktop.**
+Two causes compounding, both mine:
+
+1. Promoting the order row from a `<div>` to a `<button>` lost the inherited
+   colour. `<button>` does not inherit `color`; the UA stylesheet sets
+   `color: buttontext`. The total span had no colour of its own, so it fell
+   through to UA black — unreadable in dark mode.
+2. With no explicit colour, mobile data detectors wrapped the digit string in
+   their own `<a>`, which took the UA link colour, hence blue.
+
+Fixed by setting `color` explicitly on the row button, the message-card button
+and the nav chip button, giving every money value an explicit token colour and
+a `.bs-amount` hook, adding a rule so any injected link inherits instead of
+overriding, and adding `<meta name="format-detection">` in `app/layout.tsx` to
+stop the detection at source. That meta is global and also covers the prices in
+`Marketplace.tsx` — prevention only, it changes no styling.
+
+Verified in both themes: every colour inside the order-row buttons resolves to
+a token (`#F0F0F5`/`#1A1A2E` text-primary, plus success, warning, error and
+text-muted), with zero injected links. The message modal was also verified for
+the first time — `aria-modal`, `aria-labelledby` resolving to the subject,
+focus into the dialog on open, Escape to close, focus returned to the
+triggering card.
 
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
