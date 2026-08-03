@@ -6,6 +6,25 @@ Read this file first in any session. Update it before finishing.
 - UI only. No logic, no perf, no data flow changes.
 - Off-limits: components/Marketplace.tsx. Hand-written, includes the cart
   drawer. Read it for reference, never write to it.
+- **Off-limits: the generated PDF receipt itself.** The jsPDF drawing code in
+  `app/admin/receipt/page.tsx`, its 7.5pt–22pt print scale, its layout, and the
+  `buildReceiptPdf` output in the API repo. Do not restyle, retokenise or
+  "improve" the document design. It is a fixed artifact.
+
+  **The boundary, so Phase 10 does not have to re-derive it: anything that
+  reaches the rendered PDF is out; anything that only affects the browser page
+  is in.** Phase 10 covers the web form *around* the document — the inputs,
+  buttons, labels and layout an admin uses to fill it in.
+
+  Concretely out of scope: every `doc.*` call (33 of them — `setFontSize`,
+  `setFont`, `setTextColor`, `setFillColor`, `setDrawColor`, `text`, `rect`,
+  `line`, `addImage`), the pt sizes, the page geometry, the colour values
+  passed into the PDF, and anything they read from. A token is not an
+  improvement here: `--bs-text-sm` is 13 CSS px and means nothing to a 7.5pt
+  print scale, and the PDF has no theme to follow.
+
+  Note that the receipt page holds colours serving both sides. Only the ones
+  the browser paints are Phase 10's business.
 - Colors come from the existing palette. Everything else (type, spacing,
   radius, elevation, motion) is the skill's call.
 - Gates after every phase: `npx tsc --noEmit` and `npm run build`.
@@ -87,11 +106,13 @@ Read this file first in any session. Update it before finishing.
 - [x] 3. app/partners/page.tsx
 - [x] 4. app/partners/dashboard/page.tsx
 - [x] 5. app/order/verify/VerifyContent.tsx
-- [ ] 6. app/admin — shared primitives only (buttons, inputs, tables, badges)
+- [x] 6. app/admin — shared primitives only (buttons, inputs, tables, badges)
 - [ ] 7. app/admin — tabs 1–4
 - [ ] 8. app/admin — tabs 5–9
 - [ ] 9. app/admin — tabs 10–13
-- [ ] 10. app/admin/receipt/page.tsx
+- [ ] 10. app/admin/receipt/page.tsx — the web form only, never the PDF
+       (see the off-limits rule above: anything reaching the rendered
+       document is out of scope)
 - [ ] 11. components/AppShell.tsx notification toasts/banners/modals
 - [ ] 12. components/Navbar.tsx and components/Footer.tsx
        (these render on /shop — the cart drawer inside Marketplace.tsx keeps
@@ -247,7 +268,57 @@ themes.
 in light and the worst in dark. It was tuned against a light background. The
 rest were tuned against dark.
 
-#### Phase 7 is re-deriving these, not porting them
+#### Settled in Phase 6: opaque fills, not tints
+
+Two things recorded above were wrong, and both are corrected here.
+
+**"A much stronger tint in light" cannot work.** The tint *is* the text colour,
+so raising alpha moves the background toward the foreground and contrast falls
+monotonically: success goes 3.11 at α 0.12 → 2.82 at 0.20 → 2.49 at 0.30 →
+1.69 at 0.60. That option is struck. It is only viable if the tint is
+decoupled from the text, at which point it is the `-on-surface` option with
+extra saturation.
+
+**The two-surface model above is incomplete, and that is the real defect.**
+Badges also render inside *selected rows*, which carry
+`rgba(var(--bs-accent-rgb), …)` at 0.06–0.15 (`app/admin/page.tsx:1784`,
+`:3330`, `:4752`, `:4888`, `:5184`). A translucent badge tint composites with
+that third layer. With the accent tint at 0.15 underneath, every light family
+and half of dark fail no matter how the text is tuned — 4.03–4.43 on the best
+candidate text set. This, not the mid-saturation tokens, is why light "failed
+across the board".
+
+So the badge fill is now **opaque**: the 0.12 tint pre-flattened against
+`--bs-bg-card` (0.08 for `rejected_pending`), shipped as `--bs-badge-*-bg` /
+`-fg` pairs. An opaque fill cannot composite with what sits beneath it, so the
+badge is identical on a card, on a bare row and inside a selected row. That
+collapses the matrix from 20 combinations to 10.
+
+| family | dark bg / fg | measured | light bg / fg | measured |
+|---|---|---|---|---|
+| success | `#0E2118` / `#22C55E` | 7.38 | `#E1F2ED` / `#047351` | 5.07 |
+| warning | `#271D0F` / `#F59E0B` | 7.71 | `#FAEFE1` / `#9A5404` | 5.08 |
+| error | `#261215` / `#F04E4E` | 5.01 | `#FBE5E5` / `#BF2121` | 5.05 |
+| neutral | `#17171D` / `#878796` | — | `#EDEEF0` / `#5C6672` | — |
+| `rejected_pending` | `#1E170F` / `#F59E0B` | 8.25 | `#FCF4EB` / `#9E5704` | 5.05 |
+
+Measured in-browser against the fixture, transitions frozen, both themes.
+Tuned to 5.0 rather than the 4.5 floor: the minimum-passing values sat at 4.60
+and any later surface change erases that headroom.
+
+`statusColor` returns `var()` references, so it stays theme-argument-free and
+all 8 `<Badge>` call sites were untouched. `rejected_pending` moved *above* the
+terminal branch — the tests are exact equality so order is not load-bearing
+today, but it is the status most likely to be swept into `rejected` by a later
+edit.
+
+**Proof of the selected-row case.** Painting a badge's ancestor with the
+strongest tint admin uses (`rgba(var(--bs-accent-rgb), 0.15)`) leaves the badge
+at `rgb(252,244,235)` / 5.05, unchanged. The same badge built the old
+translucent way would have composited to `rgb(131,94,235)` — a purple field —
+at **1.61:1**.
+
+#### Superseded: Phase 7 is re-deriving these, not porting them
 
 Swapping in the palette tokens at the same 0.12 tint fixes dark and does not
 fix light:
@@ -328,7 +399,24 @@ an engineering one.
 
 ## Deferred (logic/perf, do not fix now)
 - Duplicated fmt/fmtDate/statusColor across surfaces
-- Three divergent FX tables
+- **Three divergent FX tables, and the divergence is material.**
+  `app/admin/receipt/page.tsx:33` carries its own, and it does not merely spell
+  the rates differently — it disagrees with `lib/constants.ts:26` by up to 23%:
+
+  | | receipt page | lib/constants.ts | implied NGN per unit |
+  |---|---|---|---|
+  | USD | `0.000625` | `1 / 1300` | 1600 vs 1300 |
+  | GBP | `0.0005` | `1 / 1860` | 2000 vs 1860 |
+  | CAD | `0.00086` | `1 / 920` | 1163 vs 920 |
+
+  So the same order converts to a different foreign-currency total depending on
+  whether the customer reads it in the app or on the PDF receipt. The API
+  receipt path is the third copy. Confirmed during Phase 6.
+
+  **This is logic, not styling, and it is explicitly not a Phase 10 fix** —
+  Phase 10 touches only the browser form, and the FX table feeds the rendered
+  document. Deciding which table is authoritative is a money question for the
+  owner, not a refactor decision.
 - Duplicated session-reading (readToken/readSession/getToken)
 - NEXT_PUBLIC_API_URL vs NEXT_PUBLIC_API_BASE split
 - Navbar.tsx:21 writes bs_admin_theme on toggle but never reads it on mount, so
@@ -357,6 +445,24 @@ an engineering one.
   so the chip shows the full address when the profile has no name. Truncated
   visually in Phase 2; the derivation itself is untouched. Reproduce with
   `FIXTURE_PROFILE=nameless`.
+- **`WalletsTab` is a stub.** It fetches `/v2/admin/wallets?page=1&limit=20`,
+  discards the response entirely, and renders an EmptyState unconditionally.
+  The tab is unimplemented, not unstyled — nothing to do in Phase 8 until the
+  behaviour exists. Functional, not visual.
+- `colorScheme: 'dark'` is hardcoded on five date inputs
+  (`app/admin/page.tsx` in the discount form, wallet top-up, links basics and
+  notifications), so the native calendar picker stays dark in light mode.
+  Per-tab, Phases 7-9.
+- 32 emoji remain in admin, mostly as button glyphs (`✅` ×12, `🔒` ×3,
+  `✕` ×3, `💳` ×2, plus `🪞 🕶 🔑 📱 📨 📋 📄`). Phases 1-5 replaced these
+  with inline SVGs on every customer surface. They sit in tab code, so they go
+  tab by tab in Phases 7-9, following the same module-level SVG house pattern.
+- `CustomersTab` is indented two spaces at module level, with a commented-out
+  earlier version directly above it. It is *not* nested inside another
+  function, so there is no remount bug — but the indentation hides it from any
+  column-anchored search. The dead commented copy also holds the only
+  `<table>` in the file; admin's live lists are all div rows, which is why
+  Phase 6 created no table primitive.
 - **`rejected_pending` renders grey on the dashboard.** Decided: it is a
   warning — see "Status colour" under Decisions made. Not yet applied to
   `app/dashboard/page.tsx:37`, which has no branch for it; add that branch the
@@ -571,6 +677,101 @@ Marketplace's `.wa-btn:hover`.
 The Suspense fallback in `page.tsx` now reuses the same card, spinner and copy
 as the real loading state, so the two are not visibly different components.
 
+### Phase 6 — admin shared primitives
+
+**The theme port is the load-bearing move, and it did not touch a tab.** The
+local `dark`/`light` hex maps are replaced by one `TOKENS` object of `var()`
+references. `type Theme = typeof TOKENS` still resolves to
+`Record<string, string>`, so all ~40 signatures typecheck unchanged and 500+
+`T.*` dereferences across 13 tabs moved onto the token layer with no call site
+edited. The local `useTheme` (which read `bs_admin_theme` directly) now wraps
+`lib/theme.ts`; `isDark` survives only to pick the toggle icon.
+
+The `T` prop threading is now pure ceremony — the object is a module constant.
+It dies in Phase 9, once the tabs are done. Removing it now would mean editing
+every tab.
+
+Nine sites concatenated a hex alpha onto a theme value (`${T.error}30`,
+`T.accent + '20'`, `${color}10`) and would have emitted `var(--bs-error)30`,
+which is invalid and silently dropped. Four of them are in tab code; they were
+fixed anyway, because the repoint breaks them. They now use
+`rgba(var(--bs-*-rgb), α)` or `color-mix`.
+
+**Which tabs the repoint does *not* fully reach.** Audited statically rather
+than by sampling one element per tab, so it is exhaustive:
+
+- **Fully on the theme object** (zero colour literals): Overview, Rejected,
+  Partners, Affiliates, Settings, Wallets.
+- **Still holding literals**: Products (`#7C5CFF`, `#6B4EE6`, `#1C1C1F`),
+  Links (`#7C5CFF`, `#6B4EE6`, `#000000`), Notifications (`#7C5CFF`), Orders,
+  Customers, Ads, Discounts (`#fff`). Plus `WalletDebitPanel` (`#dc2626`,
+  `#991b1b`) and `LinkRowCard` (`#1C1C1F`).
+
+Not all are defects: `#fff` on an accent fill is correct per the colour
+decision, and the QR components' `#000000`/`#ffffff` are QR module colours,
+not theme colours. The real ones are the hardcoded accents (should be
+`--bs-accent` / `--bs-accent-hover` / `--bs-accent-on-surface`) and the
+`#1C1C1F` Marketplace leak. Fix each as its tab is taken.
+
+**Two primitive generations, made identical but not merged.** Admin has an
+older set (`Badge` 8 uses, `SmallBtn` 24, `KpiCard` 8, `FieldLabel` 60,
+`pageBtnStyle` 1) and a newer "refined" set in the newer tabs (`PillBadge` 4,
+`actionBtnStyle` 5, `GhostBtn` 3, `IconBtn` 2, `StatChip` 3, `Label` 16,
+`refinedPageBtnStyle` 3). Phase 6 put both on the same tokens and density
+*without changing any call signature*. Merging them means editing call sites
+inside the tabs, which is Phases 7-9 — and because they now render
+identically, that dedupe is a mechanical no-op with no visual delta, safe one
+tab at a time.
+
+**A contrast bug found in the buttons, not the badges.** `SmallBtn` and
+`PillBadge` fill with 12% of their own colour and then printed the label in
+that same colour. Measured as shipped, five of six colours failed AA in light
+and two of six in dark — accent 3.74:1 light, text-muted 3.58:1 dark. This is
+the `--bs-accent-on-surface` problem again, generalised to the controls. Fixed
+with `--bs-on-tint-mix`, a single property holding both the mix target and the
+percentage (`#FFFFFF 16%` dark, `#000000 28%` light) so it is theme-switchable
+from one place with no call-site change. Percentages are the worst case across
+the six colours those components are actually called with. Verified in-browser:
+accent went 3.74 → 6.22 in light and 4.09 → 5.28 in dark.
+
+`color-mix` is the first modern CSS function in this codebase. It is used
+because it preserves the `color` prop shape, which is what kept all 24
+`SmallBtn` call sites out of a primitives-only phase. Confirmed supported at
+runtime.
+
+**Focus rings exist for the first time.** Five style objects set
+`outline: 'none'` with no replacement, so keyboard focus was invisible across
+the whole back office. `--bs-ring` was added in Phase 0 and had no consumer
+until now. The rule lives in `Shell` under a `.bs-admin` scope and uses
+`!important`, which is load-bearing rather than lazy: the file is 100% inline
+styles and an inline `outline: none` outbeats any stylesheet rule on
+specificity. Drawn with `box-shadow` so it follows border-radius.
+**Not verified** — the automated tab never holds document focus, same
+limitation as Phase 2.
+
+Also: the `☀️`/`🌙` toggle emoji became inline SVGs with an `aria-label`
+(there was none); `Card`/`KpiCard`/`DetailSection` labels moved off `fontSize:
+10` to the 2xs 11 floor; `minHeight: 100vh` → `100dvh`; `StatChip` lost its
+decorative dot (it sat before a plain count); `PillBadge` kept its dot (real
+status) and lost a dead border ternary whose branches were identical, plus a
+`rgba(255,255,255,0.04)` fill that was invisible on a white card.
+
+**Uppercase tracked micro-labels stay in admin.** Phases 1-5 replaced them
+with sentence case on the customer surfaces. Admin is desktop-first and dense,
+where small-caps labels earn their space. The split is deliberate; it is not
+an inconsistency for a later phase to "fix".
+
+**`scripts/fixture-api.js` had no admin routes.** Every `/v2/admin/*` list fell
+through a catch-all returning `[]`, so admin rendered its empty state and no
+badge, amount or row markup was measurable — the same failure the dead-API note
+above warns about, which is how the Phase 2 money-colour bug shipped. Added
+`/v2/admin/orders` (all 7 statuses incl. `rejected_pending`, with the
+`customer_name`/`customer_email` columns admin renders and the customer
+endpoint lacks), `/v2/admin/customers` and `/v2/admin/products`. **The
+remaining admin lists are still stubs** — Affiliates, Links, Ads, Discounts,
+Notifications, Partners and Wallets render empty, so nothing in them has been
+measured. Fill each in as its tab is taken.
+
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
   keeps its existing styling on the same page. Check it visually before
@@ -639,3 +840,23 @@ as the real loading state, so the two are not visibly different components.
   Suspense fallback matched to the real loading state, /order/verify added to
   isNoShell. tsc + build pass; all three states verified at a true 360×740 in
   both themes with no overflow and no control under 44px.
+- 2026-08-03 — Phase 6. app/admin shared primitives. Badge decision settled as
+  opaque `--bs-badge-*` fills after finding that a translucent tint composites
+  with the selected-row accent tint (a third surface the earlier analysis
+  missed) and that the recorded "stronger tint in light" option is
+  mathematically backwards. Local dark/light hex maps replaced by one TOKENS
+  object of var() references, moving 500+ T.* reads onto the token layer
+  without editing a tab; local useTheme now wraps lib/theme.ts. Nine hex-alpha
+  concatenation sites converted before they could emit invalid CSS. Both
+  primitive generations put on admin density without changing a signature, so
+  the Phase 7-9 dedupe is a visual no-op. Found and fixed an AA failure in
+  SmallBtn/PillBadge label text (accent 3.74:1 in light) via
+  `--bs-on-tint-mix`. First focus rings in admin, on --bs-ring. Toggle emoji
+  replaced with inline SVGs plus an aria-label. fixture-api.js given its
+  missing /v2/admin/* routes — every admin list had been returning [], so the
+  tabs rendered empty states and nothing in them was measurable. tsc + build
+  pass; badges, buttons and both themes verified in-browser against the
+  populated fixture with transitions frozen, then rebuilt clean and confirmed
+  no 127.0.0.1:8787 in the chunks. Not verified: focus rings (the automated
+  tab never holds document focus) and the SmallBtn success/error/warning
+  variants (their tabs' fixtures are still stubs).

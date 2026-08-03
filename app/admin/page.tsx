@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { toast } from "sonner"
+import { useTheme as useThemeController } from '@/lib/theme'
 
 const API = process.env.NEXT_PUBLIC_API_URL!
 const LOGO_DEV_TOKEN = 'pk_S77F38yQR6WQWErhPEEp1w'
@@ -31,12 +32,29 @@ const fmtTime = (iso: string) => { try { return new Date(iso).toLocaleTimeString
 const fmtFull = (iso: string) => `${fmtDate(iso)} ${fmtTime(iso)}`
 const dayKey = (iso: string) => { try { return new Date(iso).toLocaleDateString('en-NG',{weekday:'long',month:'long',day:'numeric',year:'numeric'}) } catch { return '—' } }
 const sentenceCase = (s: string) => s ? s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : ''
+// A general status painter, not order-only: it also covers in_stock, active,
+// hidden, suspended, archived and pending_review, so any change here is wider
+// than orders.
+//
+// Returns var() references rather than literals, which is what lets it stay
+// theme-argument-free — [data-theme="light"] reselects the values underneath.
+// The fills are OPAQUE by design. A badge renders on three backgrounds: a
+// Card, a bare list row, and a SELECTED row carrying an accent tint at up to
+// 0.15. A translucent badge tint composites with whatever is beneath it, and
+// the selected-row case failed AA on every light family regardless of how the
+// text was tuned. See the --bs-badge-* block in lib/constants.ts.
 const statusColor = (s: string) => {
-  if (s==='paid'||s==='approved'||s==='in_stock'||s==='active') return {bg:'rgba(22,163,74,0.12)',color:'#16a34a'}
-  if (s==='pending_manual'||s==='pending_review'||s==='pending') return {bg:'rgba(217,119,6,0.12)',color:'#d97706'}
-  if (s==='cancelled'||s==='rejected'||s==='out_of_stock'||s==='hidden'||s==='suspended'||s==='archived') return {bg:'rgba(220,38,38,0.12)',color:'#dc2626'}
-  if (s==='rejected_pending') return {bg:'rgba(217,119,6,0.08)',color:'#92400e'}
-  return {bg:'rgba(107,107,126,0.12)',color:'#6b6b7e'}
+  if (s==='paid'||s==='approved'||s==='in_stock'||s==='active') return {bg:'var(--bs-badge-success-bg)',color:'var(--bs-badge-success-fg)'}
+  if (s==='pending_manual'||s==='pending_review'||s==='pending') return {bg:'var(--bs-badge-warning-bg)',color:'var(--bs-badge-warning-fg)'}
+  // Deliberately ahead of the terminal branch below. The tests are exact
+  // equality so the order is not load-bearing today, but rejected_pending is
+  // the status most likely to be mis-swept into `rejected` by a later edit.
+  // It is stage one of a two-stage rejection, reversible via
+  // /v2/admin/orders/:id/undo-reject, so it paints as a warning rather than an
+  // error, and dimmer than plain pending so the two stay distinct.
+  if (s==='rejected_pending') return {bg:'var(--bs-badge-pending-bg)',color:'var(--bs-badge-pending-fg)'}
+  if (s==='cancelled'||s==='rejected'||s==='out_of_stock'||s==='hidden'||s==='suspended'||s==='archived') return {bg:'var(--bs-badge-error-bg)',color:'var(--bs-badge-error-fg)'}
+  return {bg:'var(--bs-badge-neutral-bg)',color:'var(--bs-badge-neutral-fg)'}
 }
 const emptyPagination: Pagination = {page:1,limit:20,total:0,pages:0}
 const parsePagination = (r: any): Pagination => r?.meta?.pagination||r?.pagination||emptyPagination
@@ -52,32 +70,61 @@ function useClientValue<T>(getter: () => T, fallback: T): T {
 }
 
 // ── Theme ──
-const dark = {
-  bg:'#050507',card:'#0B0B0F',elevated:'#141418',input:'#0E0E13',subtle:'#1a1a22',muted:'#18181c',
-  border:'#27272e',borderSubtle:'#1c1c22',text:'#e8e8ec',textSecondary:'#a0a0b0',textMuted:'#6b6b7e',textFaint:'#4a4a5e',
-  accent:'#7C5CFF',accentHover:'#9B85FF',success:'#16a34a',successBg:'rgba(22,163,74,0.12)',warning:'#d97706',warningBg:'rgba(217,119,6,0.12)',error:'#dc2626',errorBg:'rgba(220,38,38,0.12)',
-  shadow:'0 1px 3px rgba(0,0,0,0.3)',shadowLg:'0 4px 12px rgba(0,0,0,0.4)'
+//
+// This used to be two hex maps swapped by a local isDark boolean. It is now a
+// single object of var() references, so the theme is chosen by
+// data-theme="light" on <html> rather than by which object we hand out. Every
+// consumer of T.* — 500+ dereferences across 13 tabs — moves onto the token
+// layer without a single call site or signature changing.
+//
+// The T prop is still threaded through ~40 helpers. That threading is now
+// pure ceremony (the object is a module constant) and dies in Phase 9, once
+// the tabs are done. Removing it now would mean editing every tab, which is
+// what Phases 7-9 are for.
+//
+// Anything reading T.* is theme-correct for free. Anything still holding a
+// colour literal is NOT, and those are listed in REFACTOR.md per tab.
+//
+// Keys are unchanged from the old maps so nothing downstream breaks. The
+// values they map to are the Phase 0 tokens, so some colours shift slightly:
+// elevated #141418 -> #111116, border #27272e -> #1E1E28, text #e8e8ec ->
+// #F0F0F5, and light-mode textMuted #8896a6 -> #66717F (which was a 3.20:1
+// contrast failure). accentHover in dark was #9B85FF, a lighter tint that
+// exists in no palette; it is now --bs-accent-hover #6B4EE6 in both themes.
+const TOKENS = {
+  bg: 'var(--bs-bg-base)',
+  card: 'var(--bs-bg-card)',
+  elevated: 'var(--bs-bg-elevated)',
+  input: 'var(--bs-bg-input)',
+  subtle: 'var(--bs-bg-subtle)',
+  muted: 'var(--bs-bg-muted)',
+  border: 'var(--bs-border-default)',
+  borderSubtle: 'var(--bs-border-subtle)',
+  text: 'var(--bs-text-primary)',
+  textSecondary: 'var(--bs-text-secondary)',
+  textMuted: 'var(--bs-text-muted)',
+  textFaint: 'var(--bs-text-faint)',
+  accent: 'var(--bs-accent)',
+  accentHover: 'var(--bs-accent-hover)',
+  success: 'var(--bs-success)',
+  successBg: 'rgba(var(--bs-success-rgb), 0.12)',
+  warning: 'var(--bs-warning)',
+  warningBg: 'rgba(var(--bs-warning-rgb), 0.12)',
+  error: 'var(--bs-error)',
+  errorBg: 'rgba(var(--bs-error-rgb), 0.12)',
+  shadow: 'var(--bs-elev-1)',
+  shadowLg: 'var(--bs-elev-2)',
 }
-const light = {
-  bg:'#f8f9fb',card:'#ffffff',elevated:'#f1f3f5',input:'#ffffff',subtle:'#eef0f3',muted:'#e8eaed',
-  border:'#e2e5e9',borderSubtle:'#eef0f3',text:'#1a1a2e',textSecondary:'#4a5568',textMuted:'#8896a6',textFaint:'#b0bac5',
-  accent:'#7C5CFF',accentHover:'#6B4EE6',success:'#059669',successBg:'#ecfdf5',warning:'#d97706',warningBg:'#fffbeb',error:'#dc2626',errorBg:'#fef2f2',
-  shadow:'0 1px 3px rgba(0,0,0,0.06)',shadowLg:'0 4px 12px rgba(0,0,0,0.08)'
-}
-type Theme = typeof dark
+type Theme = typeof TOKENS
 
+// Wraps the shared controller so the return shape stays { T, isDark, toggle,
+// mounted } and Shell's props do not change. isDark now drives only the
+// toggle icon; it no longer picks the palette. The local read/write of
+// bs_admin_theme is gone — lib/theme.ts owns that key, and owning it in two
+// places is how the storefront toggle ended up writing a value nothing reads.
 function useTheme() {
-  const [isDark, setIsDark] = useState(true)
-  const [mounted, setMounted] = useState(false)
-  useEffect(() => {
-    setMounted(true)
-    try { const saved = localStorage.getItem('bs_admin_theme'); if (saved === 'light') setIsDark(false) } catch {}
-  }, [])
-  const toggle = () => {
-    const next = !isDark; setIsDark(next)
-    try { localStorage.setItem('bs_admin_theme', next ? 'dark' : 'light') } catch {}
-  }
-  return { T: isDark ? dark : light, isDark, toggle, mounted }
+  const { isDark, toggle, mounted } = useThemeController()
+  return { T: TOKENS, isDark, toggle, mounted }
 }
 
 // ── Auth (only called inside useEffect / event handlers) ──
@@ -129,30 +176,76 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 // ════════════════════════════════════════════════════════════════
 // SHARED COMPONENTS (module-level — stable references, no re-mount)
 // ════════════════════════════════════════════════════════════════
+// Admin density (REFACTOR.md): desktop-first at 1440px, body sm 13, secondary
+// 2xs 11, controls sm 32 / md 40. The 44px floor is a mobile-first rule and
+// does not apply here — admin is the one tier that may go below it.
+//
+// fontFamily is inherited from the layout; the local 'Inter,sans-serif'
+// literals that used to sit in these style objects are gone.
 const inputStyle = (T: Theme): React.CSSProperties => ({
-  height: 42, padding: '0 14px', borderRadius: 10, fontSize: 13,
+  height: 'var(--bs-control-md)', padding: '0 var(--bs-space-3)',
+  borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)',
   width: '100%', flex: 1, background: T.input, border: `1px solid ${T.border}`,
-  color: T.text, boxSizing: 'border-box', outline: 'none', fontFamily: 'Inter,sans-serif',
+  color: T.text, boxSizing: 'border-box', outline: 'none',
 })
 const pageBtnStyle = (T: Theme, disabled: boolean): React.CSSProperties => ({
-  padding: '8px 16px', borderRadius: 8, border: `1px solid ${T.border}`, background: T.card,
-  color: T.text, cursor: disabled ? 'not-allowed' : 'pointer', fontSize: 12,
-  opacity: disabled ? 0.4 : 1, fontFamily: 'Inter,sans-serif',
+  height: 'var(--bs-control-sm)', padding: '0 var(--bs-space-4)',
+  borderRadius: 'var(--bs-radius-md)', border: `1px solid ${T.border}`, background: T.card,
+  color: disabled ? T.textFaint : T.text, cursor: disabled ? 'not-allowed' : 'pointer',
+  fontSize: 'var(--bs-text-xs)', opacity: disabled ? 0.4 : 1,
 })
+
+// Inline SVG, 24x24 viewBox, currentColor, strokeWidth 2, round caps. This is
+// the house pattern (Marketplace's CartIcon, and Phases 1-5), a deliberate
+// deviation from the skill's ban on hand-rolled icons on the
+// no-new-dependencies constraint. See REFACTOR.md.
+function SunIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  )
+}
+function MoonIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+    </svg>
+  )
+}
 
 function Shell({ T, isDark, toggle, adminEmail, children }: { T: Theme; isDark: boolean; toggle: () => void; adminEmail: string; children: React.ReactNode }) {
   return (
-    <div style={{ background: T.bg, minHeight: '100vh', color: T.text, fontFamily: 'Inter,sans-serif', padding: '0 24px 60px', paddingTop: 'calc(2vh + 16px)', boxSizing: 'border-box', transition: 'background 0.2s, color 0.2s' }}>
-      <div style={{ margin: '0 auto', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+    <div style={{ background: T.bg, minHeight: '100dvh', color: T.text, padding: '0 var(--bs-space-6) var(--bs-space-12)', paddingTop: 'calc(2vh + var(--bs-space-4))', boxSizing: 'border-box', transition: 'background var(--bs-dur-2) var(--bs-ease-out), color var(--bs-dur-2) var(--bs-ease-out)' }}>
+      {/* Focus rings. Admin had none: five style objects set outline:'none'
+          with no replacement, so keyboard focus was invisible across the whole
+          back office. --bs-ring was added in Phase 0 and had no consumer until
+          now.
+
+          !important is load-bearing here, not laziness. This file is 100%
+          inline styles, and an inline `outline: none` outbeats any stylesheet
+          rule on specificity. A ring drawn with box-shadow rather than outline
+          also follows border-radius, which matters on the pill controls.
+
+          Scoped to :focus-visible so it appears for keyboard users and not on
+          every mouse click. */}
+      <style>{`
+        .bs-admin :where(button, a, input, select, textarea, [tabindex]):focus-visible {
+          box-shadow: var(--bs-ring) !important;
+          outline: none !important;
+        }
+      `}</style>
+      <div className="bs-admin" style={{ margin: '0 auto', width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--bs-space-6)' }}>
           <div>
-            <div style={{ fontSize: 22, fontWeight: 700, color: T.text }}>Admin Dashboard</div>
-            {adminEmail && <div style={{ fontSize: 12, color: T.textMuted, marginTop: 2 }}>BuySub Internal · {adminEmail}</div>}
+            <div style={{ fontSize: 'var(--bs-text-xl)', fontWeight: 700, color: T.text }}>Admin Dashboard</div>
+            {adminEmail && <div style={{ fontSize: 'var(--bs-text-xs)', color: T.textMuted, marginTop: 2 }}>BuySub Internal · {adminEmail}</div>}
           </div>
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-            <a href="/admin/receipt" style={{ padding: '10px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600, background: T.accent, color: '#fff', textDecoration: 'none' }}>+ Receipt</a>
-            <button onClick={toggle} style={{ width: 38, height: 38, borderRadius: 10, border: `1px solid ${T.border}`, background: T.card, color: T.text, cursor: 'pointer', fontSize: 16, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{isDark ? '☀️' : '🌙'}</button>
-            <button onClick={signOut} style={{ padding: '10px 18px', borderRadius: 10, fontSize: 13, background: 'transparent', border: `1px solid ${T.border}`, color: T.textMuted, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>Sign Out</button>
+          <div style={{ display: 'flex', gap: 'var(--bs-space-2)', alignItems: 'center' }}>
+            <a href="/admin/receipt" style={{ display: 'inline-flex', alignItems: 'center', height: 'var(--bs-control-md)', padding: '0 var(--bs-space-5)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', fontWeight: 600, background: T.accent, color: '#fff', textDecoration: 'none' }}>+ Receipt</a>
+            <button onClick={toggle} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ width: 'var(--bs-control-md)', height: 'var(--bs-control-md)', borderRadius: 'var(--bs-radius-md)', border: `1px solid ${T.border}`, background: T.card, color: T.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{isDark ? <SunIcon /> : <MoonIcon />}</button>
+            <button onClick={signOut} style={{ height: 'var(--bs-control-md)', padding: '0 var(--bs-space-4)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', background: 'transparent', border: `1px solid ${T.border}`, color: T.textMuted, cursor: 'pointer' }}>Sign Out</button>
           </div>
         </div>
         {children}
@@ -161,30 +254,48 @@ function Shell({ T, isDark, toggle, adminEmail, children }: { T: Theme; isDark: 
   )
 }
 
+// Uppercase tracked micro-labels are KEPT in admin. Phases 1-5 replaced them
+// with sentence case on the customer surfaces; admin is desktop-first and
+// dense, where small-caps labels earn their space. That split is deliberate,
+// not an inconsistency for a later phase to "fix". Sizes move up to the 2xs
+// floor: these were 10px, and nothing renders below 11.
 function Card({ T, title, children, style }: { T: Theme; title: string; children: React.ReactNode; style?: React.CSSProperties }) {
-  return <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, padding: '20px 24px', boxShadow: T.shadow, ...style }}><div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14, fontWeight: 600 }}>{title}</div>{children}</div>
+  return <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: 'var(--bs-space-5) var(--bs-space-6)', boxShadow: T.shadow, ...style }}><div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--bs-space-3)', fontWeight: 600 }}>{title}</div>{children}</div>
 }
 function KpiCard({ T, label, value, highlight }: { T: Theme; label: string; value: string; highlight?: boolean }) {
-  return <div style={{ background: T.card, border: `1px solid ${highlight ? T.warning + '66' : T.borderSubtle}`, borderRadius: 16, padding: '18px 20px', boxShadow: T.shadow }}><div style={{ fontSize: 11, color: T.textMuted, marginBottom: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div><div style={{ fontSize: 24, fontWeight: 700, color: highlight ? T.warning : T.text }}>{value}</div></div>
+  return <div style={{ background: T.card, border: `1px solid ${highlight ? 'rgba(var(--bs-warning-rgb), 0.4)' : T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: 'var(--bs-space-4) var(--bs-space-5)', boxShadow: T.shadow }}><div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, marginBottom: 'var(--bs-space-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div><div style={{ fontSize: 'var(--bs-text-2xl)', fontWeight: 700, color: highlight ? T.warning : T.text }}>{value}</div></div>
 }
-function Badge({ status, T }: { status: string; T: Theme }) {
+// The T prop is unused — the colours come from statusColor, which is now
+// theme-argument-free. Kept in the signature so the 8 call sites stay valid;
+// it goes when the T threading is unwound in Phase 9.
+function Badge({ status }: { status: string; T?: Theme }) {
   const c = statusColor(status)
-  return <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 999, fontSize: 11, fontWeight: 500, background: c.bg, color: c.color, whiteSpace: 'nowrap' }}>{status.replace(/_/g, ' ')}</span>
+  return <span style={{ display: 'inline-block', padding: '3px var(--bs-space-2)', borderRadius: 'var(--bs-radius-full)', fontSize: 'var(--bs-text-2xs)', fontWeight: 500, background: c.bg, color: c.color, whiteSpace: 'nowrap' }}>{status.replace(/_/g, ' ')}</span>
 }
+// `color` arrives as a var() reference now, so the old `${color}30` hex-alpha
+// concatenation would emit `var(--bs-error)30` and be dropped. color-mix keeps
+// the prop shape, which is what lets all 24 call sites stay untouched in a
+// primitives-only phase.
+//
+// The label is NOT painted in the raw `color`. Printing a mid-saturation
+// colour on a 12% tint of itself measured 3.74:1 (accent, light) and 3.58:1
+// (text-muted, dark) — five of six colours failed AA in light and two of six
+// in dark. --bs-on-tint-mix pushes the text away from the fill by a
+// theme-appropriate amount. See the token comment in lib/constants.ts.
 function SmallBtn({ T, children, color, onClick, disabled }: { T: Theme; children: React.ReactNode; color: string; onClick: () => void; disabled?: boolean }) {
-  return <button onClick={onClick} disabled={disabled} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 500, border: `1px solid ${color}30`, background: `${color}10`, color, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap', fontFamily: 'Inter,sans-serif' }}>{children}</button>
+  return <button onClick={onClick} disabled={disabled} style={{ height: 'var(--bs-control-sm)', padding: '0 var(--bs-space-3)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-xs)', fontWeight: 500, border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`, background: `color-mix(in srgb, ${color} 12%, transparent)`, color: `color-mix(in srgb, ${color}, var(--bs-on-tint-mix))`, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap' }}>{children}</button>
 }
-function Loading({ T }: { T: Theme }) { return <div style={{ padding: '50px 0', textAlign: 'center', color: T.textMuted, fontSize: 13 }}>Loading…</div> }
-function ErrorMsg({ msg, T }: { msg: string; T: Theme }) { return <div style={{ padding: 20, background: T.errorBg, border: `1px solid ${T.error}30`, borderRadius: 12, color: T.error, fontSize: 13 }}>{msg}</div> }
-function EmptyState({ text, T }: { text: string; T: Theme }) { return <div style={{ padding: '50px 0', textAlign: 'center', color: T.textMuted, fontSize: 13 }}>{text}</div> }
+function Loading({ T }: { T: Theme }) { return <div style={{ padding: 'var(--bs-space-12) 0', textAlign: 'center', color: T.textMuted, fontSize: 'var(--bs-text-sm)' }}>Loading…</div> }
+function ErrorMsg({ msg, T }: { msg: string; T: Theme }) { return <div style={{ padding: 'var(--bs-space-5)', background: T.errorBg, border: `1px solid rgba(var(--bs-error-rgb), 0.2)`, borderRadius: 'var(--bs-radius-lg)', color: T.error, fontSize: 'var(--bs-text-sm)' }}>{msg}</div> }
+function EmptyState({ text, T }: { text: string; T: Theme }) { return <div style={{ padding: 'var(--bs-space-12) 0', textAlign: 'center', color: T.textMuted, fontSize: 'var(--bs-text-sm)' }}>{text}</div> }
 function PaginationBar({ T, pagination, onPage }: { T: Theme; pagination: Pagination; onPage: (p: number) => void }) {
-  return <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 20, fontSize: 12, color: T.textMuted }}><span>Page {pagination.page} of {pagination.pages} ({pagination.total} total)</span><div style={{ display: 'flex', gap: 8 }}><button disabled={pagination.page <= 1} onClick={() => onPage(pagination.page - 1)} style={pageBtnStyle(T, pagination.page <= 1)}>← Prev</button><button disabled={pagination.page >= pagination.pages} onClick={() => onPage(pagination.page + 1)} style={pageBtnStyle(T, pagination.page >= pagination.pages)}>Next →</button></div></div>
+  return <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--bs-space-5)', fontSize: 'var(--bs-text-xs)', color: T.textMuted }}><span>Page {pagination.page} of {pagination.pages} ({pagination.total} total)</span><div style={{ display: 'flex', gap: 'var(--bs-space-2)' }}><button disabled={pagination.page <= 1} onClick={() => onPage(pagination.page - 1)} style={pageBtnStyle(T, pagination.page <= 1)}>← Prev</button><button disabled={pagination.page >= pagination.pages} onClick={() => onPage(pagination.page + 1)} style={pageBtnStyle(T, pagination.page >= pagination.pages)}>Next →</button></div></div>
 }
 function DetailSection({ T, title, children }: { T: Theme; title: string; children: React.ReactNode }) {
-  return <div><div style={{ fontSize: 10, fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 10 }}>{title}</div>{children}</div>
+  return <div><div style={{ fontSize: 'var(--bs-text-2xs)', fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--bs-space-2)' }}>{title}</div>{children}</div>
 }
 function DRow({ T, label, value }: { T: Theme; label: string; value: string }) {
-  return <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '4px 0', fontSize: 12 }}><span style={{ color: T.textMuted }}>{label}</span><span style={{ color: T.textSecondary, textAlign: 'right' }}>{value}</span></div>
+  return <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--bs-space-2)', padding: 'var(--bs-space-1) 0', fontSize: 'var(--bs-text-xs)' }}><span style={{ color: T.textMuted }}>{label}</span><span style={{ color: T.textSecondary, textAlign: 'right' }}>{value}</span></div>
 }
 
 // ── Field label (module-level, stable) ──
@@ -1318,7 +1429,7 @@ function RejectedTab({T}:{T:Theme}) {
   const undoReject=async(ref:string)=>{setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/undo-reject`,{method:'POST'});if(r.ok||r.data?.undone)await load();else toast.error(r.error||'Failed');setActionLoading(null)}
   return (
     <div>
-      <div style={{fontSize:13,color:T.warning,marginBottom:20,padding:'12px 16px',background:T.warningBg,borderRadius:12,border:`1px solid ${T.warning}30`}}>Orders here need a second confirmation before permanent cancellation. Use Undo to restore.</div>
+      <div style={{fontSize:13,color:T.warning,marginBottom:20,padding:'12px 16px',background:T.warningBg,borderRadius:12,border:`1px solid rgba(var(--bs-warning-rgb), 0.2)`}}>Orders here need a second confirmation before permanent cancellation. Use Undo to restore.</div>
       {loading?<Loading T={T}/>:orders.length===0?<EmptyState text="No rejected orders pending" T={T}/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {orders.map(o=>(
@@ -2044,28 +2155,26 @@ function ProductsTab({ T }: { T: Theme }) {
 /*  LOCAL HELPERS (module-level so focus doesn't drop on re-render)   */
 /* ------------------------------------------------------------------ */
 
+// The decorative dot is gone. It sat before a count, where it signalled
+// nothing — a number has no state. PillBadge keeps its dot, because there it
+// marks real status. `color` stays in the signature so the 3 call sites are
+// untouched; it is unused and goes with the T threading in Phase 9.
 function StatChip({
-  T, label, value, color,
-}: { T: Theme; label: string; value: number; color: string }) {
+  T, label, value,
+}: { T: Theme; label: string; value: number; color?: string }) {
   return (
     <div style={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: 8,
-      height: 30,
-      padding: '0 12px',
-      borderRadius: 999,
+      gap: 'var(--bs-space-2)',
+      height: 'var(--bs-control-sm)',
+      padding: '0 var(--bs-space-3)',
+      borderRadius: 'var(--bs-radius-full)',
       background: T.elevated,
       border: `1px solid ${T.border}`,
-      fontSize: 12,
+      fontSize: 'var(--bs-text-xs)',
       color: T.textSecondary,
     }}>
-      <span style={{
-        width: 6,
-        height: 6,
-        borderRadius: 999,
-        background: color,
-      }} />
       <span>{label}</span>
       <span style={{ color: T.text, fontWeight: 600 }}>{value}</span>
     </div>
@@ -2081,31 +2190,42 @@ function PillBadge({
   dot?: boolean
   children: React.ReactNode
 }) {
-  // Derive an RGB tint. We assume `color` is already a CSS value from T.*.
-  // For soft tone, use a semi-transparent companion; for ghost, neutral border.
+  // `soft` used to fill with rgba(255,255,255,0.04), a white tint that is
+  // invisible on a white card — the pill simply vanished in light mode. It now
+  // tints with the pill's own colour via color-mix, which works in both themes
+  // and keeps the `color` prop shape (so no call site changes).
+  //
+  // The border ternary was dead: both branches were T.border. `ghost` now
+  // means what its name says — no fill, border only.
   const soft = tone === 'soft'
   return (
     <span style={{
       display: 'inline-flex',
       alignItems: 'center',
-      gap: 5,
+      gap: 'var(--bs-space-1)',
       height: 22,
-      padding: '0 9px',
-      borderRadius: 999,
-      fontSize: 11,
+      padding: '0 var(--bs-space-2)',
+      borderRadius: 'var(--bs-radius-full)',
+      fontSize: 'var(--bs-text-2xs)',
       fontWeight: 600,
-      color,
+      // Same correction as SmallBtn: the label cannot be the same colour as
+      // the tint it sits on. Only the soft tone fills, so only it needs the
+      // push; ghost prints on the page surface and keeps the raw colour.
+      color: soft ? `color-mix(in srgb, ${color}, var(--bs-on-tint-mix))` : color,
       background: soft
-        ? 'rgba(255,255,255,0.04)'
+        ? `color-mix(in srgb, ${color} 12%, transparent)`
         : 'transparent',
-      border: `1px solid ${soft ? T.border : T.border}`,
+      border: `1px solid ${soft ? `color-mix(in srgb, ${color} 30%, transparent)` : T.border}`,
       whiteSpace: 'nowrap',
     }}>
+      {/* Kept: on a status pill the dot marks real state, which is the one
+          case the AI-tells list allows. Dropped from StatChip, where it sat
+          in front of a plain count. */}
       {dot && (
         <span style={{
           width: 6,
           height: 6,
-          borderRadius: 999,
+          borderRadius: 'var(--bs-radius-full)',
           background: color,
         }} />
       )}
@@ -2114,15 +2234,20 @@ function PillBadge({
   )
 }
 
+// These two are the gen-2 duplicates of SmallBtn and pageBtnStyle. Phase 6
+// makes them visually identical to their gen-1 counterparts without merging
+// them — merging means editing call sites inside the tabs, which is Phases
+// 7-9. Doing it in this order makes that dedupe a no-op with no visual delta,
+// safe to land one tab at a time.
 function actionBtnStyle(T: Theme): React.CSSProperties {
   return {
-    height: 34,
-    padding: '0 12px',
-    borderRadius: 10,
+    height: 'var(--bs-control-sm)',
+    padding: '0 var(--bs-space-3)',
+    borderRadius: 'var(--bs-radius-md)',
     background: 'transparent',
     border: `1px solid ${T.border}`,
     color: T.text,
-    fontSize: 12,
+    fontSize: 'var(--bs-text-xs)',
     fontWeight: 600,
     cursor: 'pointer',
     textAlign: 'center',
@@ -2131,17 +2256,19 @@ function actionBtnStyle(T: Theme): React.CSSProperties {
 
 function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
   return {
-    height: 34,
-    padding: '0 14px',
-    borderRadius: 10,
+    height: 'var(--bs-control-sm)',
+    padding: '0 var(--bs-space-3)',
+    borderRadius: 'var(--bs-radius-md)',
     background: 'transparent',
     border: `1px solid ${T.border}`,
     color: disabled ? T.textFaint : T.text,
-    fontSize: 12,
+    fontSize: 'var(--bs-text-xs)',
     fontWeight: 600,
     cursor: disabled ? 'not-allowed' : 'pointer',
     opacity: disabled ? 0.45 : 1,
-    transition: 'all 0.15s',
+    // transform/opacity only; 'all' also animates colour, which fights the
+    // theme swap and made getComputedStyle read pre-transition values.
+    transition: 'opacity var(--bs-dur-1) var(--bs-ease-out)',
   }
 }
 
@@ -2327,8 +2454,8 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0, flex: 1 }}>
                       {/* Avatar */}
                       <div style={{
-                        width: 36, height: 36, borderRadius: 999, background: T.accent + '20',
-                        border: `1px solid ${T.accent}30`, flexShrink: 0,
+                        width: 36, height: 36, borderRadius: 999, background: 'rgba(var(--bs-accent-rgb), 0.12)',
+                        border: `1px solid rgba(var(--bs-accent-rgb), 0.2)`, flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 13, fontWeight: 700, color: T.accent,
                       }}>
@@ -4287,9 +4414,9 @@ function IconBtn({
       aria-label={title}
       className="bs-lnk-ghost"
       style={{
-        width: 34, height: 34, borderRadius: 10,
+        width: 'var(--bs-control-sm)', height: 'var(--bs-control-sm)', borderRadius: 'var(--bs-radius-md)',
         background: 'transparent', border: `1px solid ${T.border}`,
-        color: T.textSecondary, fontSize: 14, cursor: 'pointer',
+        color: T.textSecondary, fontSize: 'var(--bs-text-sm)', cursor: 'pointer',
         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
       }}
     >
@@ -4315,9 +4442,9 @@ function GhostBtn({
       onClick={onClick}
       className={cls}
       style={{
-        height: 34, padding: '0 12px', borderRadius: 10,
+        height: 'var(--bs-control-sm)', padding: '0 var(--bs-space-3)', borderRadius: 'var(--bs-radius-md)',
         background: 'transparent', border: `1px solid ${T.border}`,
-        color: T.text, fontSize: 12, fontWeight: 600, cursor: 'pointer',
+        color: T.text, fontSize: 'var(--bs-text-xs)', fontWeight: 600, cursor: 'pointer',
       }}
     >
       {children}
@@ -4440,10 +4567,10 @@ function DiscountsTab({ T }: { T: Theme }) {
             <div key={d.id} style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, overflow: 'hidden', opacity: d.active ? 1 : 0.55 }}>
               <div onClick={() => setExpanded(expanded === d.id ? null : d.id)} style={{ padding: '14px 22px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <span style={{ fontFamily: 'monospace', fontSize: 14, fontWeight: 700, color: T.accent, background: T.accent + '18', padding: '3px 10px', borderRadius: 6 }}>{d.code}</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 14, fontWeight: 700, color: 'var(--bs-accent-on-surface)', background: 'rgba(var(--bs-accent-rgb), 0.09)', padding: '3px 10px', borderRadius: 6 }}>{d.code}</span>
                   <span style={{ fontSize: 13, color: T.text }}>{d.type === 'percentage' ? `${d.value}% off` : `₦${Number(d.value).toLocaleString()} off`}</span>
                   <Badge status={d.active ? 'active' : 'hidden'} T={T} />
-                  {d.auto_apply && <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: T.accent + '15', color: T.accent, fontWeight: 600 }}>Auto</span>}
+                  {d.auto_apply && <span style={{ fontSize: 'var(--bs-text-2xs)', padding: '2px 8px', borderRadius: 4, background: 'rgba(var(--bs-accent-rgb), 0.08)', color: 'var(--bs-accent-on-surface)', fontWeight: 600 }}>Auto</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                   <span style={{ fontSize: 11, color: T.textMuted }}>{d.times_used || 0} uses</span>

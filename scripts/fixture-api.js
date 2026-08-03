@@ -246,6 +246,44 @@ const page = (rows = []) => ({
   meta: { pagination: { page: 1, limit: 20, total: rows.length, pages: rows.length ? 1 : 0 } },
 })
 
+// ── admin row shapes ────────────────────────────────────────────────────
+// The same orders the customer sees, plus the identity columns admin renders.
+// Deliberately keeps one row per status, including rejected_pending, since
+// that is the whole point of measuring badges against this fixture.
+const ADMIN_BUYERS = [
+  { customer_name: 'Ada Okonkwo',        customer_email: 'ada.okonkwo@example.com' },
+  { customer_name: 'Chidi Balogun-Eze',  customer_email: 'c.balogun@example.com' },
+  { customer_name: '',                   customer_email: 'no.name@example.com' },
+  { customer_name: 'Funmilayo Adewale',  customer_email: 'funmi@example.com' },
+  { customer_name: 'Emeka Nwosu',        customer_email: 'emeka.n@example.com' },
+  { customer_name: 'Zainab Abdulkareem', customer_email: 'zainab.a@example.com' },
+  { customer_name: 'Tobi Aluko',         customer_email: 'tobi@example.com' },
+]
+const ADMIN_ORDERS = ORDERS.map((o, i) => ({ ...o, ...ADMIN_BUYERS[i % ADMIN_BUYERS.length] }))
+
+const ADMIN_CUSTOMERS = ADMIN_BUYERS.map((b, i) => ({
+  id: `c-${i}`,
+  name: b.customer_name,
+  email: b.customer_email,
+  phone: ['+234 803 412 8871', '+234 701 553 2094', '', '+234 812 660 4417'][i % 4],
+  category: ['retail', 'reseller', 'retail', 'corporate'][i % 4],
+  source: ['whatsapp', 'organic', 'referral', 'organic'][i % 4],
+  // Both states, so is_active -> Badge active/hidden paints both families.
+  is_active: i % 3 !== 2,
+  created_at: `2026-0${(i % 7) + 1}-1${i % 9}T09:00:00Z`,
+}))
+
+const ADMIN_PRODUCTS = [
+  { id: 'p-1', name: LONG_NAME, category: 'video streaming', status: 'in_stock',
+    price_3m: 14000, price_6m: 26000, price_1y: 45000, domain: 'netflix.com', is_active: true },
+  { id: 'p-2', name: 'Apple Music', category: 'music streaming', status: 'out_of_stock',
+    price_3m: 11500, price_6m: 21000, price_1y: 38000, domain: 'apple.com', is_active: true },
+  { id: 'p-3', name: 'Enterprise bundle, 40 seats', category: 'bundles', status: 'hidden',
+    price_3m: 0, price_6m: 0, price_1y: HUGE, domain: 'buysub.ng', is_active: false },
+  { id: 'p-4', name: 'Spotify Duo', category: 'music streaming', status: 'in_stock',
+    price_3m: 7500, price_6m: 14000, price_1y: 25000, domain: 'spotify.com', is_active: true },
+]
+
 // ── routing ─────────────────────────────────────────────────────────────
 const ROUTES = [
   [/^\/v2\/me$/,                        () => ({ ok: true, data: PROFILE })],
@@ -262,7 +300,17 @@ const ROUTES = [
     ? ({ ok: true, data: { verified: true, order_ref: 'BS-24118' } })
     : ({ ok: true, data: { verified: false } })],
   [/^\/v2\/admin\/stats$/,              () => ({ ok: true, data: ADMIN_STATS })],
-  // Phase 6: replace with real row shapes per tab.
+  // Admin reads a wider row than the customer dashboard: OrdersTab renders
+  // customer_name / customer_email alongside the fields /v2/me/orders returns.
+  // Serving the customer shape here would render every row's identity as an
+  // em-dash and hide exactly the defects this fixture exists to surface.
+  [/^\/v2\/admin\/orders$/,             () => page(ADMIN_ORDERS)],
+  [/^\/v2\/admin\/orders\/[^/]+$/,      () => ({ ok: true, data: ADMIN_ORDERS[0] })],
+  [/^\/v2\/admin\/customers$/,          () => page(ADMIN_CUSTOMERS)],
+  [/^\/v2\/admin\/products$/,           () => page(ADMIN_PRODUCTS)],
+  // Still a stub. Every remaining admin list renders its EMPTY state, so no
+  // badge, amount or row markup from those tabs has been measured yet. Fill
+  // each one in as its tab is taken, in Phases 7-9.
   [/^\/v2\/admin\//,                    () => page([])],
 ]
 

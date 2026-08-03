@@ -216,6 +216,57 @@ export const CSS_VARS = `
        Text sitting on an accent FILL stays #fff in both themes. */
     --bs-accent-on-surface: #7C5CFF;
 
+    /* ── Status badges ──────────────────────────────────────────
+       OPAQUE fills, not rgba() tints. A badge renders on three
+       different backgrounds — a Card, a bare list row, and a
+       SELECTED row carrying rgba(var(--bs-accent-rgb), 0.06-0.15).
+       A translucent tint composites with whatever is underneath, so
+       the selected-row case failed AA on every light family and on
+       half of dark no matter how the text was tuned. An opaque fill
+       is immune to what sits beneath it.
+
+       Each -bg is the 0.12 tint of its state token pre-flattened
+       against --bs-bg-card (0.08 for -pending, which is what keeps
+       rejected_pending visibly dimmer than plain pending). Every
+       pair measures 5.01-8.27 against 11px/500 badge text. Tuned to
+       5.0, not the 4.5 floor: the minimum-passing values sat at
+       4.60 and any later surface change would erase that headroom.
+
+       -pending is rejected_pending: stage one of a two-stage
+       rejection, reversible via /v2/admin/orders/:id/undo-reject.
+       It is action-needed, so it takes the warning hue. Terminal
+       rejected and cancelled use -error. Do not merge them. */
+    --bs-badge-success-bg: #0E2118;
+    --bs-badge-success-fg: #22C55E;
+    --bs-badge-warning-bg: #271D0F;
+    --bs-badge-warning-fg: #F59E0B;
+    --bs-badge-error-bg: #261215;
+    --bs-badge-error-fg: #F04E4E;
+    --bs-badge-neutral-bg: #17171D;
+    --bs-badge-neutral-fg: #878796;
+    --bs-badge-pending-bg: #1E170F;
+    --bs-badge-pending-fg: #F59E0B;
+
+    /* ── Text on a tint of its own colour ───────────────────────
+       For the "soft" controls that fill with 12% of their own accent and
+       then print label text in that same accent: SmallBtn, PillBadge.
+       Measured as shipped, every one of those failed AA — 3.74:1 for
+       accent in light, 3.58:1 for text-muted in dark — because a 12%
+       tint barely moves the surface while the text stays mid-saturation.
+       This is the --bs-accent-on-surface problem again, in the buttons.
+
+       Consumed as color-mix(in srgb, <colour>, var(--bs-on-tint-mix)),
+       which holds BOTH the mix target and the percentage so the whole
+       thing is theme-switchable from one property with no call-site
+       change. Dark lightens toward white, light darkens toward black.
+
+       The percentages are the worst case across the six colours those
+       components are actually called with (accent, success, error,
+       warning, text-muted, text-secondary): 16% clears dark at 4.93:1,
+       28% clears light at 4.71:1, both on card and on base. Lower and
+       warning fails in light; higher and the hues start to grey out. */
+    --bs-on-tint-mix: #FFFFFF 16%;
+
     /* ── Brand slab ─────────────────────────────────────────── */
     /* Deliberately dark in BOTH themes. Defined here only, and intentionally
        NOT listed in the [data-theme="light"] block below, which is what makes
@@ -321,6 +372,26 @@ export const CSS_VARS = `
     /* #7C5CFF as text on white is 4.0:1 and fails AA. #5B3FD4 is 6.76:1 on
        card, 5.61:1 on the darkest light surface. Fills stay #7C5CFF. */
     --bs-accent-on-surface: #5B3FD4;
+
+    /* Status badges. Same construction as :root — the 0.12 tint of the
+       light state token flattened against #FFFFFF (0.08 for -pending).
+       These are why the light theme needed its own set at all: a 12%
+       tint barely darkens white, so a mid-saturation state colour was
+       sitting as text on an almost-white field. Range here is
+       5.03-5.05, i.e. every pair clears AA with headroom. */
+    --bs-badge-success-bg: #E1F2ED;
+    --bs-badge-success-fg: #047351;
+    --bs-badge-warning-bg: #FAEFE1;
+    --bs-badge-warning-fg: #9A5404;
+    --bs-badge-error-bg: #FBE5E5;
+    --bs-badge-error-fg: #BF2121;
+    --bs-badge-neutral-bg: #EDEEF0;
+    --bs-badge-neutral-fg: #5C6672;
+    --bs-badge-pending-bg: #FCF4EB;
+    --bs-badge-pending-fg: #9E5704;
+
+    /* Darken toward black instead of lightening toward white. See :root. */
+    --bs-on-tint-mix: #000000 28%;
 
     --bs-success-rgb: 5, 150, 105;
     --bs-error-rgb: 220, 38, 38;
