@@ -86,7 +86,7 @@ Read this file first in any session. Update it before finishing.
 - [x] 2. app/dashboard/page.tsx
 - [x] 3. app/partners/page.tsx
 - [x] 4. app/partners/dashboard/page.tsx
-- [ ] 5. app/order/verify/VerifyContent.tsx
+- [x] 5. app/order/verify/VerifyContent.tsx
 - [ ] 6. app/admin — shared primitives only (buttons, inputs, tables, badges)
 - [ ] 7. app/admin — tabs 1–4
 - [ ] 8. app/admin — tabs 5–9
@@ -543,6 +543,34 @@ Also: labels wired to controls with `htmlFor`/`id` (17 pairs), tabs given
 uppercase micro-labels on `StatCard` and `Section` dropped, and the bare
 `Loading…` replaced with the branded boot gate.
 
+### Phase 5 — payment verification landing
+The smallest surface, and the one that read most like a placeholder: three 48px
+emoji as its entire iconography, a fourth in the Suspense fallback, and a static
+glyph for a state whose whole job is to say "wait".
+
+**The unclosed paren is fixed and the fix is proven.** `:41` read
+`color: 'var(--bs-text-primary'`, so the declaration was invalid and dropped and
+the container inherited from `body` — which happened to be the same value, so it
+looked correct. Verified by forcing `body { color: red }` and confirming the
+container held `rgb(240,240,245)`; before the fix it would have turned red. It
+also still flips with the theme, `#F0F0F5` → `#1A1A2E`.
+
+`/order/verify` joined `isNoShell`. It is a standalone confirmation page that
+already carries its own CTAs, so the navbar's links were redundant, and it sheds
+Navbar's dead theme toggle. No theme control added — this is a page a user lands
+on once from Paystack and leaves.
+
+Also: the status container gets `role="status"`/`aria-live="polite"`, so the
+transition from checking to confirmed reaches assistive tech on a page that
+exists only to announce an outcome. The order reference gets `ui-monospace` and
+`user-select: all`, since it is the one string a customer may need to quote to
+support. `WHATSAPP_NUMBER` is imported rather than inlined. `#25D366` and its
+`#1EBF5A` hover stay literal — the brief pins the first and the second matches
+Marketplace's `.wa-btn:hover`.
+
+The Suspense fallback in `page.tsx` now reuses the same card, spinner and copy
+as the real loading state, so the two are not visibly different components.
+
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
   keeps its existing styling on the same page. Check it visually before
@@ -599,3 +627,15 @@ uppercase micro-labels on `StatCard` and `Section` dropped, and the bare
   /v2/partners/me/stats added, plus a FIXTURE_PARTNER variant. Density table
   amended: 44px is a floor on mobile-first surfaces, not a tier variable.
   tsc + build pass; verified at a true 360×740 in both themes.
+- 2026-08-03 — AppShell notifications moved off a hardcoded production URL onto
+  env config, reading both NEXT_PUBLIC_API_BASE and NEXT_PUBLIC_API_URL. The
+  fixture recipe was incomplete for the same reason and now sets both;
+  /v2/pay/verify added to the fixture with a FIXTURE_VERIFY variant. Committed
+  separately from the phase.
+- 2026-08-03 — Phase 5. app/order/verify on the token layer: unclosed
+  var(--bs-text-primary paren fixed and proven, four emoji replaced with inline
+  SVGs, static loading glyph replaced with a spinner, role=status/aria-live
+  added, order ref made monospace and selectable, WHATSAPP_NUMBER imported,
+  Suspense fallback matched to the real loading state, /order/verify added to
+  isNoShell. tsc + build pass; all three states verified at a true 360×740 in
+  both themes with no overflow and no control under 44px.

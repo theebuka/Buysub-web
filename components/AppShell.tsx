@@ -22,10 +22,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     const [banner, setBanner] = useState<any>(null)
   const pathname = usePathname()
   const isAdmin = pathname.startsWith("/admin")
-  // /login is a standalone auth page: it has its own theme toggle and its own
-  // centred full-height layout, so the navbar and footer would double up on
-  // both. Phase 11 must not remove it from this list — see REFACTOR.md.
-  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard") || pathname.startsWith("/login")
+  // /login and /order/verify are standalone full-height pages that carry their
+  // own navigation, so the navbar and footer would double up on both. Phase 11
+  // must not remove either from this list — see REFACTOR.md.
+  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard") || pathname.startsWith("/login") || pathname.startsWith("/order/verify")
   const [stepIndex, setStepIndex] = useState(0)
 
   // Keeps data-theme correct for the current route. The pre-paint script in
