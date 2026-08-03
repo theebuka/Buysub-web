@@ -13,8 +13,15 @@
  * bug shipped in Phase 2 for exactly that reason. Verify against populated data.
  *
  *   node scripts/fixture-api.js
- *   NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787 npm run build
+ *   NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787 \
+ *   NEXT_PUBLIC_API_URL=http://127.0.0.1:8787 npm run build
  *   npm run start
+ *
+ * BOTH names are required. The app reads NEXT_PUBLIC_API_URL in lib/api.ts and
+ * the two admin surfaces, NEXT_PUBLIC_API_BASE everywhere else. Setting only
+ * one leaves part of the app talking to production while you measure the rest —
+ * /order/verify goes through lib/api.ts, so API_BASE alone sends the real
+ * payment-verification call to the live Worker.
  *
  * Then seed a session in the browser console (any non-empty token works — this
  * server never checks Authorization):
@@ -35,6 +42,7 @@
  *   FIXTURE_PARTNER=pending    partner status: approved (default) | pending |
  *                              rejected | none. `none` returns no profile, which
  *                              is the "No partner profile" branch.
+ *   FIXTURE_VERIFY=failed      /v2/pay/verify outcome: verified (default) | failed
  *   PORT=9001                  listen elsewhere
  *
  * The list endpoints always carry their awkward cases inline: a very long
@@ -49,6 +57,7 @@ const PORT = Number(process.env.PORT || 8787)
 const NAMELESS = process.env.FIXTURE_PROFILE === 'nameless'
 const ZERO_WALLET = process.env.FIXTURE_WALLET === 'zero'
 const PARTNER = process.env.FIXTURE_PARTNER || 'approved'
+const VERIFY_OK = process.env.FIXTURE_VERIFY !== 'failed'
 
 // ── awkward values, kept in one place so they are easy to reuse ──────────
 const LONG_NAME =
@@ -248,6 +257,10 @@ const ROUTES = [
   [/^\/v2\/partners\/me\/stats$/,        () => ({ ok: true, data: PARTNER_STATS })],
   [/^\/v2\/partners\/me$/,              () => ({ ok: true, data: { profile: PARTNER_PROFILE, affiliate: PARTNER_AFFILIATE } })],
   [/^\/v2\/notifications$/,             () => ({ ok: true, data: [] })],
+  // /order/verify reads this through lib/api.ts, i.e. NEXT_PUBLIC_API_URL.
+  [/^\/v2\/pay\/verify$/, () => VERIFY_OK
+    ? ({ ok: true, data: { verified: true, order_ref: 'BS-24118' } })
+    : ({ ok: true, data: { verified: false } })],
   [/^\/v2\/admin\/stats$/,              () => ({ ok: true, data: ADMIN_STATS })],
   // Phase 6: replace with real row shapes per tab.
   [/^\/v2\/admin\//,                    () => page([])],
@@ -281,4 +294,5 @@ server.listen(PORT, () => {
   console.log(`  wallet:  ${ZERO_WALLET ? '0' : '18,300'}`)
   console.log(`  orders:  ${ORDERS.length} (one per status, incl. rejected_pending)`)
   console.log(`  partner: ${PARTNER}${PARTNER_PROFILE ? ` (${PARTNER_STATUS})` : ' — no profile'}`)
+  console.log(`  verify:  ${VERIFY_OK ? 'verified' : 'failed'}`)
 })

@@ -27,9 +27,16 @@ Read this file first in any session. Update it before finishing.
 
   ```bash
   node scripts/fixture-api.js                                  # :8787
-  NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787 npm run build
+  NEXT_PUBLIC_API_BASE=http://127.0.0.1:8787 \
+  NEXT_PUBLIC_API_URL=http://127.0.0.1:8787 npm run build
   npm run start
   ```
+
+  **Both names are required.** The app reads `NEXT_PUBLIC_API_URL` in
+  `lib/api.ts` and the two admin surfaces, `NEXT_PUBLIC_API_BASE` everywhere
+  else. Setting only one leaves part of the app talking to production while you
+  measure the rest — `/order/verify` goes through `lib/api.ts`, so `API_BASE`
+  alone sends the real payment-verification call to the live Worker.
 
   Then seed any non-empty session in the browser console (the server never
   checks Authorization):
@@ -46,7 +53,9 @@ Read this file first in any session. Update it before finishing.
   are server-side, so switching them needs no rebuild — restart the fixture
   and reload:
   `FIXTURE_PROFILE=nameless` (empty full_name, so display names fall back to
-  the email address), `FIXTURE_WALLET=zero`, `PORT=9001`.
+  the email address), `FIXTURE_WALLET=zero`,
+  `FIXTURE_PARTNER=approved|pending|rejected|none`,
+  `FIXTURE_VERIFY=verified|failed`, `PORT=9001`.
 
   The list endpoints carry the awkward cases inline: a 101-character product
   name, ₦9,876,543, a zero amount, an `amount_ngn` that arrives as a string,
@@ -56,8 +65,8 @@ Read this file first in any session. Update it before finishing.
   populated markup go unseen. That is exactly how the Phase 2 money-colour bug
   shipped. Fixtures must include at least one row per list, real amounts, one
   unread and one read message, and a mix of order statuses.
-  **Always rebuild without that var before committing**, and confirm with
-  `grep -rho "127\.0\.0\.1:8787" .next/static/chunks/app/<route>/*.js`.
+  **Always rebuild without those vars before committing**, and confirm that
+  `grep -rl "127\.0\.0\.1:8787" .next/static/chunks/` returns nothing.
 - Text colour must be explicit on `<button>`, `<a>`, `<input>` and `<select>`:
   they do not inherit `color` (the UA sets `buttontext` / `-webkit-link`).
   Scan a finished file for style objects that set `fontSize` but no `color`,
@@ -328,8 +337,6 @@ an engineering one.
 - ShopAds.tsx:102 rotates the banner carousel on a 6s setInterval. The global
   reduced-motion CSS cannot stop a JS timer; this needs its own
   `matchMedia('(prefers-reduced-motion: reduce)')` guard in Phase 13.
-- AppShell.tsx:21 hardcodes the production Workers URL instead of using the env
-  var.
 - Lifting the /shop theme exclusion is blocked on Marketplace.tsx becoming
   editable (see Theme mechanism above). Confirmed concretely in Phase 1: forcing
   data-theme="light" on /shop turns the product card white while its #1C1C1F
