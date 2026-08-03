@@ -215,6 +215,38 @@ function MoonIcon() {
   )
 }
 
+// Inline action glyphs for the tab buttons, same house pattern. Sized at 14 to
+// sit inside a 32px control without crowding the label. aria-hidden because
+// every one of them is paired with a visible text label — announcing "check"
+// before "Approve" is noise, not information.
+function GlyphIcon({ d, filled = false }: { d: string; filled?: boolean }) {
+  return (
+    <svg
+      width="14" height="14" viewBox="0 0 24 24"
+      fill={filled ? 'currentColor' : 'none'}
+      stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+      aria-hidden="true" style={{ flexShrink: 0 }}
+    >
+      <path d={d} />
+    </svg>
+  )
+}
+const CheckIcon = () => <GlyphIcon d="M20 6 9 17l-5-5" />
+const XIcon = () => <GlyphIcon d="M18 6 6 18M6 6l12 12" />
+const UndoIcon = () => <GlyphIcon d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3" />
+const DocumentIcon = () => <GlyphIcon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h4" />
+const StarIcon = () => <GlyphIcon filled d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5L2.6 9.8l6.5-.9z" />
+
+// Aligns an icon with its label inside a SmallBtn. The alignment lives here
+// rather than in SmallBtn because SmallBtn is a shared primitive with 25 call
+// sites across tabs 5-13, and giving it display:inline-flex would change all
+// of them ahead of their phase.
+const BtnLabel = ({ icon, children }: { icon: React.ReactNode; children: React.ReactNode }) => (
+  <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--bs-space-1)' }}>
+    {icon}{children}
+  </span>
+)
+
 function Shell({ T, isDark, toggle, adminEmail, children }: { T: Theme; isDark: boolean; toggle: () => void; adminEmail: string; children: React.ReactNode }) {
   return (
     <div style={{ background: T.bg, minHeight: '100dvh', color: T.text, padding: '0 var(--bs-space-6) var(--bs-space-12)', paddingTop: 'calc(2vh + var(--bs-space-4))', boxSizing: 'border-box', transition: 'background var(--bs-dur-2) var(--bs-ease-out), color var(--bs-dur-2) var(--bs-ease-out)' }}>
@@ -306,7 +338,7 @@ function FieldLabel({ label, T, children }: { label: string; T: Theme; children:
 // ── Product form (module-level, stable — fixes focus loss) ──
 function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }: { T: Theme; form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
   const IS: React.CSSProperties = {
-    height: 42,
+    height: 'var(--bs-control-md)',
     padding: '0 14px',
     borderRadius: 10,
     fontSize: 13,
@@ -317,7 +349,7 @@ function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }:
     color: T.text,
     boxSizing: 'border-box',
     outline: 'none',
-    fontFamily: 'Inter,sans-serif',
+
   }
   const updateField = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }))
   const sl = form.social_links || {}
@@ -325,8 +357,8 @@ function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }:
     setForm((f: any) => ({ ...f, social_links: { ...(f.social_links || {}), [k]: v } }))
   }
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, padding: '20px 24px', marginBottom: 14 }}>
-      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
+    <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: '20px 24px', marginBottom: 14 }}>
+      <div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
         <FieldLabel label="Name *" T={T}><input style={IS} value={form.name || ''} onChange={e => updateField('name', e.target.value)} /></FieldLabel>
         <FieldLabel label="Slug" T={T}><input style={IS} value={form.slug || ''} onChange={e => updateField('slug', e.target.value)} placeholder="auto-generated from name" /></FieldLabel>
@@ -347,10 +379,10 @@ function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }:
       {/* ── New: WhatsApp & Social Links ─────────────── */}
       <div style={{
         marginTop: 12, padding: '16px 18px',
-        background: T.elevated, border: `1px solid ${T.border}`, borderRadius: 12,
+        background: T.elevated, border: `1px solid ${T.border}`, borderRadius: 'var(--bs-radius-lg)',
       }}>
         <div style={{
-          fontSize: 10, color: T.textMuted, textTransform: 'uppercase',
+          fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase',
           letterSpacing: '0.08em', fontWeight: 600, marginBottom: 12,
         }}>
           Product community links
@@ -546,7 +578,7 @@ function ProductSearchBox({
   }
 
   const IS: React.CSSProperties = {
-    height: 40, padding: '0 12px', borderRadius: 10, fontSize: 13,
+    height: 'var(--bs-control-md)', padding: '0 var(--bs-space-3)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)',
     width: '100%', background: T.input, border: `1px solid ${T.border}`,
     color: T.text, boxSizing: 'border-box', outline: 'none',
   }
@@ -571,7 +603,7 @@ function ProductSearchBox({
         <div style={{
           position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
           background: T.elevated, border: `1px solid ${T.border}`,
-          borderRadius: 10, zIndex: 300, boxShadow: '0 8px 28px rgba(0,0,0,0.35)',
+          borderRadius: 'var(--bs-radius-md)', zIndex: 300, boxShadow: 'var(--bs-elev-2)',
           maxHeight: 260, overflowY: 'auto',
         }}>
           {filtered.map((p, i) => (
@@ -588,7 +620,7 @@ function ProductSearchBox({
               <div style={{ fontSize: 13, color: T.text }}>{p.name}</div>
               <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
                 <span>{sentenceCase(p.category || '')}</span>
-                <span style={{ fontFamily: 'monospace' }}>
+                <span style={{ fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace' }}>
                   {fmt((p[PRICE_FIELD['Quarterly']] as number) || 0)} /qtr
                 </span>
               </div>
@@ -732,9 +764,9 @@ function NewOrderDrawer({
   }
 
   const IS: React.CSSProperties = {
-    height: 40, padding: '0 12px', borderRadius: 10, fontSize: 13,
+    height: 'var(--bs-control-md)', padding: '0 var(--bs-space-3)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)',
     width: '100%', background: T.input, border: `1px solid ${T.border}`,
-    color: T.text, boxSizing: 'border-box', outline: 'none', fontFamily: 'Inter,sans-serif',
+    color: T.text, boxSizing: 'border-box', outline: 'none'
   }
 
   return (
@@ -754,21 +786,20 @@ function NewOrderDrawer({
         zIndex:200,
         display:'flex', flexDirection:'column',
         animation:'bsSlideIn .25s cubic-bezier(0.4,0,0.2,1)',
-        fontFamily:'Inter,sans-serif',
       }}>
 
         {/* Header */}
         <div style={{ padding:'20px 24px 16px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div>
-              <div style={{ fontSize:16, fontWeight:700, color:T.text }}>New Manual Order</div>
+              <div style={{ fontSize:'var(--bs-text-lg)', fontWeight:700, color:T.text }}>New Manual Order</div>
               <div style={{ fontSize:11, color:T.textMuted, marginTop:3 }}>
                 Creates order directly in DB — no Paystack
               </div>
             </div>
             <button onClick={onClose} style={{
-              width:32, height:32, borderRadius:8, background:'transparent',
-              border:`1px solid ${T.border}`, color:T.textSecondary, cursor:'pointer', fontSize:18,
+              width:32, height:32, borderRadius:'var(--bs-radius-md)', background:'transparent',
+              border:`1px solid ${T.border}`, color:T.textSecondary, cursor:'pointer', fontSize:'var(--bs-text-lg)',
             }}>×</button>
           </div>
         </div>
@@ -778,7 +809,7 @@ function NewOrderDrawer({
 
           {/* ── Customer ── */}
           <section>
-            <div style={{ fontSize:10, color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600, marginBottom:12 }}>
+            <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600, marginBottom:12 }}>
               Customer
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -809,13 +840,13 @@ function NewOrderDrawer({
           {/* ── Items ── */}
           <section>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-              <div style={{ fontSize:10, color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600 }}>
+              <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600 }}>
                 Items
               </div>
               <button
                 onClick={() => setItems(p => [...p, newItemRow()])}
                 style={{
-                  height:28, padding:'0 12px', borderRadius:8, background:'transparent',
+                  height:'var(--bs-control-sm)', padding:'0 12px', borderRadius:'var(--bs-radius-md)', background:'transparent',
                   border:`1px solid ${T.border}`, color:T.accent, fontSize:12,
                   fontWeight:600, cursor:'pointer',
                 }}
@@ -830,7 +861,7 @@ function NewOrderDrawer({
               {items.map((item, idx) => (
                 <div key={item._key} style={{
                   background:T.elevated, border:`1px solid ${T.border}`,
-                  borderRadius:12, padding:14,
+                  borderRadius:'var(--bs-radius-lg)', padding:14,
                 }}>
                   {/* Row 1: product search + remove */}
                   <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:10 }}>
@@ -844,10 +875,10 @@ function NewOrderDrawer({
                       onClick={() => setItems(p => p.filter(i => i._key !== item._key))}
                       disabled={items.length === 1}
                       style={{
-                        width:32, height:32, borderRadius:8, flexShrink:0,
+                        width:32, height:32, borderRadius:'var(--bs-radius-md)', flexShrink:0,
                         background:'transparent', border:`1px solid ${T.border}`,
                         color:T.textMuted, cursor:items.length===1?'not-allowed':'pointer',
-                        fontSize:16, opacity:items.length===1?0.3:1,
+                        fontSize:'var(--bs-text-lg)', opacity:items.length===1?0.3:1,
                       }}
                     >×</button>
                   </div>
@@ -855,9 +886,9 @@ function NewOrderDrawer({
                   {/* Row 2: period / price / qty */}
                   <div style={{ display:'grid', gridTemplateColumns:'1.2fr 1.4fr 0.7fr', gap:8 }}>
                     <div>
-                      <div style={{ fontSize:10, color:T.textMuted, marginBottom:4 }}>Period</div>
+                      <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, marginBottom:4 }}>Period</div>
                       <select
-                        style={{ ...IS, height:36 }}
+                        style={{ ...IS, height:'var(--bs-control-md)' }}
                         value={item.billing_period}
                         onChange={e => onPeriodChange(item, e.target.value)}
                       >
@@ -865,11 +896,11 @@ function NewOrderDrawer({
                       </select>
                     </div>
                     <div>
-                      <div style={{ fontSize:10, color:T.textMuted, marginBottom:4 }}>
+                      <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, marginBottom:4 }}>
                         Unit Price (₦){item.is_overridden && <span style={{ color:T.warning, marginLeft:4 }}>override</span>}
                       </div>
                       <input
-                        style={{ ...IS, height:36 }}
+                        style={{ ...IS, height:'var(--bs-control-md)' }}
                         type="number"
                         min={0}
                         value={item.unit_price_ngn}
@@ -881,9 +912,9 @@ function NewOrderDrawer({
                       />
                     </div>
                     <div>
-                      <div style={{ fontSize:10, color:T.textMuted, marginBottom:4 }}>Qty</div>
+                      <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, marginBottom:4 }}>Qty</div>
                       <input
-                        style={{ ...IS, height:36, textAlign:'center' }}
+                        style={{ ...IS, height:'var(--bs-control-md)', textAlign:'center' }}
                         type="number" min={1}
                         value={item.quantity}
                         onChange={e => setItem(item._key, { quantity: Math.max(1, parseInt(e.target.value)||1) })}
@@ -907,7 +938,7 @@ function NewOrderDrawer({
 
           {/* ── Order details ── */}
           <section>
-            <div style={{ fontSize:10, color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600, marginBottom:12 }}>
+            <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600, marginBottom:12 }}>
               Order Details
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
@@ -941,7 +972,7 @@ function NewOrderDrawer({
                     setDiscountCode('')
                     setDiscountValue('')
                   }} style={{
-                    height:28, padding:'0 14px', borderRadius:999, border:'none',
+                    height:'var(--bs-control-sm)', padding:'0 14px', borderRadius:999, border:'none',
                     background: discountMode===m ? T.accent : 'transparent',
                     color: discountMode===m ? '#fff' : T.text,
                     fontSize:12, fontWeight:600, cursor:'pointer',
@@ -1197,11 +1228,11 @@ function OverviewTab({T}:{T:Theme}) {
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:i<stats.recent_orders.length-1?`1px solid ${T.borderSubtle}`:'none',gap:12}}>
               <div style={{minWidth:0}}>
                 <div style={{fontSize:13,color:T.text,display:'flex',gap:8,alignItems:'center'}}>
-                  <span style={{fontFamily:'monospace',fontSize:12}}>{o.order_ref}</span><Badge status={o.status} T={T}/>
+                  <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:12}}>{o.order_ref}</span><Badge status={o.status} T={T}/>
                 </div>
                 <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{o.customer_name||o.customer_email||'—'} · {fmtFull(o.created_at)}</div>
               </div>
-              <div style={{fontSize:14,fontWeight:600,color:T.text,flexShrink:0}}>{fmt(o.total_ngn)}</div>
+              <div style={{fontSize:'var(--bs-text-sm)',fontWeight:600,color:T.text,flexShrink:0}}>{fmt(o.total_ngn)}</div>
             </div>
           ))}
         </Card>
@@ -1297,32 +1328,27 @@ useEffect(() => {
 
   return (
     <div>
-      {/* Sub-filters */}
-      {/* <div style={{display:'flex',gap:4,marginBottom:16,background:T.elevated,borderRadius:999,padding:4,border:`1px solid ${T.border}`,width:'fit-content'}}>
-        {STATUS_FILTERS.map(f=>(
-          <button key={f.value} onClick={()=>{setStatusFilter(f.value);load(1,f.value,search)}} style={{
-            padding:'8px 16px',borderRadius:999,fontSize:12,fontWeight:statusFilter===f.value?600:400,border:'none',cursor:'pointer',
-            background:statusFilter===f.value?T.accent:'transparent',color:statusFilter===f.value?'#fff':T.text,transition:'all 0.15s',fontFamily:'Inter,sans-serif'
-          }}>{f.label}</button>
-        ))}
-      </div> */}
-      
-      <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:16, flexWrap:'wrap' }}>
-        <div style={{ display:'flex', gap:4, background:T.elevated, borderRadius:999, padding:4, border:`1px solid ${T.border}` }}>
+      <div style={{ display:'flex', alignItems:'center', gap:'var(--bs-space-3)', marginBottom:'var(--bs-space-4)', flexWrap:'wrap' }}>
+        <div style={{ display:'flex', gap:'var(--bs-space-1)', background:T.elevated, borderRadius:'var(--bs-radius-full)', padding:'var(--bs-space-1)', border:`1px solid ${T.border}` }}>
           {STATUS_FILTERS.map(f => (
             <button key={f.value} onClick={() => { setStatusFilter(f.value); load(1, f.value, search) }} style={{
-              padding:'8px 16px', borderRadius:999, fontSize:12, fontWeight:statusFilter===f.value?600:400, border:'none', cursor:'pointer',
-              background:statusFilter===f.value?T.accent:'transparent', color:statusFilter===f.value?'#fff':T.text, transition:'all 0.15s', fontFamily:'Inter,sans-serif',
+              height:'var(--bs-control-sm)', padding:'0 var(--bs-space-4)', borderRadius:'var(--bs-radius-full)',
+              fontSize:'var(--bs-text-xs)', fontWeight:statusFilter===f.value?600:400, border:'none', cursor:'pointer',
+              // #fff here is text on an accent FILL, which stays #fff in both
+              // themes per the colour decision. Not the accent-as-text case.
+              background:statusFilter===f.value?T.accent:'transparent', color:statusFilter===f.value?'#fff':T.text,
+              transition:'background var(--bs-dur-1) var(--bs-ease-out)',
             }}>{f.label}</button>
           ))}
         </div>
         <button
           onClick={() => setShowNewOrder(true)}
           style={{
-            height:38, padding:'0 18px', borderRadius:10, background:T.accent, border:'none',
-            color:'#fff', cursor:'pointer', fontSize:13, fontWeight:600,
-            display:'inline-flex', alignItems:'center', gap:6,
-            boxShadow:'0 4px 14px rgba(124,92,255,0.25)',
+            height:'var(--bs-control-md)', padding:'0 var(--bs-space-4)', borderRadius:'var(--bs-radius-md)',
+            background:T.accent, border:'none',
+            color:'#fff', cursor:'pointer', fontSize:'var(--bs-text-sm)', fontWeight:600,
+            display:'inline-flex', alignItems:'center', gap:'var(--bs-space-2)',
+            boxShadow:'0 4px 14px rgba(var(--bs-accent-rgb), 0.25)',
           }}
         >
           <span style={{ fontSize:15, lineHeight:1 }}>+</span> New Order
@@ -1340,17 +1366,17 @@ useEffect(() => {
                 const det = orderDetails[o.order_ref]
                 const isExp = expanded===o.order_ref
                 return (
-                  <div key={o.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,marginBottom:8,overflow:'hidden'}}>
+                  <div key={o.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',marginBottom:8,overflow:'hidden'}}>
                     {/* Compact row */}
                     <div onClick={()=>toggleExpand(o.order_ref)} style={{padding:'14px 20px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
                       <div style={{display:'flex',gap:10,alignItems:'center',minWidth:0,flex:1}}>
-                        <span style={{fontFamily:'monospace',fontSize:13,fontWeight:600,color:T.text}}>{o.order_ref}</span>
+                        <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:13,fontWeight:600,color:T.text}}>{o.order_ref}</span>
                         <Badge status={o.status} T={T}/>
                         <span style={{fontSize:12,color:T.textSecondary}}>{o.customer_name||'—'}</span>
                         <span style={{fontSize:11,color:T.textMuted}}>{fmtTime(o.created_at)}</span>
                       </div>
                       <div style={{display:'flex',gap:12,alignItems:'center',flexShrink:0}}>
-                        <span style={{fontSize:16,fontWeight:700,color:T.text}}>{fmt(o.total_ngn)}</span>
+                        <span style={{fontSize:'var(--bs-text-lg)',fontWeight:700,color:T.text}}>{fmt(o.total_ngn)}</span>
                         <span style={{color:T.textMuted,fontSize:12}}>{isExp?'▾':'▸'}</span>
                       </div>
                     </div>
@@ -1381,7 +1407,7 @@ useEffect(() => {
                         </div>
                         {det?.order_items&&det.order_items.length>0&&(
                           <div style={{marginBottom:12}}>
-                            <div style={{fontSize:10,fontWeight:600,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:8}}>Items</div>
+                            <div style={{fontSize:'var(--bs-text-2xs)',fontWeight:600,color:T.textMuted,textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:8}}>Items</div>
                             {det.order_items.map((it:any,i:number)=>(
                               <div key={i} style={{display:'flex',justifyContent:'space-between',padding:'6px 0',borderBottom:i<det.order_items.length-1?`1px solid ${T.borderSubtle}`:'none',fontSize:12}}>
                                 <span style={{color:T.text}}>{it.product_name} <span style={{color:T.textMuted}}>× {it.quantity}</span></span>
@@ -1393,10 +1419,10 @@ useEffect(() => {
                         {o.notes&&<div style={{fontSize:12,color:T.textMuted,marginBottom:10}}>Notes: {o.notes}</div>}
                         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                           {o.status==='pending_manual'&&<>
-                            <SmallBtn T={T} color={T.success} onClick={()=>approve(o.order_ref)} disabled={actionLoading===o.order_ref}>{actionLoading===o.order_ref?'…':'✓ Approve'}</SmallBtn>
-                            <SmallBtn T={T} color={T.error} onClick={()=>reject(o.order_ref)} disabled={actionLoading===o.order_ref}>✕ Reject</SmallBtn>
+                            <SmallBtn T={T} color={T.success} onClick={()=>approve(o.order_ref)} disabled={actionLoading===o.order_ref}>{actionLoading===o.order_ref?'…':<BtnLabel icon={<CheckIcon/>}>Approve</BtnLabel>}</SmallBtn>
+                            <SmallBtn T={T} color={T.error} onClick={()=>reject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<XIcon/>}>Reject</BtnLabel></SmallBtn>
                           </>}
-                          {o.status==='paid'&&<SmallBtn T={T} color={T.accent} onClick={()=>openReceipt(o.order_ref)}>📄 Receipt</SmallBtn>}
+                          {o.status==='paid'&&<SmallBtn T={T} color={T.accent} onClick={()=>openReceipt(o.order_ref)}><BtnLabel icon={<DocumentIcon/>}>Receipt</BtnLabel></SmallBtn>}
                         </div>
                       </div>
                     )}
@@ -1429,22 +1455,22 @@ function RejectedTab({T}:{T:Theme}) {
   const undoReject=async(ref:string)=>{setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/undo-reject`,{method:'POST'});if(r.ok||r.data?.undone)await load();else toast.error(r.error||'Failed');setActionLoading(null)}
   return (
     <div>
-      <div style={{fontSize:13,color:T.warning,marginBottom:20,padding:'12px 16px',background:T.warningBg,borderRadius:12,border:`1px solid rgba(var(--bs-warning-rgb), 0.2)`}}>Orders here need a second confirmation before permanent cancellation. Use Undo to restore.</div>
+      <div style={{fontSize:13,color:T.warning,marginBottom:20,padding:'12px 16px',background:T.warningBg,borderRadius:'var(--bs-radius-lg)',border:`1px solid rgba(var(--bs-warning-rgb), 0.2)`}}>Orders here need a second confirmation before permanent cancellation. Use Undo to restore.</div>
       {loading?<Loading T={T}/>:orders.length===0?<EmptyState text="No rejected orders pending" T={T}/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {orders.map(o=>(
-            <div key={o.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:'18px 22px'}}>
+            <div key={o.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'18px 22px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
                 <div>
-                  <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:6}}><span style={{fontFamily:'monospace',fontSize:13,fontWeight:600,color:T.text}}>{o.order_ref}</span><Badge status="rejected_pending" T={T}/></div>
+                  <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:6}}><span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:13,fontWeight:600,color:T.text}}>{o.order_ref}</span><Badge status="rejected_pending" T={T}/></div>
                   <div style={{fontSize:13,color:T.textSecondary}}>{o.customer_name||o.customer_email||'—'}</div>
                   {o.notes&&<div style={{fontSize:12,color:T.textMuted,marginTop:4}}>Reason: {o.notes}</div>}
                 </div>
                 <div style={{fontSize:20,fontWeight:700,color:T.text}}>{fmt(o.total_ngn)}</div>
               </div>
               <div style={{display:'flex',gap:8,marginTop:12}}>
-                <SmallBtn T={T} color={T.success} onClick={()=>undoReject(o.order_ref)} disabled={actionLoading===o.order_ref}>↩ Undo</SmallBtn>
-                <SmallBtn T={T} color={T.error} onClick={()=>confirmReject(o.order_ref)} disabled={actionLoading===o.order_ref}>✕ Confirm</SmallBtn>
+                <SmallBtn T={T} color={T.success} onClick={()=>undoReject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<UndoIcon/>}>Undo</BtnLabel></SmallBtn>
+                <SmallBtn T={T} color={T.error} onClick={()=>confirmReject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<XIcon/>}>Confirm</BtnLabel></SmallBtn>
               </div>
             </div>
           ))}
@@ -1638,7 +1664,7 @@ function ProductsTab({ T }: { T: Theme }) {
 
   // Uppercase section label style (tiny all-caps)
   const metaLabel: React.CSSProperties = {
-    fontSize: 10,
+    fontSize: 'var(--bs-text-2xs)',
     color: T.textMuted,
     textTransform: 'uppercase',
     letterSpacing: '0.06em',
@@ -1660,10 +1686,13 @@ function ProductsTab({ T }: { T: Theme }) {
   return (
     <div>
       <style>{`
+        /* Deliberately does NOT set box-shadow, so the --bs-ring focus ring
+           from Shell still lands on these inputs. This rule only recolours the
+           border on top of it. */
         .bs-pt-input:focus,
         .bs-pt-input:focus-visible {
           outline: none !important;
-          border-color: #7C5CFF !important;
+          border-color: var(--bs-accent) !important;
         }
         .bs-pt-card {
           transition: border-color 0.18s ease, transform 0.18s ease, box-shadow 0.18s ease;
@@ -1686,10 +1715,12 @@ function ProductsTab({ T }: { T: Theme }) {
         .bs-pt-action-accent:hover:not(:disabled) {
           background: rgba(var(--bs-accent-rgb), 0.1) !important;
           border-color: rgba(var(--bs-accent-rgb), 0.4) !important;
-          color: #7C5CFF !important;
+          /* accent-as-TEXT, so it takes the on-surface sibling. Plain #7C5CFF
+             measures 4.0:1 on white and fails AA. */
+          color: var(--bs-accent-on-surface) !important;
         }
         .bs-pt-new-btn:hover {
-          background: #6B4EE6 !important;
+          background: var(--bs-accent-hover) !important;
         }
         .bs-pt-page-btn:hover:not(:disabled) {
           background: var(--bs-bg-muted) !important;
@@ -1713,7 +1744,7 @@ function ProductsTab({ T }: { T: Theme }) {
           gap: 10,
         }}>
           <div style={{
-            fontSize: 22,
+            fontSize: 'var(--bs-text-xl)',
             fontWeight: 700,
             color: T.text,
             lineHeight: 1,
@@ -1760,7 +1791,7 @@ function ProductsTab({ T }: { T: Theme }) {
             transform: 'translateY(-50%)',
             color: T.textMuted,
             pointerEvents: 'none',
-            fontSize: 14,
+            fontSize: 'var(--bs-text-sm)',
           }}>
             ⌕
           </div>
@@ -1794,7 +1825,7 @@ function ProductsTab({ T }: { T: Theme }) {
             onClick={() => { setSearch(''); setStatusFilter(''); setCategoryFilter('') }}
             className="bs-pt-action"
             style={{
-              height: 42,
+              height: 'var(--bs-control-md)',
               padding: '0 14px',
               borderRadius: 10,
               background: 'transparent',
@@ -1813,21 +1844,21 @@ function ProductsTab({ T }: { T: Theme }) {
           onClick={() => setShowCreate(!showCreate)}
           className="bs-pt-new-btn"
           style={{
-            height: 42,
-            padding: '0 20px',
-            borderRadius: 10,
+            height: 'var(--bs-control-md)',
+            padding: '0 var(--bs-space-5)',
+            borderRadius: 'var(--bs-radius-md)',
             background: T.accent,
             border: 'none',
             color: '#fff',
             cursor: 'pointer',
-            fontSize: 13,
+            fontSize: 'var(--bs-text-sm)',
             fontWeight: 600,
             marginLeft: 'auto',
             display: 'inline-flex',
             alignItems: 'center',
-            gap: 6,
-            boxShadow: '0 4px 14px rgba(124,92,255,0.25)',
-            transition: 'background 0.15s',
+            gap: 'var(--bs-space-2)',
+            boxShadow: '0 4px 14px rgba(var(--bs-accent-rgb), 0.25)',
+            transition: 'background var(--bs-dur-1) var(--bs-ease-out)',
           }}
         >
           <span style={{ fontSize: 15, lineHeight: 1 }}>+</span>
@@ -1871,9 +1902,15 @@ function ProductsTab({ T }: { T: Theme }) {
                 className="bs-pt-card"
                 style={{
                   background: T.card,
-                  border: `1px solid ${isHidden ? T.border : '#1C1C1F'}`,
-                  borderRadius: 20,
-                  padding: 20,
+                  // Was `isHidden ? T.border : '#1C1C1F'`. #1C1C1F is a
+                  // Marketplace literal that leaked in; it sits close to
+                  // --bs-border-default in dark, so the card looked right there
+                  // and drew a near-black border on a white card in light. The
+                  // hidden-vs-normal distinction is preserved, not "corrected":
+                  // hidden keeps the stronger border, normal takes the subtle one.
+                  border: `1px solid ${isHidden ? T.border : T.borderSubtle}`,
+                  borderRadius: 'var(--bs-radius-lg)',
+                  padding: 'var(--bs-space-5)',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: 16,
@@ -1881,23 +1918,30 @@ function ProductsTab({ T }: { T: Theme }) {
                   opacity: isHidden ? 0.65 : 1,
                 }}
               >
-                {/* Featured ribbon */}
+                {/* Featured ribbon.
+                    Was 9px, below the 11 floor, and painted the label in plain
+                    T.accent on a 12% tint of that same accent — the exact AA
+                    failure Phase 6 measured at 3.74:1 in SmallBtn. Reuses
+                    --bs-on-tint-mix for the same reason and by the same rule. */}
                 {p.featured && (
                   <div style={{
                     position: 'absolute',
-                    top: 12,
-                    right: 12,
-                    fontSize: 9,
+                    top: 'var(--bs-space-3)',
+                    right: 'var(--bs-space-3)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 'var(--bs-space-1)',
+                    fontSize: 'var(--bs-text-2xs)',
                     fontWeight: 700,
                     letterSpacing: '0.08em',
                     textTransform: 'uppercase',
-                    color: T.accent,
+                    color: 'color-mix(in srgb, var(--bs-accent), var(--bs-on-tint-mix))',
                     background: 'rgba(var(--bs-accent-rgb), 0.12)',
                     border: '1px solid rgba(var(--bs-accent-rgb), 0.3)',
-                    padding: '3px 8px',
-                    borderRadius: 4,
+                    padding: '3px var(--bs-space-2)',
+                    borderRadius: 'var(--bs-radius-sm)',
                   }}>
-                    ★ Featured
+                    <StarIcon /> Featured
                   </div>
                 )}
 
@@ -1912,7 +1956,7 @@ function ProductsTab({ T }: { T: Theme }) {
                         height: 48,
                         borderRadius: 14,
                         background: T.elevated,
-                        border: '1px solid rgba(255,255,255,0.06)',
+                        border: `1px solid ${T.borderSubtle}`,
                         objectFit: 'contain',
                         flexShrink: 0,
                       }}
@@ -1924,7 +1968,7 @@ function ProductsTab({ T }: { T: Theme }) {
                       height: 48,
                       borderRadius: 14,
                       background: tint.bg,
-                      border: '1px solid rgba(255,255,255,0.06)',
+                      border: `1px solid ${T.borderSubtle}`,
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -1939,7 +1983,7 @@ function ProductsTab({ T }: { T: Theme }) {
 
                   <div style={{ flex: 1, minWidth: 0, paddingRight: p.featured ? 68 : 0 }}>
                     <div style={{
-                      fontSize: 14,
+                      fontSize: 'var(--bs-text-sm)',
                       fontWeight: 700,
                       color: T.text,
                       lineHeight: 1.3,
@@ -2010,7 +2054,7 @@ function ProductsTab({ T }: { T: Theme }) {
                     gap: 6,
                     background: T.elevated,
                     border: `1px solid ${T.border}`,
-                    borderRadius: 12,
+                    borderRadius: 'var(--bs-radius-lg)',
                     padding: 6,
                   }}>
                     {[
@@ -2024,7 +2068,7 @@ function ProductsTab({ T }: { T: Theme }) {
                         <div
                           key={x.l}
                           style={{
-                            borderRadius: 8,
+                            borderRadius: 'var(--bs-radius-md)',
                             padding: '8px 6px',
                             textAlign: 'center',
                             background: isPrimary ? T.card : 'transparent',
@@ -2032,7 +2076,7 @@ function ProductsTab({ T }: { T: Theme }) {
                           }}
                         >
                           <div style={{
-                            fontSize: 9,
+                            fontSize: 'var(--bs-text-2xs)',
                             color: isPrimary ? T.accent : T.textMuted,
                             textTransform: 'uppercase',
                             letterSpacing: '0.08em',
@@ -2044,7 +2088,7 @@ function ProductsTab({ T }: { T: Theme }) {
                             fontSize: 12,
                             fontWeight: 600,
                             color: x.v ? T.text : T.textFaint,
-                            fontFamily: "'SF Mono', Menlo, monospace",
+                            fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',
                             marginTop: 3,
                             lineHeight: 1,
                           }}>

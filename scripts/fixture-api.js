@@ -273,15 +273,26 @@ const ADMIN_CUSTOMERS = ADMIN_BUYERS.map((b, i) => ({
   created_at: `2026-0${(i % 7) + 1}-1${i % 9}T09:00:00Z`,
 }))
 
+// `status` and `stock_status` are SEPARATE fields, and ProductsTab reads both:
+//   isHidden = p.status !== 'active'
+//   isOOS    = p.stock_status !== 'in_stock'
+// An earlier version of this fixture put stock values in `status`, so every
+// card took the isHidden branch and the visible-product styling was never
+// rendered. Keep one row per combination, and at least one `featured`, or the
+// featured ribbon never mounts and cannot be measured.
 const ADMIN_PRODUCTS = [
-  { id: 'p-1', name: LONG_NAME, category: 'video streaming', status: 'in_stock',
-    price_3m: 14000, price_6m: 26000, price_1y: 45000, domain: 'netflix.com', is_active: true },
-  { id: 'p-2', name: 'Apple Music', category: 'music streaming', status: 'out_of_stock',
-    price_3m: 11500, price_6m: 21000, price_1y: 38000, domain: 'apple.com', is_active: true },
-  { id: 'p-3', name: 'Enterprise bundle, 40 seats', category: 'bundles', status: 'hidden',
-    price_3m: 0, price_6m: 0, price_1y: HUGE, domain: 'buysub.ng', is_active: false },
-  { id: 'p-4', name: 'Spotify Duo', category: 'music streaming', status: 'in_stock',
-    price_3m: 7500, price_6m: 14000, price_1y: 25000, domain: 'spotify.com', is_active: true },
+  { id: 'p-1', name: LONG_NAME, category: 'video streaming',
+    status: 'active', stock_status: 'in_stock', featured: true,
+    price_3m: 14000, price_6m: 26000, price_1y: 45000, domain: 'netflix.com' },
+  { id: 'p-2', name: 'Apple Music', category: 'music streaming',
+    status: 'active', stock_status: 'out_of_stock', featured: false,
+    price_3m: 11500, price_6m: 21000, price_1y: 38000, domain: 'apple.com' },
+  { id: 'p-3', name: 'Enterprise bundle, 40 seats', category: 'bundles',
+    status: 'hidden', stock_status: 'in_stock', featured: false,
+    price_3m: 0, price_6m: 0, price_1y: HUGE, domain: 'buysub.ng' },
+  { id: 'p-4', name: 'Spotify Duo', category: 'music streaming',
+    status: 'active', stock_status: 'in_stock', featured: true,
+    price_3m: 7500, price_6m: 14000, price_1y: 25000, domain: 'spotify.com' },
 ]
 
 // ── routing ─────────────────────────────────────────────────────────────
@@ -304,8 +315,29 @@ const ROUTES = [
   // customer_name / customer_email alongside the fields /v2/me/orders returns.
   // Serving the customer shape here would render every row's identity as an
   // em-dash and hide exactly the defects this fixture exists to surface.
-  [/^\/v2\/admin\/orders$/,             () => page(ADMIN_ORDERS)],
-  [/^\/v2\/admin\/orders\/[^/]+$/,      () => ({ ok: true, data: ADMIN_ORDERS[0] })],
+  // Query-aware on purpose. RejectedTab asks for
+  // ?status=rejected_pending and hardcodes <Badge status="rejected_pending">,
+  // so a route that ignores the query hands it all seven orders and paints
+  // paid and cancelled rows as rejected — a screen that cannot exist in
+  // production. Same for the Orders status filter and its debounced search.
+  [/^\/v2\/admin\/orders$/, q => {
+    let rows = ADMIN_ORDERS
+    const status = q.get('status')
+    if (status) rows = rows.filter(o => o.status === status)
+    const term = (q.get('q') || '').trim().toLowerCase()
+    if (term) {
+      rows = rows.filter(o => [o.order_ref, o.customer_name, o.customer_email]
+        .some(v => (v || '').toLowerCase().includes(term)))
+    }
+    return page(rows)
+  }],
+  // Looked up by order_ref, not ADMIN_ORDERS[0]. Expanding any row used to
+  // show the first order's items, so every expanded panel looked identical.
+  [/^\/v2\/admin\/orders\/[^/]+$/, (q, path) => {
+    const ref = decodeURIComponent(path.split('/').pop())
+    const hit = ADMIN_ORDERS.find(o => o.order_ref === ref || o.id === ref)
+    return hit ? { ok: true, data: hit } : { ok: false, error: 'Order not found' }
+  }],
   [/^\/v2\/admin\/customers$/,          () => page(ADMIN_CUSTOMERS)],
   [/^\/v2\/admin\/products$/,           () => page(ADMIN_PRODUCTS)],
   // Still a stub. Every remaining admin list renders its EMPTY state, so no
@@ -330,8 +362,10 @@ const server = http.createServer((req, res) => {
     return res.end(JSON.stringify({ ok: true }))
   }
 
+  const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : ''
+  const query = new URLSearchParams(qs)
   const hit = ROUTES.find(([re]) => re.test(path))
-  const body = hit ? hit[1]() : { ok: true, data: [] }
+  const body = hit ? hit[1](query, path) : { ok: true, data: [] }
   res.writeHead(200, headers)
   res.end(JSON.stringify(body))
 })

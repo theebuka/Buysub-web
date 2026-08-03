@@ -115,7 +115,9 @@ Read this file first in any session. Update it before finishing.
 - [x] 4. app/partners/dashboard/page.tsx
 - [x] 5. app/order/verify/VerifyContent.tsx
 - [x] 6. app/admin — shared primitives only (buttons, inputs, tables, badges)
-- [ ] 7. app/admin — tabs 1–4
+- [x] 7. app/admin — tabs 1–4 (Overview, Orders, Rejected, Products), plus the
+       three panels those tabs own: ProductFormPanel, ProductSearchBox,
+       NewOrderDrawer
 - [ ] 8. app/admin — tabs 5–9
 - [ ] 9. app/admin — tabs 10–13
 - [ ] 10. app/admin/receipt/page.tsx — the web form only, never the PDF
@@ -453,6 +455,27 @@ an engineering one.
   so the chip shows the full address when the profile has no name. Truncated
   visually in Phase 2; the derivation itself is untouched. Reproduce with
   `FIXTURE_PROFILE=nameless`.
+- **White text on the accent fill measures 4.35:1 and fails AA.** Body text
+  needs 4.5. Measured on three live elements, all 12-13px weight 600: the
+  Shell's "+ Receipt" link, the active Orders filter pill, and "+ New Order"
+  (and by inspection "+ New Product" and the Links "new" button). `--bs-accent`
+  is `#7C5CFF` in **both** themes, so this is theme-independent — there is no
+  mode where it passes.
+
+  Not fixable inside a tab phase, which is why it is here rather than fixed.
+  The options are all palette-level: darken `--bs-accent` (it is also used by
+  `components/Marketplace.tsx`, which is off-limits), keep the fill and abandon
+  "text on an accent fill stays #fff" in favour of a darker label, or introduce
+  a separate `--bs-accent-fill` that is darker than the accent used for borders
+  and tints. Each changes every surface already shipped in Phases 1-7. **This
+  is an owner decision, not a refactor decision.**
+- `app/admin/page.tsx` — the page-level auth gate (the `if (!token)` branch,
+  around `:1160`) still carries a `🔒` emoji and a hardcoded `#7C5CFF` Sign In
+  button. It is the page shell rather than any tab, so it fell outside every
+  phase boundary so far. Small, and it needs an owner.
+- `NewOrderDrawer` defines a local `IS` input style that duplicates the shared
+  `inputStyle()`. Both are now on the same tokens so they render identically,
+  but the duplication remains. Merging is a structural change, not a visual one.
 - **`WalletsTab` is a stub.** It fetches `/v2/admin/wallets?page=1&limit=20`,
   discards the response entirely, and renders an EmptyState unconditionally.
   The tab is unimplemented, not unstyled — nothing to do in Phase 8 until the
@@ -780,6 +803,78 @@ remaining admin lists are still stubs** — Affiliates, Links, Ads, Discounts,
 Notifications, Partners and Wallets render empty, so nothing in them has been
 measured. Fill each in as its tab is taken.
 
+### Phase 7 — admin tabs 1-4
+
+Scope was the four tab bodies **plus the three panels they own**:
+`ProductFormPanel` (Products), `ProductSearchBox` and `NewOrderDrawer` (Orders).
+Each panel has exactly one call site, verified before starting; they are
+module-level only because of the focus-loss rule in CLAUDE.md, not because they
+are shared. Restyling a tab without its drawer would have left a seam the
+moment an admin opened it.
+
+**Nothing shared was touched.** Nine components used in these ranges are also
+rendered by tabs 5-13 — `Badge`, `Card`, `DRow`, `DetailSection`, `EmptyState`,
+`FieldLabel`, `Loading`, `PaginationBar`, `SmallBtn`. Editing any of them would
+have moved a later tab's appearance ahead of its phase. Where an icon needed
+flex alignment inside `SmallBtn`, the alignment went into a new `BtnLabel`
+wrapper at the call site rather than into `SmallBtn`, which has 25 call sites
+across later phases.
+
+`DiscountFormPanel` sits immediately after `ProductFormPanel` with a
+near-identical signature and belongs to Phase 9. It was left alone; anyone
+editing this neighbourhood by line range should know it is there.
+
+**Literals cleared.** The `#1C1C1F` Marketplace leak on the product card
+(`isHidden ? T.border : '#1C1C1F'`) sat close to `--bs-border-default` in dark,
+so it looked correct there and drew a near-black border on a white card in
+light. Both branches are now tokens and the hidden-vs-normal distinction is
+preserved rather than "corrected". The two logo-tile borders were
+`rgba(255,255,255,0.06)`, invisible on a white card — the same class as the
+`PillBadge` bug from Phase 6. Two hardcoded accent glows
+(`rgba(124,92,255,0.25)`) and three hardcoded accents inside the Products
+`<style>` block are on tokens; the one that is accent-as-*text* takes
+`--bs-accent-on-surface`, not `--bs-accent`.
+
+Surviving `#fff` in these ranges is text on an accent **fill**, which is
+correct per the colour decision, and one `rgba(0,0,0,0.65)` modal scrim, which
+is deliberately theme-independent.
+
+**A third instance of the on-tint bug.** The Products "Featured" ribbon was
+9px — below the 11 floor — and painted its label in plain `T.accent` on a 12%
+tint of that same accent. That is exactly what Phase 6 measured at 3.74:1 in
+`SmallBtn`. It now reuses `--bs-on-tint-mix` and measures 5.28 dark / 6.22
+light, the same numbers as the Phase 6 fix.
+
+**Density.** 37 sizing values mapped onto the Phase 0 scales by one rule:
+nearest step, ties resolved downward, since this is a density phase and jumping
+a size changes layout. `height: 48 / 72 / 140` were deliberately left alone —
+those are logo tiles, a textarea and the revenue chart, i.e. layout dimensions,
+not controls. Three `Inter,sans-serif` literals removed (the layout supplies
+it) and five `monospace` declarations normalised to `ui-monospace` per the
+Phase 5 order-reference precedent.
+
+A commented-out duplicate of the entire Orders filter bar was deleted. It had
+already drifted from the live copy below it and contained one of the literals
+the Phase 6 audit flagged.
+
+**Fixture: two more wrong-screen bugs.** The routes ignored query strings, so
+`RejectedTab` — which asks for `?status=rejected_pending` and hardcodes
+`<Badge status="rejected_pending">` — was handed all seven orders and would
+have painted paid and cancelled rows as rejected. `/v2/admin/orders` now honors
+`status` and `q`, and `/v2/admin/orders/:id` looks up by `order_ref` instead of
+always returning the first order, which had made every expanded row show the
+same items.
+
+Separately, `ADMIN_PRODUCTS` had the wrong shape: `status` and `stock_status`
+are separate fields (`isHidden = p.status !== 'active'`,
+`isOOS = p.stock_status !== 'in_stock'`) and the fixture had put stock values
+in `status`. Every card took the `isHidden` branch, so the normal-product
+styling was never rendered, and no row was `featured`, so the ribbon never
+mounted. Both fixed, with one row per combination. **This is the third time a
+fixture shape error has hidden a screen** (Phase 4 `/v2/partners/me`, Phase 6
+missing admin routes, this one). Check the field a component actually reads,
+not the field name that sounds right.
+
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
   keeps its existing styling on the same page. Check it visually before
@@ -868,3 +963,22 @@ measured. Fill each in as its tab is taken.
   no 127.0.0.1:8787 in the chunks. Not verified: focus rings (the automated
   tab never holds document focus) and the SmallBtn success/error/warning
   variants (their tabs' fixtures are still stubs).
+- 2026-08-03 — Phase 7. Admin tabs 1-4 plus the three panels they own, on the
+  token layer. The #1C1C1F Marketplace leak and two invisible-in-light
+  rgba(255,255,255,0.06) logo-tile borders cleared; two hardcoded accent glows
+  and three hardcoded accents in the Products <style> block tokenised, with the
+  accent-as-text one moved to --bs-accent-on-surface. Found a third instance of
+  the Phase 6 on-tint contrast bug in the Featured ribbon (also 9px, below the
+  floor) and fixed it with --bs-on-tint-mix: 5.28 dark / 6.22 light. Six emoji
+  replaced with module-level inline SVGs, aligned via a new BtnLabel wrapper so
+  the shared SmallBtn was not touched. 37 sizing values mapped to the scales by
+  nearest-step-ties-down; layout dimensions left alone. A stale commented-out
+  copy of the Orders filter bar deleted. fixture-api.js made query-aware
+  (status, q) with per-ref order lookup, and ADMIN_PRODUCTS corrected to the
+  real status/stock_status/featured shape — every product card had been taking
+  the isHidden branch and no ribbon had ever rendered. tsc + build pass; all
+  four tabs verified in both themes at 1440px against the populated fixture
+  with transitions frozen, Rejected confirmed showing one row rather than
+  seven, then rebuilt clean with no 127.0.0.1:8787 in the chunks. Not verified:
+  focus rings (unchanged limitation) and the Rejected confirm path, which goes
+  through a native confirm() that would block the automation.
