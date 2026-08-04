@@ -121,7 +121,8 @@ Read this file first in any session. Update it before finishing.
 - [x] 8. app/admin — tabs 5–9 (Customers, Partners, Wallets, Affiliates,
        Links) plus the panels they own. **Wallets was ticked without being
        edited** — see the Phase 8 note.
-- [ ] 9. app/admin — tabs 10–13
+- [x] 9. app/admin — tabs 10–13 (Ads, Discounts, Notifications, Settings) plus
+       DiscountFormPanel, held back from Phase 7. **admin is now complete.**
 - [ ] 10. app/admin/receipt/page.tsx — the web form only, never the PDF
        (see the off-limits rule above: anything reaching the rendered
        document is out of scope)
@@ -961,6 +962,65 @@ feature badge and one per degraded state, or `LinkRowCard`'s border and badge
 branches never render), `/v2/admin/links/:id/rules`, and the two customer
 sub-resources. Ads, Discounts and Notifications remain stubs for Phase 9.
 
+### Phase 9 — admin tabs 10-13, and admin is done
+
+Five declarations, ~1206 lines. `NotificationsTab` is 904 of them and owns no
+sub-components: one inline component holding the list, the create form, a
+multi-step builder and a live preview. `DiscountFormPanel` is here because
+Phase 7 deliberately stopped at its neighbour's boundary.
+
+**Sixth instance of the on-tint bug, and the only one with white text.**
+`.bs-notif-add-step:hover` set `color: #fff` on
+`background: rgba(var(--bs-accent-rgb), 0.08)` — white on near-white in light,
+about 1.05:1, so the label vanished on hover. Now on `--bs-on-tint-mix`. Worth
+noting `--bs-accent-fill` would have been the *wrong* fix: the background stays
+a translucent tint, and the fill token is only for solid fills.
+
+Two hand-rolled shadows moved to `--bs-elev-2` / `--bs-elev-3`, and two
+hardcoded `#7C5CFF` border-colours in the `<style>` block to `--bs-accent` —
+the third such block after Products (Phase 7) and Links (Phase 8).
+
+**The non-ASCII scan found what an emoji range would have missed.** Scanning
+`[^\x00-\x7F]` across all five declarations returned exactly one pair, the
+`▾`/`▸` in `DiscountsTab` logged at the end of Phase 8. The Phase 6-7 emoji
+regex would have reported "none" for that tab and been wrong. All five ranges
+are now glyph-free.
+
+**`SettingsTab` had a false-clean failure mode.** It runs
+`if (r?.ok && r.data) setSettings(r.data)` and the fixture catch-all returned
+`{ ok: true, data: [] }`. An empty array is truthy, so `settings` became `[]`,
+every field read `undefined`, and the form rendered blank but not broken — it
+looked like a working empty form rather than a missing fixture. The route now
+returns an object; verified 6/6 fields populated.
+
+Four fixture routes added (ads, discounts, notifications, settings), leaving
+only the receipt surfaces stubbed for Phase 10. Notifications carries one row
+per `type` so all three previews render, and one with `steps` for the
+multi-step branch.
+
+### The two Phase 6 deferrals, resolved
+
+Phase 6 named Phase 9 as the closing act for two things. Their status differs:
+
+1. **The dead per-file `dark`/`light` hex maps: already gone, nothing to do.**
+   Phase 6 planned to keep them alive and delete them here, then went further
+   than its own plan and replaced both with the single `TOKENS` object of
+   `var()` references. No dead map was ever left behind. Verified: `TOKENS`
+   holds no hex outside a comment, and no `const dark` / `const light` /
+   `T_DARK` / `T_LIGHT` survives anywhere in `app/`.
+
+   The one remaining per-file map in the repo is `components/Navbar.tsx`
+   (`T_DARK` `:4`, `T_LIGHT` `:10`, consumed `:24`). That is **Phase 12**, not
+   this phase.
+
+2. **The `T` prop threading: genuinely outstanding, and now unblocked.** Three
+   code comments point here (`app/admin/page.tsx:81`, `:325`, `:2230`). The
+   condition was "once the tabs are done", and they are. It is ~40 signatures
+   and 500+ dereferences of a module constant, so it is mechanical and
+   non-visual, but it spans all 13 tabs and therefore belongs in its own commit
+   rather than inside a phase — same reasoning as `--bs-accent-fill`. Two dead
+   props go with it: `Badge`'s unused `T` and `StatChip`'s unused `color`.
+
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
   keeps its existing styling on the same page. Check it visually before
@@ -1098,3 +1158,25 @@ sub-resources. Ads, Discounts and Notifications remain stubs for Phase 9.
   zero — so the null result is real rather than a broken scan. Static grep
   agrees: the only two rgba(255,255,255,...) left in admin are white text on the
   purple gradient headers, which is correct.
+- 2026-08-04 — Phase 9. Admin tabs 10-13 plus DiscountFormPanel on the token
+  layer; admin is complete. Sixth instance of the on-tint bug fixed in
+  .bs-notif-add-step:hover, the only one with white text — #fff on an 8% accent
+  tint, about 1.05:1 in light, so the label vanished on hover. Two hand-rolled
+  shadows to --bs-elev-2/3 and two hardcoded accents in the Notifications
+  <style> block to --bs-accent. Non-ASCII scan across all five declarations
+  returned one glyph pair, the DiscountsTab chevrons logged in Phase 8; an
+  emoji-range regex would have reported none. 27 sizing values mapped to the
+  scales. Four fixture routes added — ads, discounts, notifications and a
+  settings route that returns an OBJECT, since the catch-all's `data: []` is
+  truthy and had SettingsTab rendering a blank-but-not-broken form. tsc + build
+  clean; all four tabs verified in light and dark at 1440px, Settings confirmed
+  6/6 fields populated, and the Notifications live preview exercised for toast,
+  banner and modal plus the multi-step builder — roughly a third of that tab is
+  unreachable from the list view. Rebuilt clean, no 127.0.0.1:8787 in chunks.
+- 2026-08-04 — Phase 6's two deferrals to Phase 9 resolved. The dead per-file
+  dark/light hex maps were already gone: Phase 6 superseded its own plan by
+  replacing them with the TOKENS var() object, so nothing was left to delete.
+  The only per-file map left in the repo is components/Navbar.tsx, which is
+  Phase 12. The `T` prop threading is genuinely outstanding and now unblocked
+  ("once the tabs are done"); it spans all 13 tabs so it belongs in its own
+  commit rather than inside a phase.

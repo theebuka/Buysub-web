@@ -468,8 +468,8 @@ function DiscountFormPanel({ T, form, setForm, onSave, onCancel, saving, title }
   const IS = inputStyle(T)
   const uf = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }))
   return (
-    <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, padding: '20px 24px', marginBottom: 14 }}>
-      <div style={{ fontSize: 10, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
+    <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: '20px 24px', marginBottom: 14 }}>
+      <div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <FieldLabel label="Code *" T={T}><input style={IS} value={form.code || ''} onChange={e => uf('code', e.target.value.toUpperCase())} placeholder="e.g. SAVE10" /></FieldLabel>
         <FieldLabel label="Type" T={T}><select style={IS} value={form.type || 'percentage'} onChange={e => uf('type', e.target.value)}><option value="percentage">Percentage</option><option value="fixed">Fixed Amount (₦)</option></select></FieldLabel>
@@ -4550,9 +4550,9 @@ function AdsTab({T}:{T:Theme}) {
   const IS=inputStyle(T)
   return (
     <div>
-      <button onClick={()=>setShowCreate(!showCreate)} style={{height:42,padding:'0 20px',borderRadius:10,background:T.accentFill,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginBottom:20}}>+ New Ad</button>
+      <button onClick={()=>setShowCreate(!showCreate)} style={{height:'var(--bs-control-md)',padding:'0 20px',borderRadius:10,background:T.accentFill,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginBottom:20}}>+ New Ad</button>
       {showCreate&&(
-        <div style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:20,marginBottom:20,display:'flex',flexDirection:'column',gap:10}}>
+        <div style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:20,marginBottom:20,display:'flex',flexDirection:'column',gap:10}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10}}>
             <input placeholder="Title *" value={newAd.title} onChange={e=>setNewAd({...newAd,title:e.target.value})} style={IS}/>
             <input placeholder="Image URL *" value={newAd.image_url} onChange={e=>setNewAd({...newAd,image_url:e.target.value})} style={IS}/>
@@ -4565,7 +4565,7 @@ function AdsTab({T}:{T:Theme}) {
       {loading?<Loading T={T}/>:ads.length===0?<EmptyState text="No ads" T={T}/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {ads.map((a:any)=>(
-            <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:'14px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,opacity:a.active?1:0.5,flexWrap:'wrap'}}>
+            <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'14px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,opacity:a.active?1:0.5,flexWrap:'wrap'}}>
               <div style={{display:'flex',gap:12,alignItems:'center',minWidth:0}}>
                 <img src={a.image_url} alt="" style={{width:44,height:44,borderRadius:10,objectFit:'cover',flexShrink:0}}/>
                 <div style={{minWidth:0}}><div style={{fontSize:13,fontWeight:500,color:T.text}}>{a.title}</div><div style={{fontSize:11,color:T.textMuted}}>{a.placement?.replace(/_/g,' ')} · {a.click_count||0} clicks · {a.view_count||0} views</div></div>
@@ -4640,7 +4640,7 @@ function DiscountsTab({ T }: { T: Theme }) {
 
   return (
     <div>
-      <button onClick={() => { setShowCreate(!showCreate); setEditingId(null) }} style={{ height: 42, padding: '0 20px', borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>+ New Discount</button>
+      <button onClick={() => { setShowCreate(!showCreate); setEditingId(null) }} style={{ height: 'var(--bs-control-md)', padding: '0 20px', borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>+ New Discount</button>
 
       {showCreate && <DiscountFormPanel T={T} form={newDiscount} setForm={setNewDiscount} onSave={createDiscount} onCancel={() => setShowCreate(false)} saving={creating} title="Create Discount Code" />}
       {editingId && <DiscountFormPanel T={T} form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Discount Code" />}
@@ -4648,17 +4648,17 @@ function DiscountsTab({ T }: { T: Theme }) {
       {loading ? <Loading T={T} /> : discounts.length === 0 ? <EmptyState text="No discount codes" T={T} /> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {discounts.map(d => (
-            <div key={d.id} style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 16, overflow: 'hidden', opacity: d.active ? 1 : 0.55 }}>
+            <div key={d.id} style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', overflow: 'hidden', opacity: d.active ? 1 : 0.55 }}>
               <div onClick={() => setExpanded(expanded === d.id ? null : d.id)} style={{ padding: '14px 22px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 14, fontWeight: 700, color: 'var(--bs-accent-on-surface)', background: 'rgba(var(--bs-accent-rgb), 0.09)', padding: '3px 10px', borderRadius: 6 }}>{d.code}</span>
+                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 'var(--bs-text-sm)', fontWeight: 700, color: 'var(--bs-accent-on-surface)', background: 'rgba(var(--bs-accent-rgb), 0.09)', padding: '3px 10px', borderRadius: 6 }}>{d.code}</span>
                   <span style={{ fontSize: 13, color: T.text }}>{d.type === 'percentage' ? `${d.value}% off` : `₦${Number(d.value).toLocaleString()} off`}</span>
                   <Badge status={d.active ? 'active' : 'hidden'} T={T} />
-                  {d.auto_apply && <span style={{ fontSize: 'var(--bs-text-2xs)', padding: '2px 8px', borderRadius: 4, background: 'rgba(var(--bs-accent-rgb), 0.08)', color: 'var(--bs-accent-on-surface)', fontWeight: 600 }}>Auto</span>}
+                  {d.auto_apply && <span style={{ fontSize: 'var(--bs-text-2xs)', padding: '2px 8px', borderRadius: 'var(--bs-radius-sm)', background: 'rgba(var(--bs-accent-rgb), 0.08)', color: 'var(--bs-accent-on-surface)', fontWeight: 600 }}>Auto</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                   <span style={{ fontSize: 11, color: T.textMuted }}>{d.times_used || 0} uses</span>
-                  <span style={{ color: T.textMuted }}>{expanded === d.id ? '▾' : '▸'}</span>
+                  <span style={{ color: T.textMuted }}><ChevronIcon open={expanded === d.id} /></span>
                 </div>
               </div>
               {expanded === d.id && (
@@ -4840,7 +4840,7 @@ function NotificationsTab({ T }: { T: Theme }) {
 
   // Panel section label style (uppercase small caps)
   const sectionLabel: React.CSSProperties = {
-    fontSize: 10,
+    fontSize: 'var(--bs-text-2xs)',
     color: T.textMuted,
     textTransform: 'uppercase',
     letterSpacing: '0.08em',
@@ -4852,7 +4852,7 @@ function NotificationsTab({ T }: { T: Theme }) {
   const stepPanelStyle: React.CSSProperties = {
     background: T.elevated,
     border: `1px solid ${T.border}`,
-    borderRadius: 12,
+    borderRadius: 'var(--bs-radius-lg)',
     padding: 14,
     marginBottom: 10,
   }
@@ -4902,7 +4902,7 @@ function NotificationsTab({ T }: { T: Theme }) {
     padding: '0 14px',
     background: 'var(--bs-bg-input)',
     border: '1px solid var(--bs-border-default)',
-    borderRadius: 8,
+    borderRadius: 'var(--bs-radius-md)',
     color: 'var(--bs-text-primary)',
     fontSize: 13,
     width: '100%',
@@ -4913,7 +4913,7 @@ function NotificationsTab({ T }: { T: Theme }) {
     background: 'var(--bs-accent-fill)',
     color: '#fff',
     border: 'none',
-    borderRadius: 12,
+    borderRadius: 'var(--bs-radius-lg)',
     fontSize: 15,
     fontWeight: 600,
     cursor: 'pointer'
@@ -4925,7 +4925,7 @@ function NotificationsTab({ T }: { T: Theme }) {
         .bs-notif-input:focus,
         .bs-notif-input:focus-visible {
           outline: none !important;
-          border-color: #7C5CFF !important;
+          border-color: var(--bs-accent) !important;
         }
         .bs-notif-step-remove:hover {
           color: var(--bs-error) !important;
@@ -4933,8 +4933,13 @@ function NotificationsTab({ T }: { T: Theme }) {
           background: rgba(var(--bs-error-rgb), 0.06) !important;
         }
         .bs-notif-add-step:hover {
-          border-color: #7C5CFF !important;
-          color: #fff !important;
+          border-color: var(--bs-accent) !important;
+          /* Was #fff on an 8% accent TINT — white on near-white in light mode,
+             about 1.05:1, i.e. the label vanished on hover. Sixth instance of
+             the on-tint bug and the only one where the text was white rather
+             than the accent itself. A tint is not a fill: --bs-accent-fill
+             would be wrong here too, since the background stays translucent. */
+          color: color-mix(in srgb, var(--bs-accent), var(--bs-on-tint-mix)) !important;
           background: rgba(var(--bs-accent-rgb), 0.08) !important;
         }
         .bs-notif-marquee {
@@ -5101,7 +5106,7 @@ function NotificationsTab({ T }: { T: Theme }) {
                     display: 'inline-flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: 10,
+                    fontSize: 'var(--bs-text-2xs)',
                     fontWeight: 700,
                   }}>{i + 1}</span>
                   Step {i + 1}
@@ -5268,7 +5273,7 @@ function NotificationsTab({ T }: { T: Theme }) {
                   color: T.textSecondary,
                   border: `1px solid ${T.border}`,
                   borderRadius: 10,
-                  fontSize: 14,
+                  fontSize: 'var(--bs-text-sm)',
                   fontWeight: 600,
                   cursor: sending ? 'not-allowed' : 'pointer',
                   opacity: sending ? 0.6 : 1,
@@ -5287,7 +5292,7 @@ function NotificationsTab({ T }: { T: Theme }) {
                 color: '#fff',
                 border: 'none',
                 borderRadius: 10,
-                fontSize: 14,
+                fontSize: 'var(--bs-text-sm)',
                 fontWeight: 600,
                 cursor: sending ? 'not-allowed' : 'pointer',
                 opacity: sending ? 0.6 : 1,
@@ -5315,7 +5320,7 @@ function NotificationsTab({ T }: { T: Theme }) {
           <div style={{
             background: T.bg,
             border: `1px solid ${T.border}`,
-            borderRadius: 12,
+            borderRadius: 'var(--bs-radius-lg)',
             padding: 20,
             minHeight: 160,
             display: 'flex',
@@ -5328,9 +5333,9 @@ function NotificationsTab({ T }: { T: Theme }) {
                 maxWidth: 320,
                 background: T.card,
                 border: `1px solid ${T.border}`,
-                borderRadius: 12,
+                borderRadius: 'var(--bs-radius-lg)',
                 padding: '12px 14px',
-                boxShadow: '0 8px 28px rgba(0,0,0,0.32)',
+                boxShadow: 'var(--bs-elev-2)',
                 display: 'flex',
                 alignItems: 'flex-start',
                 gap: 10,
@@ -5362,9 +5367,9 @@ function NotificationsTab({ T }: { T: Theme }) {
                 maxWidth: 340,
                 background: T.card,
                 border: `1px solid ${T.border}`,
-                borderRadius: 16,
+                borderRadius: 'var(--bs-radius-lg)',
                 padding: 20,
-                boxShadow: '0 12px 40px rgba(0,0,0,0.4)',
+                boxShadow: 'var(--bs-elev-3)',
               }}>
                 <div style={{ fontSize: 15, fontWeight: 700, color: T.text, marginBottom: 6 }}>
                   {form.title || 'Modal Title'}
@@ -5375,7 +5380,7 @@ function NotificationsTab({ T }: { T: Theme }) {
                 <div style={{
                   height: 32,
                   background: T.accentFill,
-                  borderRadius: 8,
+                  borderRadius: 'var(--bs-radius-md)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
@@ -5391,10 +5396,10 @@ function NotificationsTab({ T }: { T: Theme }) {
             {form.type === 'banner' && (
               <div style={{
                 width: '100%',
-                height: 36,
+                height: 'var(--bs-control-md)',
                 background: `rgba(var(--bs-accent-rgb), 0.12)`,
                 border: `1px solid rgba(var(--bs-accent-rgb), 0.25)`,
-                borderRadius: 8,
+                borderRadius: 'var(--bs-radius-md)',
                 overflow: 'hidden',
                 display: 'flex',
                 alignItems: 'center',
@@ -5418,7 +5423,7 @@ function NotificationsTab({ T }: { T: Theme }) {
             }}>
               {form.audience && form.audience !== 'all' && (
                 <span style={{
-                  fontSize: 10,
+                  fontSize: 'var(--bs-text-2xs)',
                   padding: '3px 8px',
                   borderRadius: 999,
                   background: T.elevated,
@@ -5433,7 +5438,7 @@ function NotificationsTab({ T }: { T: Theme }) {
               )}
               {form.scheduled_for && (
                 <span style={{
-                  fontSize: 10,
+                  fontSize: 'var(--bs-text-2xs)',
                   padding: '3px 8px',
                   borderRadius: 999,
                   background: `rgba(var(--bs-accent-rgb), 0.1)`,
@@ -5448,7 +5453,7 @@ function NotificationsTab({ T }: { T: Theme }) {
               )}
               {form.expires_at && (
                 <span style={{
-                  fontSize: 10,
+                  fontSize: 'var(--bs-text-2xs)',
                   padding: '3px 8px',
                   borderRadius: 999,
                   background: `rgba(var(--bs-warning-rgb), 0.1)`,
@@ -5555,7 +5560,7 @@ function NotificationsTab({ T }: { T: Theme }) {
                       onClick={() => startEdit(n)}
                       disabled={editingId === n.id}
                       style={{
-                        height: 30,
+                        height: 'var(--bs-control-sm)',
                         padding: '0 12px',
                         background: editingId === n.id
                           ? 'rgba(var(--bs-accent-rgb), 0.15)'
@@ -5576,7 +5581,7 @@ function NotificationsTab({ T }: { T: Theme }) {
                     <button
                       onClick={() => toggle(n.id, !n.active)}
                       style={{
-                        height: 30,
+                        height: 'var(--bs-control-sm)',
                         padding: '0 12px',
                         background: 'transparent',
                         border: `1px solid ${T.border}`,

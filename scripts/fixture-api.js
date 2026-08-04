@@ -367,6 +367,80 @@ const CUSTOMER_MESSAGES = [
   { id: 'cm-2', subject: 'Wallet top-up received', body: '₦18,300 credited.',          read: false, created_at: '2026-08-01T16:42:00Z' },
 ]
 
+const ADMIN_ADS = [
+  { id: 'ad-1', title: 'Black Friday, up to 40% off', placement: 'shop_top',
+    image_url: 'https://picsum.photos/seed/buysub-bf/1200/300',
+    active: true,  view_count: 18422, click_count: 1204 },
+  { id: 'ad-2', title: 'Refer a friend, earn ₦2,000', placement: 'shop_mid',
+    image_url: 'https://picsum.photos/seed/buysub-referral/1200/300',
+    active: true,  view_count: 9310,  click_count: 287 },
+  // Inactive and zero-traffic, so the dimmed branch and the 0 case both render.
+  { id: 'ad-3', title: 'Retired campaign', placement: 'shop_top',
+    image_url: 'https://picsum.photos/seed/buysub-retired/1200/300',
+    active: false, view_count: 0,     click_count: 0 },
+]
+
+// One row per `type` (percentage / fixed) and per scope, plus the awkward
+// cases DiscountsTab branches on: an expired code, one at its usage cap, one
+// auto-applied, one exclusive, and one with product/category scoping so the
+// included_/excluded_ lists are not all null.
+const ADMIN_DISCOUNTS = [
+  { id: 'dc-1', code: 'BLACKFRIDAY', type: 'percentage', value: 25, active: true,
+    auto_apply: true, exclusive: false, scope: 'site_wide',
+    min_order_ngn: 10000, max_uses: 500, times_used: 218, max_discount_ngn: 20000,
+    active_from: '2026-06-01T00:00:00Z', expires_at: '2026-12-31T23:59:00Z',
+    created_at: '2026-05-20T09:00:00Z',
+    included_products: null, excluded_products: null,
+    included_categories: null, excluded_categories: null },
+  { id: 'dc-2', code: 'FLAT5K', type: 'fixed', value: 5000, active: true,
+    auto_apply: false, exclusive: true, scope: 'product',
+    min_order_ngn: 25000, max_uses: null, times_used: 41, max_discount_ngn: null,
+    active_from: null, expires_at: null, created_at: '2026-07-02T14:30:00Z',
+    included_products: ['p-1', 'p-4'], excluded_products: null,
+    included_categories: null, excluded_categories: ['bundles'] },
+  { id: 'dc-3', code: 'EXPIRED10', type: 'percentage', value: 10, active: false,
+    auto_apply: false, exclusive: false, scope: 'category',
+    min_order_ngn: 0, max_uses: 200, times_used: 200, max_discount_ngn: 3000,
+    active_from: '2026-01-01T00:00:00Z', expires_at: '2026-03-31T23:59:00Z',
+    created_at: '2025-12-18T08:00:00Z',
+    included_products: null, excluded_products: null,
+    included_categories: ['music streaming'], excluded_categories: null },
+]
+
+// type is toast | banner | modal and each renders a different preview, so one
+// row per type. The modal carries `steps` so the multi-step branch renders.
+const ADMIN_NOTIFICATIONS = [
+  { id: 'nt-1', type: 'toast', audience: 'users',
+    title: 'Wallet top-ups are live', message: 'Fund your wallet and check out in one tap.',
+    image_url: null, image_position: 'top', steps: null,
+    active: true, scheduled_for: null, expires_at: '2026-09-01T00:00:00Z',
+    created_at: '2026-07-28T10:00:00Z' },
+  { id: 'nt-2', type: 'banner', audience: 'users',
+    title: 'Scheduled maintenance', message: 'Checkout may be briefly unavailable on Sunday 02:00-04:00 WAT.',
+    image_url: null, image_position: 'top', steps: null,
+    active: true, scheduled_for: '2026-08-09T02:00:00Z', expires_at: null,
+    created_at: '2026-08-01T12:00:00Z' },
+  { id: 'nt-3', type: 'modal', audience: 'admins',
+    title: 'New payout flow', message: 'Partner payouts move to the new schedule this month.',
+    image_url: 'https://picsum.photos/seed/buysub-payout/800/400', image_position: 'top',
+    steps: [
+      { title: 'What changed', body: 'Payouts now run weekly on Tuesdays.' },
+      { title: 'What you do', body: 'Confirm each partner’s bank details before Monday.' },
+      { title: 'Questions', body: 'Reply in the ops channel.' },
+    ],
+    active: false, scheduled_for: null, expires_at: null,
+    created_at: '2026-07-15T16:20:00Z' },
+]
+
+const ADMIN_SETTINGS = {
+  phone: '+234 810 787 2916',
+  receipt_caption: 'Thank you for shopping with BuySub. Keep this receipt for your records.',
+  facebook: 'https://facebook.com/buysubng',
+  instagram: 'https://instagram.com/buysubng',
+  tiktok: 'https://tiktok.com/@buysubng',
+  x: 'https://x.com/buysubng',
+}
+
 // ── routing ─────────────────────────────────────────────────────────────
 const ROUTES = [
   [/^\/v2\/me$/,                        () => ({ ok: true, data: PROFILE })],
@@ -431,9 +505,16 @@ const ROUTES = [
   // so no fixture can make anything appear. It is an unimplemented tab, not an
   // unstyled one — see Deferred.
   //
-  // Still stubbed: the Ads, Discounts and Notifications lists (Phase 9) and the
-  // receipt surfaces (Phase 10). Those tabs render empty states, so nothing in
-  // them has been measured. Fill each in as its tab is taken.
+  [/^\/v2\/admin\/ads$/,                () => page(ADMIN_ADS)],
+  [/^\/v2\/admin\/discounts$/,          () => page(ADMIN_DISCOUNTS)],
+  [/^\/v2\/admin\/notifications$/,      () => page(ADMIN_NOTIFICATIONS)],
+  // Returns an OBJECT, not a list. SettingsTab does
+  // `if (r?.ok && r.data) setSettings(r.data)`, and the catch-all below hands
+  // back `data: []` — an empty array is truthy, so settings became [], every
+  // field read undefined, and the form rendered blank but not broken. It looked
+  // like a working empty form rather than a missing fixture.
+  [/^\/v2\/admin\/settings$/,           () => ({ ok: true, data: ADMIN_SETTINGS })],
+  // Remaining stub: the receipt surfaces (Phase 10).
   [/^\/v2\/admin\//,                    () => page([])],
 ]
 
