@@ -189,7 +189,24 @@ export const CSS_VARS = `
     --bs-bg-subtle: #16161E;
     --bs-text-primary: #F0F0F5;
     --bs-text-secondary: #A0A0B0;
-    --bs-text-muted: #6E6E80;
+    /* Was #6E6E80, which failed AA on every dark surface it renders on:
+       4.08 on bg-base, 3.93 on bg-card, 3.77 on bg-elevated, 3.47 on bg-muted.
+       Phase 0 did this same correction for light (#8896a6 -> #66717F) and
+       never checked dark. Found by a runtime contrast scan, ~275 elements.
+
+       #838392 is the minimum lightening that clears 4.5 on the worst surface
+       it actually lands on, bg-muted, with headroom: 5.43 / 5.24 / 5.02 / 4.62
+       across base / card / elevated / muted. dE2000 from #6E6E80 is 8.14.
+       #818191 also clears but by 0.01, and this token also renders over tints
+       that can sit lighter than bg-muted, so near-zero headroom is fragile.
+
+       Tier spacing: this narrows secondary<->muted from dE 17.89 to 9.81 and
+       widens muted<->faint from 13.22 to 21.41. That is not a collapse — the
+       LIGHT scale already ships a secondary<->muted gap of 10.55, so dark is
+       converging on spacing that exists and works rather than inventing it.
+       Dark's 17.89 was the outlier. Do not push past ~5.0:1 here (#898997,
+       gap 7.66); that is where three tiers start reading as two. */
+    --bs-text-muted: #838392;
     --bs-text-faint: #4A4A58;
     --bs-border-default: #1E1E28;
     --bs-border-subtle: #16161E;
@@ -206,7 +223,7 @@ export const CSS_VARS = `
     --bs-success-rgb: 34, 197, 94;
     --bs-error-rgb: 239, 68, 68;
     --bs-warning-rgb: 245, 158, 11;
-    --bs-text-muted-rgb: 110, 110, 128;
+    --bs-text-muted-rgb: 131, 131, 146;
     /* Legacy alias. components/Marketplace.tsx:1389 spells it this way and
        that file is off-limits. Prefer --bs-text-muted-rgb in new code; this
        can be deleted once Marketplace is next edited. */

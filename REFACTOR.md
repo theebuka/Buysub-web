@@ -1274,3 +1274,45 @@ has no `rejected_pending` branch.
   fixture session does not satisfy it and the route redirects to `/login`.
 - Only what mounts on load. Drawers, modals and the notification preview were
   not opened for this pass.
+
+### Dark `--bs-text-muted` corrected: #6E6E80 -> #838392
+
+The same operation Phase 0 did for light (#8896a6 -> #66717F), which was never
+done for dark. Chosen as the minimum lightening that clears 4.5 on the worst
+surface this token actually renders on:
+
+| surface | before | after |
+|---|---|---|
+| `--bs-bg-base` #050507 | 4.08 | **5.43** |
+| `--bs-bg-card` #0B0B0F | 3.93 | **5.24** |
+| `--bs-bg-elevated` #111116 | 3.77 | **5.02** |
+| `--bs-bg-muted` #1A1A20 | 3.47 | **4.62** |
+
+dE2000 from #6E6E80 is 8.14. `#818191` also clears but by 0.01, and this token
+renders over tints that sit lighter than bg-muted, so near-zero headroom is
+fragile — the same reasoning that picked #7756FF over #7958FF.
+
+**On the tier scale, since the question was whether three tiers collapse into
+two.** secondary<->muted narrows from dE 17.89 to 9.81; muted<->faint widens
+from 13.22 to 21.41. That is not a collapse: the **light** scale already ships a
+secondary<->muted gap of **10.55**, so dark is converging on spacing that
+already exists and works. Dark's 17.89 was the outlier. Do not push past ~5.0:1
+(#898997, gap 7.66) — that is where three tiers would genuinely read as two.
+Preserving the original 17.89 would mean lightening `--bs-text-secondary` too,
+which is a scale change rather than a value change.
+
+**Verified by runtime scan, not arithmetic.** Dark failures across all 13 admin
+tabs went from **275 to 14**, and every survivor is a previously-logged item in
+another phase's range, not a text-muted case:
+
+- `LinkRowCard` click counts on `--bs-text-faint`, 2.26 (Phase 8)
+- accent-on-tint in Discounts 4.21 / 4.25 and Notifications 3.96 (Phase 9)
+- **a 7th on-tint instance found by this pass**: Notifications' "Inactive" badge
+  prints `--bs-text-muted` on `rgba(--bs-text-muted, 0.15)` — text on a 15%
+  tint of itself, 4.49. A local surface problem in Phase 9's range, not a token
+  one; the token clears all four designed surfaces.
+
+Light was untouched and unchanged. The scan did surface a symmetric near-miss
+there, pre-existing and not caused by this change: **light `--bs-text-muted`
+#66717F measures 4.46 on `--bs-bg-elevated` #F1F3F5** (12 elements in
+Products). Phase 0's light correction targeted bg-base only. Logged, not fixed.
