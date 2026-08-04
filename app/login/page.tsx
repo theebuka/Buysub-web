@@ -127,7 +127,7 @@ const primaryBtnStyle: React.CSSProperties = {
   width: '100%',
   height: 'var(--bs-control-xl)',
   borderRadius: T.radius.md,
-  background: T.color.accent,
+  background: T.color.accentFill,
   border: 'none',
   color: '#fff',
   fontSize: T.text.base,

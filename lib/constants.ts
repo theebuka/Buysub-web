@@ -213,8 +213,34 @@ export const CSS_VARS = `
     --bs-muted-rgb: var(--bs-text-muted-rgb);
 
     /* Accent as TEXT, on a page or card background only.
-       Text sitting on an accent FILL stays #fff in both themes. */
+       Text sitting on an accent FILL stays #fff — see --bs-accent-fill. */
     --bs-accent-on-surface: #7C5CFF;
+
+    /* Accent as a FILL THAT CARRIES TEXT. The mirror of the token above:
+       -on-surface is the accent adjusted to be readable AS text, this is the
+       accent adjusted to be readable UNDER text.
+
+       #fff on plain --bs-accent measures 4.35:1. AA needs 4.5 for body text,
+       and none of the 28 accent-filled controls in this app qualify for the
+       3:1 large-text allowance — the largest label is 14px, where the
+       threshold is 24px (or 18.66px bold). So every one of them failed.
+
+       #7756FF is the minimum darkening that clears the floor with headroom:
+       4.61:1, hue 251.8 -> 251.7, saturation unchanged at 100%, purely 1.2
+       points of HSL lightness. dE2000 from #7C5CFF is 1.77, below the ~2.3
+       just-noticeable-difference threshold, so the brand colour reads as
+       unchanged. #7958FF would also pass but only by 0.02, and any later
+       surface change erases that; #704DFF (5.0:1) is dE 4.32 and visibly off.
+
+       ONLY for fills with text on them. A fill with no text — a chart bar, a
+       progress meter, a dot, a swatch — keeps --bs-accent, so the brand
+       colour is untouched wherever it is seen on its own. Borders, tints and
+       gradient stops also keep --bs-accent.
+
+       Deliberately absent from [data-theme="light"]: it is the same value in
+       both themes, like --bs-accent itself, and #fff sits on it in both.
+       --bs-accent-hover already measures 5.44:1 and needs no sibling. */
+    --bs-accent-fill: #7756FF;
 
     /* ── Status badges ──────────────────────────────────────────
        OPAQUE fills, not rgba() tints. A badge renders on three
@@ -496,6 +522,9 @@ export const T = {
     accent: 'var(--bs-accent)',
     accentHover: 'var(--bs-accent-hover)',
     accentOnSurface: 'var(--bs-accent-on-surface)',
+    // Only for an accent fill with text on it. Fills without text keep
+    // `accent`. See the token comment in CSS_VARS.
+    accentFill: 'var(--bs-accent-fill)',
     success: 'var(--bs-success)',
     error: 'var(--bs-error)',
     warning: 'var(--bs-warning)',

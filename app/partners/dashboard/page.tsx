@@ -193,7 +193,7 @@ export default function PartnerDashboard() {
         padding: `${T.space[2]} ${T.space[4]}`, display: 'flex', alignItems: 'center', gap: T.space[3],
       }}>
         <div style={{
-          width: 36, height: 36, borderRadius: T.radius.md, background: T.color.accent,
+          width: 36, height: 36, borderRadius: T.radius.md, background: T.color.accentFill,
           color: '#fff', fontWeight: T.weight.bold as any, fontSize: T.text.base,
           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
         }} aria-hidden="true">B</div>
@@ -408,7 +408,7 @@ function BootGate({ message }: { message: string }) {
     <Center>
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: T.space[4] }}>
         <div style={{
-          width: 40, height: 40, borderRadius: T.radius.md, background: T.color.accent,
+          width: 40, height: 40, borderRadius: T.radius.md, background: T.color.accentFill,
           color: '#fff', fontWeight: T.weight.bold as any, fontSize: T.text.lg,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }} aria-hidden="true">B</div>
@@ -549,7 +549,7 @@ function btnPrimary(): React.CSSProperties {
   return {
     display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
     minHeight: 'var(--bs-control-xl)', padding: `0 ${T.space[5]}`,
-    borderRadius: T.radius.md, background: T.color.accent, border: 'none',
+    borderRadius: T.radius.md, background: T.color.accentFill, border: 'none',
     color: '#fff', fontSize: T.text.sm, fontWeight: T.weight.semibold as any,
     cursor: 'pointer', textDecoration: 'none', fontFamily: 'inherit',
     transition: `background var(--bs-dur-1) var(--bs-ease-inout)`,

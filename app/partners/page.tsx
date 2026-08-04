@@ -1085,7 +1085,7 @@ const S: Record<string, React.CSSProperties> = {
     height: 'var(--bs-control-xl)',
     padding: `0 ${T.space[6]}`,
     borderRadius: T.radius.md,
-    background: T.color.accent,
+    background: T.color.accentFill,
     border: 'none',
     color: '#fff',
     fontSize: T.text.base,
@@ -1116,7 +1116,7 @@ const S: Record<string, React.CSSProperties> = {
   btnPrimary: {
     minHeight: 'var(--bs-control-lg)', padding: `0 ${T.space[6]}`,
     borderRadius: T.radius.md,
-    background: T.color.accent, border: 'none', color: '#fff',
+    background: T.color.accentFill, border: 'none', color: '#fff',
     cursor: 'pointer', fontSize: T.text.base,
     fontWeight: T.weight.semibold as any,
     fontFamily: 'inherit',

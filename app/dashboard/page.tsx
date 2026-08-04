@@ -183,7 +183,7 @@ const inputStyle: React.CSSProperties = {
 }
 const primaryBtn: React.CSSProperties = {
   height: 'var(--bs-control-lg)', padding: `0 ${T.space[6]}`,
-  borderRadius: T.radius.md, background: T.color.accent,
+  borderRadius: T.radius.md, background: T.color.accentFill,
   border: 'none', color: '#fff', fontSize: T.text.base,
   fontWeight: T.weight.semibold as any, cursor: 'pointer',
   fontFamily: 'inherit',
@@ -202,7 +202,7 @@ function BrandMark({ size = 40 }: { size?: number }) {
   return (
     <div style={{
       width: size, height: size, borderRadius: T.radius.lg,
-      background: T.color.accent, display: 'flex',
+      background: T.color.accentFill, display: 'flex',
       alignItems: 'center', justifyContent: 'center', flexShrink: 0,
     }}>
       <span style={{ fontSize: T.text.lg, fontWeight: T.weight.bold as any, color: '#fff', lineHeight: 1 }}>B</span>
@@ -533,7 +533,7 @@ export default function CustomerDashboard() {
             >
               <span style={{
                 width: 32, height: 32, borderRadius: T.radius.full,
-                background: T.color.accent,
+                background: T.color.accentFill,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontSize: T.text.xs, fontWeight: T.weight.bold as any,
                 color: '#fff', flexShrink: 0,
@@ -609,7 +609,7 @@ export default function CustomerDashboard() {
                     <span
                       style={{
                         minWidth: 20, height: 20, borderRadius: T.radius.full,
-                        background: T.color.accent, color: '#fff',
+                        background: T.color.accentFill, color: '#fff',
                         fontSize: T.text['2xs'], fontWeight: T.weight.bold as any,
                         display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
                         padding: `0 ${T.space[1]}`,
@@ -992,7 +992,7 @@ export default function CustomerDashboard() {
                   }}>
                     <div style={{
                       width: 64, height: 64, borderRadius: T.radius.full,
-                      background: T.color.accent,
+                      background: T.color.accentFill,
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: T.text.xl, fontWeight: T.weight.bold as any,
                       color: '#fff', flexShrink: 0,

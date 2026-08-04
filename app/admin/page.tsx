@@ -106,6 +106,9 @@ const TOKENS = {
   textFaint: 'var(--bs-text-faint)',
   accent: 'var(--bs-accent)',
   accentHover: 'var(--bs-accent-hover)',
+  // Only for an accent fill that carries text; #fff on plain --bs-accent is
+  // 4.35:1 and fails AA. Fills without text keep `accent`. See lib/constants.
+  accentFill: 'var(--bs-accent-fill)',
   success: 'var(--bs-success)',
   successBg: 'rgba(var(--bs-success-rgb), 0.12)',
   warning: 'var(--bs-warning)',
@@ -275,7 +278,7 @@ function Shell({ T, isDark, toggle, adminEmail, children }: { T: Theme; isDark: 
             {adminEmail && <div style={{ fontSize: 'var(--bs-text-xs)', color: T.textMuted, marginTop: 2 }}>BuySub Internal · {adminEmail}</div>}
           </div>
           <div style={{ display: 'flex', gap: 'var(--bs-space-2)', alignItems: 'center' }}>
-            <a href="/admin/receipt" style={{ display: 'inline-flex', alignItems: 'center', height: 'var(--bs-control-md)', padding: '0 var(--bs-space-5)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', fontWeight: 600, background: T.accent, color: '#fff', textDecoration: 'none' }}>+ Receipt</a>
+            <a href="/admin/receipt" style={{ display: 'inline-flex', alignItems: 'center', height: 'var(--bs-control-md)', padding: '0 var(--bs-space-5)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', fontWeight: 600, background: T.accentFill, color: '#fff', textDecoration: 'none' }}>+ Receipt</a>
             <button onClick={toggle} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ width: 'var(--bs-control-md)', height: 'var(--bs-control-md)', borderRadius: 'var(--bs-radius-md)', border: `1px solid ${T.border}`, background: T.card, color: T.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{isDark ? <SunIcon /> : <MoonIcon />}</button>
             <button onClick={signOut} style={{ height: 'var(--bs-control-md)', padding: '0 var(--bs-space-4)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', background: 'transparent', border: `1px solid ${T.border}`, color: T.textMuted, cursor: 'pointer' }}>Sign Out</button>
           </div>
@@ -973,7 +976,7 @@ function NewOrderDrawer({
                     setDiscountValue('')
                   }} style={{
                     height:'var(--bs-control-sm)', padding:'0 14px', borderRadius:999, border:'none',
-                    background: discountMode===m ? T.accent : 'transparent',
+                    background: discountMode===m ? T.accentFill : 'transparent',
                     color: discountMode===m ? '#fff' : T.text,
                     fontSize:12, fontWeight:600, cursor:'pointer',
                   }}>
@@ -1015,7 +1018,7 @@ function NewOrderDrawer({
                           disabled={discountChecking || !discountCode.trim()}
                           style={{
                             height:40, padding:'0 16px', borderRadius:10, border:'none', flexShrink:0,
-                            background: discountCode.trim() ? T.accent : T.muted,
+                            background: discountCode.trim() ? T.accentFill : T.muted,
                             color: discountCode.trim() ? '#fff' : T.textFaint,
                             cursor: discountCode.trim() ? 'pointer' : 'not-allowed',
                             fontSize:13, fontWeight:600,
@@ -1103,7 +1106,7 @@ function NewOrderDrawer({
             onClick={handleSave}
             disabled={saving}
             style={{
-              flex:1, height:44, borderRadius:10, background:T.accent, border:'none',
+              flex:1, height:44, borderRadius:10, background:T.accentFill, border:'none',
               color:'#fff', fontSize:14, fontWeight:600, cursor:saving?'not-allowed':'pointer',
               opacity:saving?0.6:1, transition:'opacity .15s',
             }}
@@ -1162,7 +1165,7 @@ export default function AdminDashboard() {
         <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
         <div style={{ fontSize: 20, fontWeight: 600, color: T.text, marginBottom: 8 }}>Admin Access Required</div>
         <div style={{ fontSize: 14, color: T.textMuted, marginBottom: 24 }}>Session expired or not logged in.</div>
-        <a href="/login" style={{ display: 'inline-block', padding: '12px 32px', borderRadius: 10, background: '#7C5CFF', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>Sign In</a>
+        <a href="/login" style={{ display: 'inline-block', padding: '12px 32px', borderRadius: 10, background: 'var(--bs-accent-fill)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>Sign In</a>
       </div>
     </Shell>
   )
@@ -1334,9 +1337,11 @@ useEffect(() => {
             <button key={f.value} onClick={() => { setStatusFilter(f.value); load(1, f.value, search) }} style={{
               height:'var(--bs-control-sm)', padding:'0 var(--bs-space-4)', borderRadius:'var(--bs-radius-full)',
               fontSize:'var(--bs-text-xs)', fontWeight:statusFilter===f.value?600:400, border:'none', cursor:'pointer',
-              // #fff here is text on an accent FILL, which stays #fff in both
-              // themes per the colour decision. Not the accent-as-text case.
-              background:statusFilter===f.value?T.accent:'transparent', color:statusFilter===f.value?'#fff':T.text,
+              // The label stays #fff, but the FILL under it is --bs-accent-fill,
+              // not --bs-accent: #fff on the plain accent is 4.35:1 and fails
+              // AA at this size. Only the active state fills, so only it needs
+              // the token; the inactive branch is transparent.
+              background:statusFilter===f.value?T.accentFill:'transparent', color:statusFilter===f.value?'#fff':T.text,
               transition:'background var(--bs-dur-1) var(--bs-ease-out)',
             }}>{f.label}</button>
           ))}
@@ -1345,7 +1350,7 @@ useEffect(() => {
           onClick={() => setShowNewOrder(true)}
           style={{
             height:'var(--bs-control-md)', padding:'0 var(--bs-space-4)', borderRadius:'var(--bs-radius-md)',
-            background:T.accent, border:'none',
+            background:T.accentFill, border:'none',
             color:'#fff', cursor:'pointer', fontSize:'var(--bs-text-sm)', fontWeight:600,
             display:'inline-flex', alignItems:'center', gap:'var(--bs-space-2)',
             boxShadow:'0 4px 14px rgba(var(--bs-accent-rgb), 0.25)',
@@ -1847,7 +1852,7 @@ function ProductsTab({ T }: { T: Theme }) {
             height: 'var(--bs-control-md)',
             padding: '0 var(--bs-space-5)',
             borderRadius: 'var(--bs-radius-md)',
-            background: T.accent,
+            background: T.accentFill,
             border: 'none',
             color: '#fff',
             cursor: 'pointer',
@@ -2432,7 +2437,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                 </button>
                 <button
                   onClick={() => setResetResult(null)}
-                  style={{ flex: 1, height: 40, borderRadius: 10, background: T.accent, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter,sans-serif' }}
+                  style={{ flex: 1, height: 40, borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter,sans-serif' }}
                 >
                   Done
                 </button>
@@ -2681,7 +2686,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
             <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 22px', borderRadius: 10, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
               Cancel
             </button>
-            <button onClick={send} disabled={saving} style={{ flex: 1, height: 44, borderRadius: 10, background: T.accent, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'Inter,sans-serif' }}>
+            <button onClick={send} disabled={saving} style={{ flex: 1, height: 44, borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'Inter,sans-serif' }}>
               {saving ? 'Sending…' : 'Send Message'}
             </button>
           </div>
@@ -3351,7 +3356,7 @@ function LinksTab({ T }: { T: Theme }) {
           className="bs-lnk-new-btn"
           style={{
             height: 42, padding: '0 20px', borderRadius: 10,
-            background: T.accent, border: 'none', color: '#fff',
+            background: T.accentFill, border: 'none', color: '#fff',
             cursor: 'pointer', fontSize: 13, fontWeight: 600,
             display: 'inline-flex', alignItems: 'center', gap: 6,
             boxShadow: '0 4px 14px rgba(124,92,255,0.25)',
@@ -3683,7 +3688,7 @@ function LinkEditorDrawer({
             className="bs-lnk-new-btn"
             style={{
               flex: 1, height: 44, borderRadius: 10,
-              background: T.accent, border: 'none', color: '#fff',
+              background: T.accentFill, border: 'none', color: '#fff',
               fontSize: 14, fontWeight: 600,
               cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.6 : 1,
@@ -4234,7 +4239,7 @@ function QrSection({ T, form, setForm, IS }: any) {
                   onClick={() => setCfg({ ecc: level })}
                   style={{
                     flex: 1, height: 32, borderRadius: 999, border: 'none',
-                    background: cfg.ecc === level ? T.accent : 'transparent',
+                    background: cfg.ecc === level ? T.accentFill : 'transparent',
                     color: cfg.ecc === level ? '#fff' : T.text,
                     fontSize: 12, fontWeight: 600, cursor: 'pointer',
                   }}
@@ -4434,7 +4439,7 @@ function QrDialog({
               onClick={async () => { await onSaveConfig(cfg); onClose() }}
               style={{
                 flex: 1, height: 42, borderRadius: 10,
-                background: T.accent, border: 'none', color: '#fff',
+                background: T.accentFill, border: 'none', color: '#fff',
                 fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
             >Save</button>
@@ -4510,7 +4515,7 @@ function AdsTab({T}:{T:Theme}) {
   const IS=inputStyle(T)
   return (
     <div>
-      <button onClick={()=>setShowCreate(!showCreate)} style={{height:42,padding:'0 20px',borderRadius:10,background:T.accent,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginBottom:20}}>+ New Ad</button>
+      <button onClick={()=>setShowCreate(!showCreate)} style={{height:42,padding:'0 20px',borderRadius:10,background:T.accentFill,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginBottom:20}}>+ New Ad</button>
       {showCreate&&(
         <div style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:20,marginBottom:20,display:'flex',flexDirection:'column',gap:10}}>
           <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:10}}>
@@ -4600,7 +4605,7 @@ function DiscountsTab({ T }: { T: Theme }) {
 
   return (
     <div>
-      <button onClick={() => { setShowCreate(!showCreate); setEditingId(null) }} style={{ height: 42, padding: '0 20px', borderRadius: 10, background: T.accent, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>+ New Discount</button>
+      <button onClick={() => { setShowCreate(!showCreate); setEditingId(null) }} style={{ height: 42, padding: '0 20px', borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>+ New Discount</button>
 
       {showCreate && <DiscountFormPanel T={T} form={newDiscount} setForm={setNewDiscount} onSave={createDiscount} onCancel={() => setShowCreate(false)} saving={creating} title="Create Discount Code" />}
       {editingId && <DiscountFormPanel T={T} form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Discount Code" />}
@@ -4870,7 +4875,7 @@ function NotificationsTab({ T }: { T: Theme }) {
   
   const primaryBtn = {
     height: 48,
-    background: '#7C5CFF',
+    background: 'var(--bs-accent-fill)',
     color: '#fff',
     border: 'none',
     borderRadius: 12,
@@ -5170,7 +5175,7 @@ function NotificationsTab({ T }: { T: Theme }) {
                         height: 32,
                         borderRadius: 999,
                         border: 'none',
-                        background: active ? T.accent : 'transparent',
+                        background: active ? T.accentFill : 'transparent',
                         color: active ? '#fff' : T.text,
                         fontSize: 12,
                         fontWeight: 600,
@@ -5243,7 +5248,7 @@ function NotificationsTab({ T }: { T: Theme }) {
               style={{
                 flex: 1,
                 height: 44,
-                background: T.accent,
+                background: T.accentFill,
                 color: '#fff',
                 border: 'none',
                 borderRadius: 10,
@@ -5334,7 +5339,7 @@ function NotificationsTab({ T }: { T: Theme }) {
                 </div>
                 <div style={{
                   height: 32,
-                  background: T.accent,
+                  background: T.accentFill,
                   borderRadius: 8,
                   display: 'flex',
                   alignItems: 'center',

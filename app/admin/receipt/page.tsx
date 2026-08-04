@@ -820,7 +820,7 @@ export default function ReceiptGenerator() {
                   onChange={e => { setDCode(e.target.value.toUpperCase()); setDError('') }}
                   onKeyDown={e => e.key === 'Enter' && applyDiscount()} />
                 <button onClick={applyDiscount} disabled={dLoading || !dCode.trim()}
-                  style={{ height: 40, padding: '0 20px', borderRadius: 8, background: dCode.trim() ? '#7C5CFF' : 'var(--bs-bg-muted, #18181c)', border: 'none', color: dCode.trim() ? '#fff' : 'var(--bs-text-faint, #4a4a5e)', cursor: dCode.trim() ? 'pointer' : 'not-allowed', fontSize: 13, flexShrink: 0 }}>
+                  style={{ height: 40, padding: '0 20px', borderRadius: 8, background: dCode.trim() ? 'var(--bs-accent-fill)' : 'var(--bs-bg-muted, #18181c)', border: 'none', color: dCode.trim() ? '#fff' : 'var(--bs-text-faint, #4a4a5e)', cursor: dCode.trim() ? 'pointer' : 'not-allowed', fontSize: 13, flexShrink: 0 }}>
                   {dLoading ? 'Checking…' : 'Apply'}
                 </button>
               </div>
@@ -881,7 +881,7 @@ export default function ReceiptGenerator() {
         {/* Actions */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <button onClick={handleDownload} disabled={generating}
-            style={{ flex: 1, minWidth: 160, height: 52, borderRadius: 12, background: '#7C5CFF', border: 'none', color: '#fff', cursor: generating ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: generating ? 0.7 : 1 }}>
+            style={{ flex: 1, minWidth: 160, height: 52, borderRadius: 12, background: 'var(--bs-accent-fill)', border: 'none', color: '#fff', cursor: generating ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: generating ? 0.7 : 1 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
             {generating ? 'Generating…' : generated ? 'Download Again' : 'Download PDF'}
           </button>

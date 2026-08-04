@@ -57,7 +57,7 @@ const btnBase: React.CSSProperties = {
 
 const btnPrimary: React.CSSProperties = {
   ...btnBase,
-  background: T.color.accent,
+  background: T.color.accentFill,
   border: 'none',
   color: '#fff',
 };

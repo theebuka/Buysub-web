@@ -198,6 +198,47 @@ Palette unchanged, byte for byte. Three additions:
   Fills, buttons and borders stay #7C5CFF in both themes. Text on an accent
   fill stays #fff. Do not use this token on an accent background.
 
+- **`--bs-accent-fill` is `#7756FF`, the accent adjusted to be readable
+  *under* text** — the mirror of `--bs-accent-on-surface`, which is the accent
+  adjusted to be readable *as* text.
+
+  `#fff` on plain `--bs-accent` measures **4.35:1** and fails the 4.5 body-text
+  floor. The 3:1 large-text allowance rescues none of it: the largest label on
+  an accent fill is 15px, where the threshold is 24px, or 18.66px at weight
+  700. `--bs-accent` is `#7C5CFF` in both themes, so there was no mode where it
+  passed.
+
+  `#7756FF` is the minimum darkening that clears the floor with headroom —
+  4.61:1, hue 251.8 → 251.7, saturation unchanged at 100%, purely 1.2 points of
+  HSL lightness. ΔE2000 from `#7C5CFF` is **1.77**, below the ~2.3
+  just-noticeable-difference threshold, so the brand colour reads as unchanged.
+  `#7958FF` also passes but by 0.02, which any later surface change erases;
+  `#704DFF` (5.0:1) is ΔE 4.32 and visibly a different purple.
+
+  **Only for fills that carry text.** A fill with no text on it — a chart bar,
+  a progress meter, a carousel dot, a swatch — keeps `--bs-accent`, so the
+  brand colour is untouched wherever it is seen on its own. Borders, tints and
+  gradient stops also keep `--bs-accent`. Same value in both themes and no
+  light-mode sibling, so it is deliberately absent from the
+  `[data-theme="light"]` block. `--bs-accent-hover` already measures 5.44:1 and
+  needs none.
+
+  **34 call sites across 7 files**, landed in one commit rather than per phase:
+  a token that covers only some of its call sites is worse than no token. That
+  means it reached `login`, `dashboard`, `partners`, `partners/dashboard` and
+  `order/verify`, all shipped in Phases 1-5, plus the receipt page's web form.
+  `components/Marketplace.tsx` has **zero** accent fills, so the off-limits file
+  was never involved.
+
+  *Counting them was harder than fixing them.* Successive static audits gave
+  15, then 28, then 29, then 34 — the codebase is 100% inline styles and the
+  fills hide behind four spellings (`T.accent`, `T.color.accent`,
+  `var(--bs-accent)`, a raw hex) and ternary active-states like
+  `active ? T.accent : 'transparent'`, with the text colour often a ternary
+  too. **The reliable check is at runtime**: scan computed styles for a solid
+  accent-family background with white text. That is what confirmed the work,
+  and it is what any future audit of this kind should use.
+
 Light theme is ported from admin's `light` object with two contrast fixes:
 text-muted #8896a6 (3.20:1) became #66717F (4.71:1), text-faint #b0bac5
 (1.9:1) became #7F8896 (3.40:1). text-faint is decorative and disabled use
@@ -455,20 +496,8 @@ an engineering one.
   so the chip shows the full address when the profile has no name. Truncated
   visually in Phase 2; the derivation itself is untouched. Reproduce with
   `FIXTURE_PROFILE=nameless`.
-- **White text on the accent fill measures 4.35:1 and fails AA.** Body text
-  needs 4.5. Measured on three live elements, all 12-13px weight 600: the
-  Shell's "+ Receipt" link, the active Orders filter pill, and "+ New Order"
-  (and by inspection "+ New Product" and the Links "new" button). `--bs-accent`
-  is `#7C5CFF` in **both** themes, so this is theme-independent — there is no
-  mode where it passes.
-
-  Not fixable inside a tab phase, which is why it is here rather than fixed.
-  The options are all palette-level: darken `--bs-accent` (it is also used by
-  `components/Marketplace.tsx`, which is off-limits), keep the fill and abandon
-  "text on an accent fill stays #fff" in favour of a darker label, or introduce
-  a separate `--bs-accent-fill` that is darker than the accent used for borders
-  and tints. Each changes every surface already shipped in Phases 1-7. **This
-  is an owner decision, not a refactor decision.**
+- ~~White text on the accent fill fails AA.~~ **Resolved: `--bs-accent-fill`,
+  landed as its own commit before Phase 8.** See "Colour" under Decisions made.
 - `app/admin/page.tsx` — the page-level auth gate (the `if (!token)` branch,
   around `:1160`) still carries a `🔒` emoji and a hardcoded `#7C5CFF` Sign In
   button. It is the page shell rather than any tab, so it fell outside every
