@@ -216,6 +216,110 @@ const PARTNER_STATS = {
   pending_ngn: 47500,
 }
 
+// ── storefront fixtures (Phase 12) ──────────────────────────────────────
+// /v2/products, /v2/ads and /v2/discount/auto-apply all fell through to the
+// catch-all until Phase 12, so /shop rendered an empty storefront: no cards,
+// no cart, and therefore no cart drawer — the exact seam Phase 12 had to
+// compare the restyled navbar against. Fourth time a fixture gap has hidden a
+// screen, after Phase 4, Phase 6 and Phase 7.
+//
+// Shapes taken from the fields the components actually read, not the ones that
+// sound right: PERIODS maps period keys to price_3m / price_6m / price_1y
+// (there is no price_1m period, though the column exists), isInStock() tests
+// stock_status as a string, and getCategoryList() splits `category` on commas,
+// so multi-category rows have to be comma-joined to reach more than one tab.
+//
+// NOTE when verifying: Marketplace caches this list in sessionStorage under
+// PRODUCT_CACHE_KEY. Clear it between fixture changes or the page keeps
+// rendering the previous run's rows.
+const PRODUCTS = [
+  { id: 'p-netflix', name: 'Netflix Premium', slug: 'netflix-premium',
+    category: 'video streaming', description: 'Four screens in 4K HDR.',
+    short_description: 'Four screens, 4K HDR', category_tagline: 'Streaming',
+    price_1m: 6500, price_3m: 18500, price_6m: 35000, price_1y: 66000,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: 'popular', domain: 'netflix.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 1 },
+  { id: 'p-spotify', name: 'Spotify Duo', slug: 'spotify-duo',
+    category: 'music streaming', description: 'Two premium accounts.',
+    short_description: 'Two premium accounts', category_tagline: 'Music',
+    price_1m: 2400, price_3m: 6900, price_6m: 13200, price_1y: 24500,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'spotify.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 2 },
+  // Multi-category: reachable from both `ai` and `productivity`.
+  { id: 'p-claude', name: 'Claude Pro', slug: 'claude-pro',
+    category: 'ai, productivity', description: 'Higher limits and priority access.',
+    short_description: 'Higher limits, priority access', category_tagline: 'AI',
+    price_1m: 32000, price_3m: 92000, price_6m: 178000, price_1y: 338000,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: 'new', domain: 'claude.ai',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 3 },
+  // Out of stock, so the card's unavailable branch renders.
+  { id: 'p-nord', name: 'NordVPN Plus', slug: 'nordvpn-plus',
+    category: 'security', description: 'VPN with threat protection.',
+    short_description: 'VPN with threat protection', category_tagline: 'Security',
+    price_1m: 4200, price_3m: 11800, price_6m: 21500, price_1y: 38900,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'nordvpn.com',
+    stock_status: 'out_of_stock', status: 'active', image_url: null, sort_order: 4 },
+  // Layout pressure: the 101-character name, and a price in the millions.
+  { id: 'p-adobe', name: LONG_NAME, slug: 'adobe-creative-cloud',
+    category: 'productivity', description: 'Every Adobe app, one plan.',
+    short_description: 'Every Adobe app, one plan', category_tagline: 'Creative',
+    price_1m: 74000, price_3m: 219000, price_6m: 428000, price_1y: HUGE,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'adobe.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 5 },
+  // One-time, and the only row with a period price missing — the card has to
+  // cope with a null where PERIODS expects a number.
+  { id: 'p-steam', name: 'Steam Wallet Top-up', slug: 'steam-wallet',
+    category: 'gaming, coins', description: 'Credit applied to your Steam wallet.',
+    short_description: 'Credit for your Steam wallet', category_tagline: 'Gaming',
+    price_1m: null, price_3m: 15000, price_6m: null, price_1y: null,
+    billing_type: 'one_time', billing_period: null,
+    tags: null, domain: 'steampowered.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 6 },
+]
+
+// Ads occupy the storefront the navbar is measured against, so they have to be
+// on screen even though ShopAds.tsx itself is Phase 13. One row per placement
+// ShopAds requests; the banner carries two so its 6s rotation is exercised.
+const SHOP_ADS = [
+  { id: 'ad-b1', title: 'Renew before September and keep the old rate',
+    image_url: 'https://picsum.photos/seed/buysub-ad-banner-1/1200/300',
+    link: 'https://buysub.ng', placement: 'shop_banner', ad_type: 'image',
+    card_name: null, card_category: null, card_price: null, card_badge: null, weight: 10 },
+  { id: 'ad-b2', title: 'Wallet top-ups now clear instantly',
+    image_url: 'https://picsum.photos/seed/buysub-ad-banner-2/1200/300',
+    link: 'https://buysub.ng', placement: 'shop_banner', ad_type: 'image',
+    card_name: null, card_category: null, card_price: null, card_badge: null, weight: 5 },
+  { id: 'ad-s1', title: 'Partner programme',
+    image_url: 'https://picsum.photos/seed/buysub-ad-side-1/400/600',
+    link: '/partners', placement: 'shop_sidebar', ad_type: 'image',
+    card_name: null, card_category: null, card_price: null, card_badge: null, weight: 8 },
+  { id: 'ad-c1', title: 'YouTube Premium Family',
+    image_url: 'https://picsum.photos/seed/buysub-ad-card-1/600/600',
+    link: 'https://buysub.ng', placement: 'shop_product_card', ad_type: 'card',
+    card_name: 'YouTube Premium Family', card_category: 'video streaming',
+    card_price: '₦21,500', card_badge: 'Sponsored', weight: 6 },
+]
+
+// Auto-applied so the cart drawer renders its discount row without anyone
+// typing a code. site_wide with no include/exclude lists, so isItemEligible()
+// passes every line; min_order_ngn is low enough that a single item clears it.
+const AUTO_DISCOUNT = {
+  code: 'AUGUST10',
+  type: 'percentage',
+  value: 10,
+  display: '10% off',
+  max_discount_ngn: 20000,
+  min_order_ngn: 5000,
+  included_products: null, excluded_products: null,
+  included_categories: null, excluded_categories: null,
+  is_auto_apply: true, scope: 'site_wide', is_exclusive: false,
+}
+
 // ── admin fixtures ──────────────────────────────────────────────────────
 // Only /v2/admin/stats is filled in; it is the one admin shape verified so
 // far. The list endpoints return a correctly-shaped empty page. Fill these in
@@ -486,6 +590,31 @@ const ROUTES = [
   [/^\/v2\/pay\/verify$/, () => VERIFY_OK
     ? ({ ok: true, data: { verified: true, order_ref: 'BS-24118' } })
     : ({ ok: true, data: { verified: false } })],
+  // ── storefront ──────────────────────────────────────────────────────
+  // A flat array, not page(): Marketplace reads res.data directly and
+  // pages nothing. Reached through lib/api.ts, i.e. NEXT_PUBLIC_API_URL.
+  [/^\/v2\/products$/,                  () => ({ ok: true, data: PRODUCTS })],
+  [/^\/v2\/products\/[^/]+$/, (q, path) => {
+    const slug = decodeURIComponent(path.split('/').pop())
+    const hit = PRODUCTS.find(p => p.slug === slug || p.id === slug)
+    return hit ? { ok: true, data: hit } : { ok: false, error: 'Product not found' }
+  }],
+  // Placement-aware on purpose. ShopAds fires three requests that differ only
+  // by query string, so a route that ignores it hands every placement the same
+  // rows and renders a sidebar ad as a banner.
+  [/^\/v2\/ads$/, q => {
+    const placement = q.get('placement')
+    const rows = placement ? SHOP_ADS.filter(a => a.placement === placement) : SHOP_ADS
+    const limit = Number(q.get('limit')) || rows.length
+    return { ok: true, data: rows.slice(0, limit) }
+  }],
+  // Nested under data.discounts, not data — lib/api.ts types it
+  // `{ discounts: any[] }` and Marketplace reads `res.data?.discounts`, so a
+  // bare array here silently yields no auto-applied discount.
+  // /v2/discount/validate needs no route: it is a POST, and every non-GET is
+  // acknowledged generically above. /v2/ads/impression and /v2/ads/click are
+  // POSTs for the same reason.
+  [/^\/v2\/discount\/auto-apply$/, () => ({ ok: true, data: { discounts: [AUTO_DISCOUNT] } })],
   [/^\/v2\/admin\/stats$/,              () => ({ ok: true, data: ADMIN_STATS })],
   // Admin reads a wider row than the customer dashboard: OrdersTab renders
   // customer_name / customer_email alongside the fields /v2/me/orders returns.

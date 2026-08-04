@@ -127,7 +127,7 @@ Read this file first in any session. Update it before finishing.
        (see the off-limits rule above: anything reaching the rendered
        document is out of scope)
 - [x] 11. components/AppShell.tsx notification toasts/banners/modals
-- [ ] 12. components/Navbar.tsx and components/Footer.tsx
+- [x] 12. components/Navbar.tsx and components/Footer.tsx
        (these render on /shop — the cart drawer inside Marketplace.tsx keeps
        its existing styling, so check the seam visually before committing)
 - [ ] 13. components/ShopAds.tsx
@@ -407,7 +407,24 @@ Per-file dark/light objects are **not** removed all at once. They are plain JS
 hex maps that never read a CSS var, so they keep working untouched and each one
 dies in its own phase.
 
-**`/shop` is never themed, and this is permanent.** components/Marketplace.tsx
+**`/shop` is not themed yet, and the exclusion is temporary.** *Corrected in
+Phase 12 — this previously read "and this is permanent", which was wrong and
+would mislead a future session.* `components/Marketplace.tsx` is off-limits for
+this refactor but is the **last surface that will be refactored**, and it will be
+made themeable then. The guard is a precondition, not a permanent property.
+
+Three things resolve the day it lifts, and none of them needs a further edit to
+arrange:
+
+- **The Navbar theme toggle starts rendering.** Phase 12 gated it on
+  `isThemeableRoute()` rather than deleting it, precisely so this happens by
+  itself.
+- **`--bs-muted-rgb` can be deleted.** It is a legacy alias kept only for
+  `Marketplace.tsx:1389`; that line is the sole caller.
+- **The cart-drawer seam closes**, since the drawer moves onto the token layer
+  with the rest of that file.
+
+Until then: components/Marketplace.tsx
 is dark-only by construction — 6 fixed #1C1C1F borders, unconditional
 `color:"#fff"` on the mobile period and currency controls (:910, :948),
 `rgba(0,0,0,0.65)` scrim, dark-only ProductLogo swatches, `theme=dark` in the
@@ -473,9 +490,18 @@ an engineering one.
   owner, not a refactor decision.
 - Duplicated session-reading (readToken/readSession/getToken)
 - NEXT_PUBLIC_API_URL vs NEXT_PUBLIC_API_BASE split
-- Navbar.tsx:21 writes bs_admin_theme on toggle but never reads it on mount, so
-  the storefront toggle persists a value nothing acts on and resets to dark
-  every load. Behavioural, not visual.
+- **The Tawk.to chat bubble overlaps the footer wordmark.** The widget is
+  injected by the inline script in `app/layout.tsx`, mounts `position: fixed`
+  bottom-left, and sits on top of the `© BuySub` line on both `/shop` and
+  `/partners` — the two routes that render a footer. Not Phase 12's doing and not
+  styling this repo owns, but it now sits on restyled chrome, so it is the
+  footer's problem visually. Fixing it means either offsetting the widget through
+  its own API or giving the footer bottom clearance on the left.
+- ~~Navbar.tsx:21 writes bs_admin_theme on toggle but never reads it on mount.~~
+  **Resolved in Phase 12**, and the entry understated it: the value was not one
+  "nothing acts on" — `bs_admin_theme` *is* `THEME_STORAGE_KEY`, so the write was
+  live and global while the missing read left the icon reporting dark on every
+  load. Now on `useTheme()` and gated on `isThemeableRoute()`.
 - ShopAds.tsx:102 rotates the banner carousel on a 6s setInterval. The global
   reduced-motion CSS cannot stop a JS timer; this needs its own
   `matchMedia('(prefers-reduced-motion: reduce)')` guard in Phase 13.
@@ -1034,17 +1060,132 @@ Phase 6 named Phase 9 as the closing act for two things. Their status differs:
    enough to finish fetching, or the baseline captures loading states and
    invents deltas.**
 
+### Phase 12 — Navbar and Footer
+
+**Navbar renders on exactly one route, `/shop`.** `AppShell.tsx:28` puts
+`/admin`, `/partners`, `/dashboard`, `/login` and `/order/verify` in `isNoShell`,
+and `app/` has no other route — `app/page.tsx` is a server `redirect()`. Footer is
+different: it also renders on `/partners` via the exact-match exception at
+`AppShell:341`, which makes Footer the only half of this phase whose **light
+values are reachable today**. Navbar's light values were verified another way,
+below.
+
+`T_DARK`/`T_LIGHT` are gone. **That was the last per-file theme map in the repo**,
+so the retirement Phase 6 started in admin is now complete across `app/` and
+`components/` except the off-limits file.
+
+**The theme toggle: wired and gated, not deleted.** It was `useState(true)` plus a
+direct `localStorage.setItem`, and the write was not inert — `bs_admin_theme` is
+`THEME_STORAGE_KEY` itself, the preference every other surface reads. So the
+storefront silently rewrote the global preference while never reading it back:
+the icon started dark on every load regardless of the stored value, and for a
+user already on light the first press wrote `light` again and the second flipped
+them to dark. It now uses `useTheme()` and renders only when
+`isThemeableRoute(pathname)`.
+
+The gate is not just deferral. It removes the live defect today *and* the control
+returns by itself when the `/shop` guard lifts, which is why deleting it was
+wrong. See the corrected note under Theme mechanism.
+
+**Verified by lifting the guard, not by reading the code.** `isThemeableRoute`
+was temporarily made to return `true`, rebuilt, and exercised with a stored
+`light` preference — the exact case the old code got wrong:
+
+| | before the click | after one click |
+|---|---|---|
+| stored preference | `light` | `dark` |
+| `data-theme` | `light` | absent |
+| icon | moon | sun |
+| `aria-label` | "Switch to dark theme" | "Switch to light theme" |
+
+44x44, `position: static`, inside the nav row. The guard was then restored and
+the restoration proven: `git diff -- lib/theme.ts` empty, and `/shop` renders
+dark with `data-theme` absent and the toggle not mounted while the stored
+preference is still `light`.
+
+**That run also measured what the Marketplace phase actually faces, and it is
+smaller than "half-light" implies.** Scope this from the evidence below, not from
+the framing that has been carried in this file since Phase 0:
+
+- Most of the storefront flipped correctly. Card surfaces, body text, the search
+  field, the category pills and the accent CTAs all followed `data-theme`.
+- **Two visible artifacts**, both narrow:
+  1. the currency segmented control — `NGN` stays a dark chip among light
+     siblings, from the unconditional `color:"#fff"` at `:910`/`:948`;
+  2. the `#1C1C1F` card borders, which read as near-black hairlines on a light
+     card instead of disappearing into it.
+
+Navbar and Footer flipped correctly throughout. The "renders it half-light"
+description was written before anyone had seen it; what it looks like is a
+correct light page with two dark details.
+
+**`position: fixed` removed from the toggle.** It was `top: 20, right: 20`
+*inside* the nav flex row, so it left a phantom `gap` slot and pinned itself to
+the viewport. It usually landed inside the 64px sticky navbar band and looked
+deliberate; it stopped looking deliberate against AppShell's notification banner,
+which renders *above* Navbar at `--bs-control-sm` (32px), so the button's
+y=20..58 overlapped its lower 12px and won the paint from the navbar's z-50
+stacking context. Phase 11 gave `/v2/notifications` real rows, so that collision
+was newly reachable. Phase 1 hit the same root cause from the other side, when
+login's toggle and this one stacked on identical fixed coordinates.
+
+**`var(--bs-bg-primary)` → `--bs-bg-base`.** Confirmed the only reference to that
+name in the repo, and confirmed a visual no-op at runtime: the invalid name
+resolved to transparent and the body's `--bs-bg-base` showed through, so the bar
+measured `rgb(5,5,7)` before and after. It now matches `Marketplace.tsx:2067`
+`stickyControls` by token rather than by coincidence.
+
+Also: `<div>` → `<header>`/`<nav>` with `aria-label`; the `☀`/`☾` glyphs to
+module-level inline SVGs; the dead `className="bs-theme-btn"` given a live hover
+and focus rule instead of being dropped (it had no stylesheet anywhere, the same
+dead-hook pattern Phase 3 found in `.bs-cta`); nav and footer links given 44px
+targets, which they never had — they were bare inline anchors about 18px tall on
+a mobile-first surface. Measured 7.90:1 dark and 7.14:1 light.
+
+Footer's `fontSize: 13` was the *admin* body step on a customer surface; it is
+`--bs-text-base` (15) now, with secondary rank carried by colour rather than by
+shrinking the type. `marginTop: 40` was off-grid and maps to `space-8`.
+
+**Three properties live in a `<style>` block rather than inline** — the header's
+horizontal padding, the nav gap and the link padding. They are the values that
+have to tighten at 360px to keep the row on one line once the toggle renders, and
+an inline value would need `!important` to let a media query win. Everything else
+stays inline.
+
+**The 360px fit was proved by arithmetic, because the viewport could not be
+narrowed.** `resize_window` resizes the window but the automated tab keeps
+reporting `innerWidth: 1920`, so the media query never engaged. Instead the
+narrow rules were force-applied and the intrinsic widths summed, with a probe
+toggle mounted so the future state is included: 16+16 padding + 64.5 wordmark +
+165.9 links + 24 gaps + 44 toggle = **330.3px, 29.7px of headroom at 360**. One
+line, nothing under 44px.
+
 ## Seams to watch
-- After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
-  keeps its existing styling on the same page. Check it visually before
-  committing that phase. Phase 0 narrows the gap rather than widening it: the
-  radius scale comes from Marketplace's own cardStyle, and the -rgb companions
-  restore the drawer's intended tints.
-- Navbar.tsx:35 references `var(--bs-bg-primary)`, which does not exist and is
-  not being defined — it is a stale name, not a missing token. It should be
-  `--bs-bg-base` so the navbar matches Marketplace's sticky control bar
-  directly below it. Currently resolves to invalid → transparent → body's
-  bg-base shows through, so fixing it in Phase 12 is a visual no-op.
+- The cart drawer inside Marketplace.tsx keeps its existing styling on the same
+  page as the restyled Navbar/Footer. Checked visually in Phase 12 with a
+  populated cart: no clash. The drawer is dark against a dark navbar, its
+  Continue button is already in the accent family, and the scrim covers the
+  navbar rather than sitting beside it. Phase 0 narrowed the gap rather than
+  widening it — the radius scale comes from Marketplace's own cardStyle, and the
+  -rgb companions restore the drawer's intended tints.
+- **On scroll, Marketplace's sticky control bar covers the ENTIRE header — not
+  just the nav links.** The wordmark, all three links and the theme toggle all
+  disappear together, and this happens on `/shop`, **the only public page in the
+  app**. Both bars are `position: sticky; top: 0; z-index: 50` (`Navbar.tsx`,
+  `Marketplace.tsx:2067`), and the control bar is later in the DOM, so at equal
+  z-index it paints over the whole 64px band. Measured: the navbar is still
+  pinned at 0..64 but `document.elementFromPoint` at its centre returns a div
+  outside the header, so nothing in it can be clicked.
+
+  **The fix is `top: 64` on `stickyControls`, and it should be the first thing
+  done when Marketplace opens for editing** — it is one property, it restores a
+  header that is currently unreachable on the app's only public page, and it
+  needs no other part of that phase to be underway.
+
+  **Pre-existing and untouched by Phase 12** — position and z-index are
+  unchanged; only the background went from invalid-transparent to the same colour
+  opaquely. The one lever inside Navbar is its own z-index, and raising it merely
+  swaps which bar is hidden: `stickyControls` would then sit behind the navbar.
 
 ## Session log
 - 2026-08-02 — Phase 0. Token layer added to CSS_VARS: type, weight, leading,
@@ -1459,3 +1600,32 @@ z-index scale is a Phase 0-shaped addition touching many files.
   a black toast, /login light-preference a white one. /v2/notifications
   populated; isNoShell, the /partners footer exception and syncThemeToRoute
   confirmed untouched by diff. tsc + build clean, no fixture leak.
+- 2026-08-04 — Phase 12. Navbar and Footer on the token layer; T_DARK/T_LIGHT
+  retired, the last per-file theme map in the repo. The theme toggle was wired to
+  useTheme() and gated on isThemeableRoute() rather than deleted: the old code
+  wrote THEME_STORAGE_KEY itself without ever reading it back, so the storefront
+  silently rewrote the global preference and its icon reported dark on every
+  load. Gating fixes that today and returns the control by itself when the /shop
+  guard lifts. position:fixed removed from the toggle (it sat outside its own
+  flex row and overlapped AppShell's 32px banner), 38px to the 44px floor, glyphs
+  to inline SVGs, the dead .bs-theme-btn class given live hover/focus rules,
+  var(--bs-bg-primary) to --bs-bg-base (proved a no-op at runtime: the invalid
+  name resolved to transparent over the same colour). Nav and footer links given
+  44px targets they never had; footer moved off the admin 13px step to base 15.
+  Verified against the guard temporarily lifted — toggle renders, reads the
+  stored preference, one press one flip — then restored and the restoration
+  proven by empty diff and a dark /shop under a stored light preference. 360px
+  fit proved by summing intrinsic widths (330.3 of 360) because resize_window
+  no-ops in the automated tab. scripts/fixture-api.js given /v2/products,
+  /v2/ads and /v2/discount/auto-apply — all three had been falling through to the
+  catch-all, so /shop rendered an empty storefront with no cards and no cart
+  drawer, which is the seam this phase existed to compare against. Fourth time a
+  fixture gap has hidden a screen. Contrast 7.90 dark / 7.14 light. Corrected the
+  "/shop is never themed, and this is permanent" claim in REFACTOR.md, CLAUDE.md
+  and lib/constants.ts: the exclusion ends when Marketplace is refactored. The
+  guard-lifted run also scoped that phase from evidence — the storefront mostly
+  flips correctly, and the only artifacts are the NGN currency chip and the
+  #1C1C1F card borders, so "half-light" overstated it. Logged the sticky-header
+  collision as the first thing to fix when Marketplace opens, and the Tawk.to
+  bubble overlapping the footer wordmark as Deferred.
+  tsc + build clean, no 127.0.0.1:8787 in chunks.

@@ -172,7 +172,8 @@ export const calcDiscountAmount = (
 // data-theme="light" on <html>, set before first paint by the script in
 // app/layout.tsx and maintained by useTheme() in lib/theme.ts.
 //
-// NOTE: /shop is deliberately never themed. components/Marketplace.tsx is
+// NOTE: /shop is not themed yet, and the exclusion is temporary — it ends when
+// components/Marketplace.tsx is refactored. components/Marketplace.tsx is
 // dark-only by construction (fixed #1C1C1F borders, unconditional #fff on the
 // mobile segmented controls, dark-only logo swatches, theme=dark in the
 // logo.dev URL), so applying the light block there renders it half-light.
