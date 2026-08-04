@@ -1202,3 +1202,75 @@ Phase 6 named Phase 9 as the closing act for two things. Their status differs:
   before and after — 25 of 26 identical, and the 26th was a stale baseline that
   had captured a loading state, proven by re-measurement and by the dark-minus-
   light element count being +1 for every tab afterwards. tsc + build clean.
+
+## Contrast audit — runtime, all surfaces, both themes (2026-08-04)
+
+Scanned every element with its own text: computed colour against its *effective*
+background (translucent layers composited down to the first opaque ancestor),
+against the WCAG threshold for its size and weight (4.5, or 3.0 at >=24px or
+>=18.66px bold). Positive control injected (#8a8a8a on #808080) and caught at
+1.14, cleared on removal, so the null results mean something.
+
+**Three root causes, not hundreds of defects.**
+
+**1. `--bs-text-muted` #6E6E80 fails AA on every dark surface.** This is the
+dominant finding — roughly 275 elements across all 13 admin tabs plus login,
+partners, order/verify and the receipt form.
+
+| surface | ratio | needs |
+|---|---|---|
+| `--bs-bg-base` #050507 | 4.08 | 4.5 |
+| `--bs-bg-card` #0B0B0F | 3.93 | 4.5 |
+| `--bs-bg-elevated` #111116 | 3.77 | 4.5 |
+| `--bs-bg-muted` #1A1A20 | 3.47 | 4.5 |
+
+Phase 0 fixed *light* text-muted (#8896a6 -> #66717F, 4.71:1) and never checked
+dark. **This is a token decision and it touches every phase**, so it is logged
+rather than patched per surface. Light-mode text-muted mostly passes on base but
+fails on tinted surfaces (4.10 over an accent tint at login).
+
+**2. `--bs-accent` used as text, where a sibling token already exists.**
+In light, `--bs-accent-on-surface` (#5B3FD4) is the answer and is not being
+used: admin's active tab label 4.13 (x13 tabs), product category labels 4.35,
+the receipt form's "+ Add item" 4.35. In dark, `-on-surface` equals `--bs-accent`
+so it does not help on accent *tints*; those need `--bs-on-tint-mix`, and there
+are four more instances: the notification type pills (3.96), a discount code
+(4.21), the "Auto" badge (4.25), login's role tab (3.96), partners' "Step 1 of
+4" (4.17), verify's order reference (4.33).
+
+**3. `--bs-text-faint` used for content a user must read** — 2.26 in dark,
+3.58 in light. It is documented as decorative and disabled-only. Misused for
+`LinkRowCard`'s click counts and the receipt form's hint text.
+
+Plus, light-mode only: state colours printed on their own 12% tints in
+`app/dashboard/page.tsx`'s **second copy of `statusColor`** — warning 2.80,
+success 3.26, error 4.01, muted 4.27. That copy still uses translucent tints
+with plain state tokens, the exact pattern Phase 6 replaced in admin, and still
+has no `rejected_pending` branch.
+
+### Partition
+
+| finding | belongs to |
+|---|---|
+| dark `--bs-text-muted` on all four surfaces | **token decision, owner** |
+| accent-as-text in light (tabs, category labels) | Phases 7-9, follow-up |
+| accent-on-tint in dark (pills, codes, badges) | Phases 8-9, follow-up |
+| `text-faint` for click counts | Phase 8 (`LinkRowCard`) |
+| dashboard `statusColor` second copy | **Phase 2 surface, still open** |
+| `text-faint` hints, 10px, "+ Add item" | Phase 10 — **fixed** |
+| white on WhatsApp `#25D366`, 1.98 | Phase 10 — **not fixed, needs a decision** |
+
+### Scanner limitations, stated so the null results are not overread
+
+- **Elements over a background-image cannot be evaluated.** The compact scanner
+  dropped the image detection the first version had and produced four false
+  positives on `/partners` (1.04-1.05), where the brand slab is a
+  `linear-gradient` and so has no `background-color` to find. Verified by
+  walking the ancestor chain: the white text sits on
+  `linear-gradient(155deg, rgb(23,18,58)...)` exactly as Phase 3 designed.
+  **Any future run must skip or flag image-backed elements.**
+- **`/partners/dashboard` could not be scanned.** It authenticates through
+  `supabase.auth.getSession()` rather than the localStorage token scan, so the
+  fixture session does not satisfy it and the route redirects to `/login`.
+- Only what mounts on load. Drawers, modals and the notification preview were
+  not opened for this pass.

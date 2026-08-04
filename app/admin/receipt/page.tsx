@@ -444,7 +444,7 @@ const CustomerCombobox = ({ onSelect, onOrderFound }: { onSelect: (c: Customer) 
       <div style={{ position: 'relative' }}>
         <input value={query} onChange={e => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)} placeholder="Search by name, email, phone, or order ref (BS-…)" style={IS} />
-        {loading && <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 10, color: 'var(--bs-text-faint, #6b6b7e)' }}>…</span>}
+        {loading && <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-faint, #6b6b7e)' }}>…</span>}
       </div>
       {open && (results.length > 0 || orderResult) && (
         <div style={DD}>
@@ -755,7 +755,7 @@ export default function ReceiptGenerator() {
         <Panel title={prodLoading ? 'Order Items  —  loading…' : `Order Items  ·  ${products.length} products`}>
           <div className="rg-dt-headers">
             {['Product', 'Period', `Unit price (${currency})`, 'Qty', 'Line total', ''].map((h, i) => (
-              <div key={i} style={{ fontSize: 10, color: 'var(--bs-text-muted, #6b6b7e)' }}>{h}</div>
+              <div key={i} style={{ fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted, #6b6b7e)' }}>{h}</div>
             ))}
           </div>
           {items.map(item => {
@@ -800,7 +800,7 @@ export default function ReceiptGenerator() {
               </div>
             )
           })}
-          <button onClick={() => setItems(p => [...p, emptyItem()])} style={{ background: 'transparent', border: 'none', color: '#7C5CFF', cursor: 'pointer', fontSize: 13, padding: '4px 0' }}>+ Add item</button>
+          <button onClick={() => setItems(p => [...p, emptyItem()])} style={{ background: 'transparent', border: 'none', color: 'var(--bs-accent-on-surface)', cursor: 'pointer', fontSize: 13, padding: '4px 0' }}>+ Add item</button>
         </Panel>
 
         {/* Discount */}
@@ -855,14 +855,14 @@ export default function ReceiptGenerator() {
           <TwoCol style={{ marginBottom: 12 }}>
             <div><Lbl>Sales Rep</Lbl><input style={IS} placeholder="Name or initials" value={salesRep} onChange={e => setSalesRep(e.target.value)} /></div>
           </TwoCol>
-          <Lbl>Notes <span style={{ color: 'var(--bs-text-faint, #4a4a5e)', fontSize: 10 }}>(leave blank for default)</span></Lbl>
+          <Lbl>Notes <span style={{ color: 'var(--bs-text-muted)', fontSize: 'var(--bs-text-2xs)' }}>(leave blank for default)</span></Lbl>
           <textarea value={note} onChange={e => setNote(e.target.value)} placeholder={DEFAULT_NOTE}
             style={{ ...IS, height: 88, padding: '10px 12px', resize: 'vertical', lineHeight: 1.7, fontSize: 12 } as any} />
         </Panel>
 
         {/* Payment Instructions */}
         <Panel title="Payment Instructions">
-          <Lbl>Instructions printed on receipt <span style={{ color: 'var(--bs-text-faint, #4a4a5e)', fontSize: 10 }}>(leave blank for default)</span></Lbl>
+          <Lbl>Instructions printed on receipt <span style={{ color: 'var(--bs-text-muted)', fontSize: 'var(--bs-text-2xs)' }}>(leave blank for default)</span></Lbl>
           <textarea value={paymentInstructions} onChange={e => setPaymentInstructions(e.target.value)} placeholder={DEFAULT_PAYMENT_INSTRUCTIONS}
             style={{ ...IS, height: 80, padding: '10px 12px', resize: 'vertical', lineHeight: 1.7, fontSize: 12 } as any} />
         </Panel>
@@ -910,7 +910,7 @@ export default function ReceiptGenerator() {
 /* ── Micro-components (identical to original) ── */
 const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
   <div style={{ background: 'var(--bs-bg-card, #111114)', border: '1px solid var(--bs-border-subtle, #1c1c22)', borderRadius: 16, padding: '18px 20px', marginBottom: 14 }}>
-    <div style={{ fontSize: 10, color: 'var(--bs-text-muted, #6b6b7e)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>{title}</div>
+    <div style={{ fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted, #6b6b7e)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>{title}</div>
     {children}
   </div>
 )
