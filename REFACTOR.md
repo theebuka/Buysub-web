@@ -118,7 +118,9 @@ Read this file first in any session. Update it before finishing.
 - [x] 7. app/admin — tabs 1–4 (Overview, Orders, Rejected, Products), plus the
        three panels those tabs own: ProductFormPanel, ProductSearchBox,
        NewOrderDrawer
-- [ ] 8. app/admin — tabs 5–9
+- [x] 8. app/admin — tabs 5–9 (Customers, Partners, Wallets, Affiliates,
+       Links) plus the panels they own. **Wallets was ticked without being
+       edited** — see the Phase 8 note.
 - [ ] 9. app/admin — tabs 10–13
 - [ ] 10. app/admin/receipt/page.tsx — the web form only, never the PDF
        (see the off-limits rule above: anything reaching the rendered
@@ -513,6 +515,10 @@ an engineering one.
   (`app/admin/page.tsx` in the discount form, wallet top-up, links basics and
   notifications), so the native calendar picker stays dark in light mode.
   Per-tab, Phases 7-9.
+- A `▾`/`▸` expander pair remains in `DiscountsTab` (~line 4661), plus whatever
+  the Ads and Notifications tabs carry. Phase 9. Scan for **non-ASCII**, not an
+  emoji range — the geometric-shapes block (`▾ ▸ ▦ ⌕`) sits outside it and was
+  missed by the Phase 6-7 sweeps.
 - 32 emoji remain in admin, mostly as button glyphs (`✅` ×12, `🔒` ×3,
   `✕` ×3, `💳` ×2, plus `🪞 🕶 🔑 📱 📨 📋 📄`). Phases 1-5 replaced these
   with inline SVGs on every customer surface. They sit in tab code, so they go
@@ -904,6 +910,57 @@ fixture shape error has hidden a screen** (Phase 4 `/v2/partners/me`, Phase 6
 missing admin routes, this one). Check the field a component actually reads,
 not the field name that sounds right.
 
+### Phase 8 — admin tabs 5-9
+
+26 declarations, ~1970 lines, ownership resolved from the AST by transitive
+render-closure. Two subsystems dominate: Links is ~1280 lines across 20
+declarations, Customers ~570 across 4. Eight shared primitives (`Badge`,
+`SmallBtn`, `Loading`, `EmptyState`, `PaginationBar`, `DetailSection`, `DRow`,
+`FieldLabel`) were reachable but untouched — each is also rendered by tabs 1-4
+or 10-13.
+
+**`WalletsTab` was ticked without being edited, and that is the finding.** Six
+lines, zero literals, zero glyphs; its entire visual output is `Loading` and
+`EmptyState`, both tokenised in Phase 6. So it was already finished. No fixture
+route was added for `/v2/admin/wallets` either: the tab drops the response
+(`.finally()` with no `.then()`) and renders an EmptyState unconditionally, so
+no fixture could make anything appear. It is an unimplemented tab, not an
+unstyled one, and building the screen would be a feature, not a refactor.
+
+**The second Marketplace leak is gone.** `LinkRowCard`'s
+`link.active && !isExpired && !limitReached ? '#1C1C1F' : T.border` was the twin
+of the product card in Phase 7 — near `--bs-border-default` in dark so the
+healthy state looked right, a near-black border on a white card in light. The
+healthy-vs-degraded distinction is preserved.
+
+**Two gradients moved off stale literals.** `WalletTopupPanel` ran
+`#7C5CFF → #5B3FD4`, and `#5B3FD4` is the *light* value of
+`--bs-accent-on-surface` — the exact reuse Phase 2 ruled against on the
+dashboard wallet gradient. It is now `--bs-accent → --bs-accent-hover`, matching
+Phase 2. `WalletDebitPanel` ran `#dc2626 → #991b1b`, pre-token error colours
+with no token for the second stop; it now derives the darker stop from
+`--bs-error` via `color-mix`.
+
+**Fifth instance of the on-tint bug**, in `LinkRowCard`'s feature pills:
+`color: T.accent` on a 10% tint of that same accent, at 10px. Now on
+`--bs-on-tint-mix` and the 11px floor — measured 6.39:1, up from ~3.7.
+
+**Glyphs: the emoji sweep was under-scoped in Phases 6-7.** The regex used then
+covered U+1F300-1FAFF and U+2600-27BF, which misses the geometric-shapes block
+where several UI glyphs live. Replaced here: `▾`/`▸` expanders, `⌕` search,
+`▦` QR, `×` close (4 sites). A `▾`/`▸` pair in `OrdersTab` that Phase 7 should
+have caught was fixed as a correction; the pair in `DiscountsTab` is Phase 9's.
+The `×` at `OrdersTab` line ~1438 is a multiplication sign in "product × qty"
+and stays. Future sweeps should scan for non-ASCII generally, not an emoji
+range.
+
+**Fixture: five routes added**, all previously falling through to `page([])`
+so every one of these tabs rendered its empty state. `/v2/admin/partners`
+(one row per status), `/v2/admin/affiliates`, `/v2/admin/links` (one row per
+feature badge and one per degraded state, or `LinkRowCard`'s border and badge
+branches never render), `/v2/admin/links/:id/rules`, and the two customer
+sub-resources. Ads, Discounts and Notifications remain stubs for Phase 9.
+
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
   keeps its existing styling on the same page. Check it visually before
@@ -1011,3 +1068,33 @@ not the field name that sounds right.
   seven, then rebuilt clean with no 127.0.0.1:8787 in the chunks. Not verified:
   focus rings (unchanged limitation) and the Rejected confirm path, which goes
   through a native confirm() that would block the automation.
+- 2026-08-04 — `--bs-accent-fill` #7756FF, committed separately from any phase.
+  #fff on --bs-accent measures 4.35:1 and fails AA; no accent-filled control
+  qualifies for the 3:1 large-text allowance (largest label 15px). 34 call sites
+  across 7 files in one commit, since a token covering only some of its call
+  sites is worse than none — which reached login, dashboard, partners,
+  partners/dashboard and order/verify, all shipped in Phases 1-5. Marketplace
+  has zero accent fills. Counting them took four passes (15, 28, 29, 34): the
+  fills hide behind four spellings and ternary active-states, so the reliable
+  audit is a runtime scan of computed styles, not a regex.
+- 2026-08-04 — Phase 8. Admin tabs 5-9 plus their panels on the token layer.
+  Second Marketplace #1C1C1F leak cleared in LinkRowCard; the #5B3FD4 gradient
+  stop in WalletTopupPanel and the pre-token #dc2626/#991b1b gradient in
+  WalletDebitPanel moved onto tokens; fifth instance of the on-tint bug fixed in
+  the Links feature pills (3.7 -> 6.39). 11 glyph sites replaced with inline
+  SVGs after finding the Phase 6-7 emoji regex missed the geometric-shapes
+  block; one Phase 7 escape corrected. 52 sizing values mapped to the scales,
+  8 Inter literals removed. Five fixture routes added — partners, affiliates,
+  links, link rules, customer messages/wallet — all of which had been returning
+  [] so those tabs rendered empty states. WalletsTab ticked without edits,
+  deliberately. tsc + build clean; all five tabs and all six LinkEditorDrawer
+  sections verified in light and dark at 1440px against the populated fixture,
+  then rebuilt clean with no 127.0.0.1:8787 in the chunks.
+- 2026-08-04 — White-tint audit, runtime, all 13 admin tabs in light mode:
+  **zero** near-white borders or backgrounds on light surfaces. That bug class
+  (six instances across Phases 6-7) is fully cleared, so there is nothing for
+  Phases 9-10 to pick up. Proven with a positive control — injecting
+  rgba(255,255,255,0.06) was caught at ratio 1.003 and removing it returned
+  zero — so the null result is real rather than a broken scan. Static grep
+  agrees: the only two rgba(255,255,255,...) left in admin are white text on the
+  purple gradient headers, which is correct.

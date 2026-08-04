@@ -295,6 +295,78 @@ const ADMIN_PRODUCTS = [
     price_3m: 7500, price_6m: 14000, price_1y: 25000, domain: 'spotify.com' },
 ]
 
+// Partner applications. PartnersTab reads legal_name / store_name / owner_* /
+// business_* / cac_number / address / lga / state / gender / status, and
+// filters by status, so keep one row per status the approve/reject flow can
+// produce.
+const ADMIN_PARTNERS = ['pending', 'approved', 'rejected'].map((status, i) => ({
+  id: `pt-${i}`,
+  status,
+  legal_name: ['Adaeze Ventures Ltd', 'Kolawole Digital Enterprises', 'Ifeanyi Stores'][i],
+  store_name: ['Adaeze Subs', 'KD Subs', 'Ifeanyi Digital'][i],
+  owner_name: ['Adaeze Nwachukwu', 'Kolawole Ogunlesi', 'Ifeanyi Okafor'][i],
+  owner_email: ['adaeze@example.com', 'kolawole@example.com', 'ifeanyi@example.com'][i],
+  owner_phone: ['+234 802 331 7742', '+234 809 118 2260', '+234 703 994 5518'][i],
+  business_email: ['hello@adaezesubs.ng', 'support@kdsubs.ng', ''][i],
+  business_phone: ['+234 1 271 0044', '', '+234 1 460 2210'][i],
+  cac_number: ['RC-1842771', 'RC-2290418', ''][i],
+  address: ['14 Adeola Odeku St', '3 Ring Road', '88 New Market Rd'][i],
+  lga: ['Eti-Osa', 'Ibadan North', 'Onitsha North'][i],
+  state: ['Lagos', 'Oyo', 'Anambra'][i],
+  gender: ['female', 'male', 'male'][i],
+  created_at: `2026-0${i + 4}-1${i}T09:20:00Z`,
+}))
+
+const ADMIN_AFFILIATES = ['active', 'pending', 'suspended'].map((status, i) => ({
+  id: `af-${i}`,
+  status,
+  business_name: ['Adaeze Subs', 'KD Subs', 'Ifeanyi Digital'][i],
+  store_name: ['Adaeze Subs', 'KD Subs', 'Ifeanyi Digital'][i],
+  referral_code: ['ADAEZE10', 'KDSUBS', 'IFY2026'][i],
+  commission_rate: [7.5, 5, 10][i],
+  click_count: [412, 0, 1837][i],
+  created_at: `2026-0${i + 3}-0${i + 2}T11:00:00Z`,
+}))
+
+// Short links. LinkRowCard reads slug / destination_url / active / click_count
+// / click_limit / expires_at / has_password / cloak / hide_referrer /
+// deep_link_* / tags / qr_config. Keep one row per feature badge and one per
+// degraded state (expired, limit reached, inactive), or those branches never
+// render — LinkRowCard's border and badge logic keys off exactly these.
+const ADMIN_LINKS = [
+  { id: 'ln-1', slug: 'blackfriday', destination_url: 'https://buysub.ng/shop?utm_campaign=bf',
+    active: true, click_count: 1284, click_limit: null, expires_at: null,
+    has_password: false, cloak: false, hide_referrer: false,
+    deep_link_ios: null, deep_link_android: null, tags: ['campaign'],
+    qr_config: { fg: '#000000', bg: '#ffffff', ecc: 'M' } },
+  { id: 'ln-2', slug: 'vip-access', destination_url: 'https://buysub.ng/vip',
+    active: true, click_count: 47, click_limit: 500, expires_at: '2026-12-31T23:59:00Z',
+    has_password: true, cloak: true, hide_referrer: true,
+    deep_link_ios: 'buysub://vip', deep_link_android: 'buysub://vip', tags: ['vip', 'gated'],
+    qr_config: { fg: '#1A1A2E', bg: '#ffffff', ecc: 'H' } },
+  { id: 'ln-3', slug: 'expired-promo', destination_url: 'https://buysub.ng/promo',
+    active: true, click_count: 903, click_limit: null, expires_at: '2026-01-15T00:00:00Z',
+    has_password: false, cloak: false, hide_referrer: false,
+    deep_link_ios: null, deep_link_android: null, tags: [],
+    qr_config: { fg: '#000000', bg: '#ffffff', ecc: 'M' } },
+  { id: 'ln-4', slug: 'capped', destination_url: 'https://buysub.ng/limited',
+    active: false, click_count: 200, click_limit: 200, expires_at: null,
+    has_password: false, cloak: false, hide_referrer: true,
+    deep_link_ios: null, deep_link_android: null, tags: ['retired'],
+    qr_config: { fg: '#000000', bg: '#ffffff', ecc: 'L' } },
+]
+
+// Targeting rules, so TargetingSection renders populated instead of empty.
+const LINK_RULES = [
+  { id: 'r-1', link_id: 'ln-2', priority: 1, match_type: 'country', match_value: 'NG', destination_url: 'https://buysub.ng/vip/ng' },
+  { id: 'r-2', link_id: 'ln-2', priority: 2, match_type: 'os', match_value: 'ios', destination_url: 'https://buysub.ng/vip/ios' },
+]
+
+const CUSTOMER_MESSAGES = [
+  { id: 'cm-1', subject: 'Your Netflix renewal', body: 'Renewed through 2027-02-14.', read: true,  created_at: '2026-07-30T10:00:00Z' },
+  { id: 'cm-2', subject: 'Wallet top-up received', body: '₦18,300 credited.',          read: false, created_at: '2026-08-01T16:42:00Z' },
+]
+
 // ── routing ─────────────────────────────────────────────────────────────
 const ROUTES = [
   [/^\/v2\/me$/,                        () => ({ ok: true, data: PROFILE })],
@@ -340,9 +412,28 @@ const ROUTES = [
   }],
   [/^\/v2\/admin\/customers$/,          () => page(ADMIN_CUSTOMERS)],
   [/^\/v2\/admin\/products$/,           () => page(ADMIN_PRODUCTS)],
-  // Still a stub. Every remaining admin list renders its EMPTY state, so no
-  // badge, amount or row markup from those tabs has been measured yet. Fill
-  // each one in as its tab is taken, in Phases 7-9.
+  [/^\/v2\/admin\/partners$/,           () => page(ADMIN_PARTNERS)],
+  [/^\/v2\/admin\/affiliates$/,         () => page(ADMIN_AFFILIATES)],
+  [/^\/v2\/admin\/links$/,              () => page(ADMIN_LINKS)],
+  [/^\/v2\/admin\/links\/[^/]+\/rules$/, (q, path) => {
+    const id = path.split('/')[4]
+    return { ok: true, data: LINK_RULES.filter(r => r.link_id === id) }
+  }],
+  [/^\/v2\/admin\/links\/[^/]+$/, (q, path) => {
+    const id = path.split('/').pop()
+    const hit = ADMIN_LINKS.find(l => l.id === id)
+    return hit ? { ok: true, data: hit } : { ok: false, error: 'Link not found' }
+  }],
+  [/^\/v2\/admin\/customers\/[^/]+\/messages$/, () => ({ ok: true, data: CUSTOMER_MESSAGES })],
+  [/^\/v2\/admin\/customers\/[^/]+\/wallet$/,   () => ({ ok: true, data: { balance_ngn: 18300 } })],
+  // /v2/admin/wallets is deliberately absent. WalletsTab drops the response
+  // (`.finally()` with no `.then()`) and renders an EmptyState unconditionally,
+  // so no fixture can make anything appear. It is an unimplemented tab, not an
+  // unstyled one — see Deferred.
+  //
+  // Still stubbed: the Ads, Discounts and Notifications lists (Phase 9) and the
+  // receipt surfaces (Phase 10). Those tabs render empty states, so nothing in
+  // them has been measured. Fill each in as its tab is taken.
   [/^\/v2\/admin\//,                    () => page([])],
 ]
 

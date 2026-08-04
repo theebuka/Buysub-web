@@ -239,6 +239,26 @@ const XIcon = () => <GlyphIcon d="M18 6 6 18M6 6l12 12" />
 const UndoIcon = () => <GlyphIcon d="M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3" />
 const DocumentIcon = () => <GlyphIcon d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M9 13h6M9 17h4" />
 const StarIcon = () => <GlyphIcon filled d="m12 3 2.9 5.9 6.5.9-4.7 4.6 1.1 6.5-5.8-3-5.8 3 1.1-6.5L2.6 9.8l6.5-.9z" />
+const MailIcon = () => <GlyphIcon d="M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM3 7l9 6 9-6" />
+const CardIcon = () => <GlyphIcon d="M2 6h20v12H2zM2 10h20" />
+const KeyIcon = () => <GlyphIcon d="M15.5 8.5a3.5 3.5 0 1 1-3.4-3.5M14 10l-9 9v3h3l1-1v-2h2v-2h2l1-1z" />
+const LockIcon = () => <GlyphIcon d="M6 11h12v10H6zM9 11V7a3 3 0 0 1 6 0v4" />
+const CloakIcon = () => <GlyphIcon d="M3 4h18v16H3zM12 4v16" />
+const EyeOffIcon = () => <GlyphIcon d="M3 3l18 18M10.6 5.2A9.5 9.5 0 0 1 12 5c6 0 9 7 9 7a15 15 0 0 1-3.1 4M6.2 6.4A15 15 0 0 0 3 12s3 7 9 7a9.4 9.4 0 0 0 4.2-1M9.9 9.9a3 3 0 0 0 4.2 4.2" />
+const PhoneIcon = () => <GlyphIcon d="M7 2h10a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H7a1 1 0 0 1-1-1V3a1 1 0 0 1 1-1zM11 18h2" />
+const ClipboardIcon = () => <GlyphIcon d="M9 4h6v3H9zM8 5H6a1 1 0 0 0-1 1v14a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V6a1 1 0 0 0-1-1h-2" />
+const DownloadIcon = () => <GlyphIcon d="M12 3v12M7 11l5 5 5-5M4 20h16" />
+const WarningIcon = () => <GlyphIcon d="M12 3 2 20h20zM12 10v4M12 17h.01" />
+const SearchIcon = () => <GlyphIcon d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14zM20 20l-4-4" />
+const QrIcon = () => <GlyphIcon d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h3v3h-3zM19 19h2v2h-2z" />
+// Rotates instead of swapping paths, so expanded/collapsed is one component.
+const ChevronIcon = ({ open }: { open: boolean }) => (
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+    style={{ flexShrink: 0, transform: open ? 'rotate(90deg)' : 'none' }}>
+    <path d="m9 6 6 6-6 6" />
+  </svg>
+)
 
 // Aligns an icon with its label inside a SmallBtn. The alignment lives here
 // rather than in SmallBtn because SmallBtn is a shared primitive with 25 call
@@ -803,7 +823,7 @@ function NewOrderDrawer({
             <button onClick={onClose} style={{
               width:32, height:32, borderRadius:'var(--bs-radius-md)', background:'transparent',
               border:`1px solid ${T.border}`, color:T.textSecondary, cursor:'pointer', fontSize:'var(--bs-text-lg)',
-            }}>×</button>
+            }}><XIcon /></button>
           </div>
         </div>
 
@@ -883,7 +903,7 @@ function NewOrderDrawer({
                         color:T.textMuted, cursor:items.length===1?'not-allowed':'pointer',
                         fontSize:'var(--bs-text-lg)', opacity:items.length===1?0.3:1,
                       }}
-                    >×</button>
+                    ><XIcon /></button>
                   </div>
 
                   {/* Row 2: period / price / qty */}
@@ -1001,7 +1021,7 @@ function NewOrderDrawer({
                         <span style={{ fontSize:13, color:T.success }}>{discountValid.display} · saves {fmt(discountValid.ngn)}</span>
                       </div>
                       <button onClick={() => { setDiscountValid(null); setDiscountCode('') }}
-                        style={{ background:'transparent', border:'none', color:T.textFaint, cursor:'pointer', fontSize:18, lineHeight:1 }}>×</button>
+                        style={{ background:'transparent', border:'none', color:T.textFaint, cursor:'pointer', fontSize:18, lineHeight:1 }}><XIcon /></button>
                     </div>
                   ) : (
                     <>
@@ -1382,7 +1402,7 @@ useEffect(() => {
                       </div>
                       <div style={{display:'flex',gap:12,alignItems:'center',flexShrink:0}}>
                         <span style={{fontSize:'var(--bs-text-lg)',fontWeight:700,color:T.text}}>{fmt(o.total_ngn)}</span>
-                        <span style={{color:T.textMuted,fontSize:12}}>{isExp?'▾':'▸'}</span>
+                        <span style={{color:T.textMuted,fontSize:'var(--bs-text-xs)',display:'inline-flex'}}><ChevronIcon open={isExp} /></span>
                       </div>
                     </div>
                     {/* Expanded details */}
@@ -2422,7 +2442,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
               <div style={{
                 background: T.elevated, border: `1px solid ${T.border}`,
                 borderRadius: 10, padding: '12px 16px',
-                fontFamily: "'SF Mono', Menlo, monospace", fontSize: 18,
+                fontFamily: "'SF Mono', Menlo, monospace", fontSize: 'var(--bs-text-lg)',
                 fontWeight: 700, color: T.accent, letterSpacing: '0.06em',
                 textAlign: 'center', marginBottom: 18,
               }}>
@@ -2431,13 +2451,13 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
               <div style={{ display: 'flex', gap: 10 }}>
                 <button
                   onClick={() => { navigator.clipboard.writeText(resetResult.temp_password); toast.success('Copied') }}
-                  style={{ flex: 1, height: 40, borderRadius: 10, background: T.elevated, border: `1px solid ${T.border}`, color: T.text, cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter,sans-serif' }}
+                  style={{ flex: 1, height: 40, borderRadius: 10, background: T.elevated, border: `1px solid ${T.border}`, color: T.text, cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                 >
                   Copy
                 </button>
                 <button
                   onClick={() => setResetResult(null)}
-                  style={{ flex: 1, height: 40, borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: 'Inter,sans-serif' }}
+                  style={{ flex: 1, height: 40, borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600 }}
                 >
                   Done
                 </button>
@@ -2493,7 +2513,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
               return (
                 <div key={c.id} style={{
                   background: T.card, border: `1px solid ${T.borderSubtle}`,
-                  borderRadius: 16, overflow: 'hidden',
+                  borderRadius: 'var(--bs-radius-lg)', overflow: 'hidden',
                 }}>
                   {/* Compact row */}
                   <div
@@ -2503,7 +2523,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                     <div style={{ display: 'flex', gap: 12, alignItems: 'center', minWidth: 0, flex: 1 }}>
                       {/* Avatar */}
                       <div style={{
-                        width: 36, height: 36, borderRadius: 999, background: 'rgba(var(--bs-accent-rgb), 0.12)',
+                        width: 36, height: 'var(--bs-control-md)', borderRadius: 999, background: 'rgba(var(--bs-accent-rgb), 0.12)',
                         border: `1px solid rgba(var(--bs-accent-rgb), 0.2)`, flexShrink: 0,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         fontSize: 13, fontWeight: 700, color: T.accent,
@@ -2517,7 +2537,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
                       <Badge status={c.is_active ? 'active' : 'hidden'} T={T} />
-                      <span style={{ color: T.textMuted, fontSize: 12 }}>{isExp ? '▾' : '▸'}</span>
+                      <span style={{ color: T.textMuted, fontSize: 12 }}><ChevronIcon open={isExp} /></span>
                     </div>
                   </div>
    
@@ -2535,13 +2555,13 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                         <SmallBtn T={T} color={T.accent}   onClick={() => setMsgPanel(c)}>
-                          📨 Send Message
+                          <BtnLabel icon={<MailIcon/>}>Send Message</BtnLabel>
                         </SmallBtn>
                         <SmallBtn T={T} color={T.success}  onClick={() => setWalletPanel(c)}>
-                          💳 Top Up Wallet
+                          <BtnLabel icon={<CardIcon/>}>Top Up Wallet</BtnLabel>
                         </SmallBtn>
                         <SmallBtn T={T} color={T.warning}  onClick={() => setDebitCustomer(c)}>
-                          💳 Debit Wallet
+                          <BtnLabel icon={<CardIcon/>}>Debit Wallet</BtnLabel>
                         </SmallBtn>
                         <SmallBtn
                           T={T}
@@ -2549,7 +2569,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                           onClick={() => forceReset(c)}
                           disabled={actionLoading === c.id}
                         >
-                          {actionLoading === c.id ? '…' : '🔑 Force Reset'}
+                          {actionLoading === c.id ? '…' : <BtnLabel icon={<KeyIcon/>}>Force Reset</BtnLabel>}
                         </SmallBtn>
                       </div>
                     </div>
@@ -2621,7 +2641,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                   To: {customer.name || customer.email}
                 </div>
               </div>
-              <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, cursor: 'pointer', fontSize: 18 }}>×</button>
+              <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 'var(--bs-radius-md)', background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, cursor: 'pointer', fontSize: 'var(--bs-text-lg)' }}><XIcon /></button>
             </div>
           </div>
    
@@ -2652,7 +2672,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: T.elevated, borderRadius: 10, border: `1px solid ${T.border}` }}>
                 <img
                   src={`https://img.logo.dev/${form.product_domain}?token=${LOGO_DEV_TOKEN}&size=64&theme=dark`}
-                  alt="" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'contain' }}
+                  alt="" style={{ width: 32, height: 32, borderRadius: 'var(--bs-radius-md)', objectFit: 'contain' }}
                   onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
                 />
                 <span style={{ fontSize: 12, color: T.textSecondary }}>Logo preview · shown in customer inbox</span>
@@ -2683,10 +2703,10 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
    
           {/* Footer */}
           <div style={{ padding: '16px 24px', borderTop: `1px solid ${T.border}`, display: 'flex', gap: 10, flexShrink: 0 }}>
-            <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 22px', borderRadius: 10, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+            <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 22px', borderRadius: 10, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, fontSize: 'var(--bs-text-sm)', fontWeight: 600, cursor: 'pointer' }}>
               Cancel
             </button>
-            <button onClick={send} disabled={saving} style={{ flex: 1, height: 44, borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'Inter,sans-serif' }}>
+            <button onClick={send} disabled={saving} style={{ flex: 1, height: 44, borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', fontSize: 'var(--bs-text-sm)', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Sending…' : 'Send Message'}
             </button>
           </div>
@@ -2765,19 +2785,23 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
               <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Top Up Wallet</div>
               <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{customer.name || customer.email}</div>
             </div>
-            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, cursor: 'pointer', fontSize: 18 }}>×</button>
+            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 'var(--bs-radius-md)', background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, cursor: 'pointer', fontSize: 'var(--bs-text-lg)' }}><XIcon /></button>
           </div>
    
           {/* Body */}
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {/* Current balance */}
             <div style={{
-              padding: '14px 16px', borderRadius: 12,
-              background: 'linear-gradient(135deg, #7C5CFF 0%, #5B3FD4 100%)',
+              padding: '14px 16px', borderRadius: 'var(--bs-radius-lg)',
+              // #5B3FD4 is the LIGHT value of --bs-accent-on-surface. Phase 2
+              // hit this exact thing on the dashboard wallet gradient and ruled
+              // that reusing it as a gradient stop puts a second meaning on
+              // that token. Same fix as Phase 2: accent -> accent-hover.
+              background: `linear-gradient(135deg, ${T.accent} 0%, ${T.accentHover} 100%)`,
               display: 'flex', justifyContent: 'space-between', alignItems: 'center',
             }}>
               <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>Current Balance</span>
-              <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>
+              <span style={{ fontSize: 'var(--bs-text-lg)', fontWeight: 700, color: '#fff' }}>
                 {balance != null ? `₦${Number(balance).toLocaleString('en-NG')}` : '…'}
               </span>
             </div>
@@ -2815,10 +2839,10 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
    
           {/* Footer */}
           <div style={{ padding: '0 24px 20px', display: 'flex', gap: 10 }}>
-            <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 22px', borderRadius: 10, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+            <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 22px', borderRadius: 10, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, fontSize: 'var(--bs-text-sm)', fontWeight: 600, cursor: 'pointer' }}>
               Cancel
             </button>
-            <button onClick={topup} disabled={saving} style={{ flex: 1, height: 44, borderRadius: 10, background: T.success, border: 'none', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'Inter,sans-serif' }}>
+            <button onClick={topup} disabled={saving} style={{ flex: 1, height: 44, borderRadius: 10, background: T.success, border: 'none', color: '#fff', fontSize: 'var(--bs-text-sm)', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
               {saving ? 'Processing…' : `Top Up ${amount ? `₦${parseFloat(amount).toLocaleString('en-NG')}` : ''}`}
             </button>
           </div>
@@ -2881,19 +2905,22 @@ function WalletDebitPanel({
             <div style={{ fontSize: 15, fontWeight: 700, color: T.text }}>Debit Wallet</div>
             <div style={{ fontSize: 11, color: T.textMuted, marginTop: 2 }}>{customer.name || customer.email}</div>
           </div>
-          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, cursor: 'pointer', fontSize: 18 }}>×</button>
+          <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 'var(--bs-radius-md)', background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, cursor: 'pointer', fontSize: 'var(--bs-text-lg)' }}><XIcon /></button>
         </div>
 
         {/* Body */}
         <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
           {/* Balance */}
           <div style={{
-            padding: '14px 16px', borderRadius: 12,
-            background: 'linear-gradient(135deg, #dc2626 0%, #991b1b 100%)',
+            padding: '14px 16px', borderRadius: 'var(--bs-radius-lg)',
+            // Pre-token error colours; #dc2626 is the old palette's error and
+            // #991b1b has no token at all. Darkening the second stop keeps the
+            // gradient reading as a gradient rather than a flat fill.
+            background: `linear-gradient(135deg, ${T.error} 0%, color-mix(in srgb, ${T.error}, #000 32%) 100%)`,
             display: 'flex', justifyContent: 'space-between', alignItems: 'center',
           }}>
             <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.8)', fontWeight: 500 }}>Current Balance</span>
-            <span style={{ fontSize: 18, fontWeight: 700, color: '#fff' }}>
+            <span style={{ fontSize: 'var(--bs-text-lg)', fontWeight: 700, color: '#fff' }}>
               {balance != null ? `₦${Number(balance).toLocaleString('en-NG')}` : '…'}
             </span>
           </div>
@@ -2911,7 +2938,7 @@ function WalletDebitPanel({
           {amount && parseFloat(amount) > 0 && balance != null && (
             <div style={{ padding: '10px 14px', borderRadius: 10, background: T.elevated, border: `1px solid ${T.border}`, fontSize: 12, color: T.textSecondary }}>
               Balance after debit:{' '}
-              <strong style={{ color: parseFloat(amount) > balance ? '#dc2626' : T.text }}>
+              <strong style={{ color: parseFloat(amount) > balance ? T.error : T.text }}>
                 ₦{Math.max(0, balance - parseFloat(amount)).toLocaleString('en-NG')}
               </strong>
             </div>
@@ -2920,10 +2947,10 @@ function WalletDebitPanel({
 
         {/* Footer */}
         <div style={{ padding: '0 24px 20px', display: 'flex', gap: 10 }}>
-          <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 22px', borderRadius: 10, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, fontSize: 14, fontWeight: 600, cursor: 'pointer', fontFamily: 'Inter,sans-serif' }}>
+          <button onClick={onClose} style={{ flex: '0 0 auto', height: 44, padding: '0 22px', borderRadius: 10, background: 'transparent', border: `1px solid ${T.border}`, color: T.textSecondary, fontSize: 'var(--bs-text-sm)', fontWeight: 600, cursor: 'pointer' }}>
             Cancel
           </button>
-          <button onClick={debit} disabled={saving} style={{ flex: 1, height: 44, borderRadius: 10, border: 'none', background: '#dc2626', color: '#fff', fontSize: 14, fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1, fontFamily: 'Inter,sans-serif' }}>
+          <button onClick={debit} disabled={saving} style={{ flex: 1, height: 44, borderRadius: 10, border: 'none', background: '#dc2626', color: '#fff', fontSize: 'var(--bs-text-sm)', fontWeight: 600, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.6 : 1 }}>
             {saving ? 'Processing…' : `Debit${amount && parseFloat(amount) > 0 ? ` ₦${parseFloat(amount).toLocaleString('en-NG')}` : ''}`}
           </button>
         </div>
@@ -2949,15 +2976,15 @@ function PartnersTab({T}:{T:Theme}) {
       {loading?<Loading T={T}/>:apps.length===0?<EmptyState text="No partner applications" T={T}/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {apps.map(a=>(
-            <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,overflow:'hidden'}}>
+            <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',overflow:'hidden'}}>
               <div onClick={()=>setExpanded(expanded===a.id?null:a.id)} style={{padding:'16px 22px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12}}>
                 <div style={{minWidth:0}}>
-                  <div style={{fontSize:14,color:T.text,fontWeight:500}}>{a.legal_name}</div>
+                  <div style={{fontSize:'var(--bs-text-sm)',color:T.text,fontWeight:500}}>{a.legal_name}</div>
                   <div style={{fontSize:12,color:T.textMuted,marginTop:3}}>{a.owner_name} · {a.business_email} · {a.state}</div>
                 </div>
                 <div style={{display:'flex',gap:8,alignItems:'center',flexShrink:0}}>
                   <Badge status={a.status} T={T}/><span style={{fontSize:11,color:T.textMuted}}>{fmtDate(a.created_at)}</span>
-                  <span style={{color:T.textMuted}}>{expanded===a.id?'▾':'▸'}</span>
+                  <span style={{color:T.textMuted}}><ChevronIcon open={expanded===a.id} /></span>
                 </div>
               </div>
               {expanded===a.id&&(
@@ -2980,7 +3007,7 @@ function PartnersTab({T}:{T:Theme}) {
                   {a.status==='pending_review'&&(
                     <div style={{display:'flex',gap:8}}>
                       <SmallBtn T={T} color={T.success} onClick={()=>approve(a.id)} disabled={actionLoading===a.id}>{actionLoading===a.id?'…':'✓ Approve'}</SmallBtn>
-                      <SmallBtn T={T} color={T.error} onClick={()=>reject(a.id)} disabled={actionLoading===a.id}>✕ Reject</SmallBtn>
+                      <SmallBtn T={T} color={T.error} onClick={()=>reject(a.id)} disabled={actionLoading===a.id}><BtnLabel icon={<XIcon/>}>Reject</BtnLabel></SmallBtn>
                     </div>
                   )}
                 </div>
@@ -3018,10 +3045,10 @@ function AffiliatesTab({T}:{T:Theme}) {
       {loading?<Loading T={T}/>:affiliates.length===0?<EmptyState text="No affiliates" T={T}/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {affiliates.map((a:any)=>(
-            <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:16,padding:'16px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+            <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'16px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
               <div>
-                <div style={{fontSize:14,fontWeight:500,color:T.text}}>{a.business_name||a.store_name||'—'}</div>
-                <div style={{fontSize:12,color:T.textMuted,marginTop:3}}>Code: <span style={{fontFamily:'monospace',background:T.elevated,padding:'2px 8px',borderRadius:6}}>{a.referral_code}</span> · {a.commission_rate}%</div>
+                <div style={{fontSize:'var(--bs-text-sm)',fontWeight:500,color:T.text}}>{a.business_name||a.store_name||'—'}</div>
+                <div style={{fontSize:12,color:T.textMuted,marginTop:3}}>Code: <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',background:T.elevated,padding:'2px 8px',borderRadius:6}}>{a.referral_code}</span> · {a.commission_rate}%</div>
               </div>
               <div style={{display:'flex',gap:6,alignItems:'center'}}>
                 <Badge status={a.status} T={T}/>
@@ -3321,11 +3348,11 @@ function LinksTab({ T }: { T: Theme }) {
     <div>
       <style>{`
         .bs-lnk-input:focus, .bs-lnk-input:focus-visible {
-          outline: none !important; border-color: #7C5CFF !important;
+          outline: none !important; border-color: var(--bs-accent) !important;
         }
         .bs-lnk-card { transition: border-color .18s, transform .18s; }
         .bs-lnk-card:hover { border-color: var(--bs-border-strong) !important; transform: translateY(-1px); }
-        .bs-lnk-new-btn:hover { background:#6B4EE6 !important; }
+        .bs-lnk-new-btn:hover { background: var(--bs-accent-hover) !important; }
         .bs-lnk-ghost:hover:not(:disabled) { background: var(--bs-bg-muted) !important; }
         .bs-lnk-ghost-danger:hover:not(:disabled) {
           background: rgba(var(--bs-error-rgb), .08) !important;
@@ -3335,7 +3362,7 @@ function LinksTab({ T }: { T: Theme }) {
         .bs-lnk-ghost-accent:hover:not(:disabled) {
           background: rgba(var(--bs-accent-rgb), .1) !important;
           border-color: rgba(var(--bs-accent-rgb), .4) !important;
-          color: #7C5CFF !important;
+          color: var(--bs-accent-on-surface) !important;
         }
       `}</style>
 
@@ -3344,7 +3371,7 @@ function LinksTab({ T }: { T: Theme }) {
         display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 10,
         marginBottom: 18,
       }}>
-        <div style={{ fontSize: 22, fontWeight: 700, color: T.text, lineHeight: 1 }}>
+        <div style={{ fontSize: 'var(--bs-text-xl)', fontWeight: 700, color: T.text, lineHeight: 1 }}>
           Short links
         </div>
         <div style={{ fontSize: 12, color: T.textMuted }}>
@@ -3355,7 +3382,7 @@ function LinksTab({ T }: { T: Theme }) {
           onClick={openCreate}
           className="bs-lnk-new-btn"
           style={{
-            height: 42, padding: '0 20px', borderRadius: 10,
+            height: 'var(--bs-control-md)', padding: '0 20px', borderRadius: 10,
             background: T.accentFill, border: 'none', color: '#fff',
             cursor: 'pointer', fontSize: 13, fontWeight: 600,
             display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -3379,8 +3406,8 @@ function LinksTab({ T }: { T: Theme }) {
         />
         <div style={{
           position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-          color: T.textMuted, fontSize: 14, pointerEvents: 'none',
-        }}>⌕</div>
+          color: T.textMuted, fontSize: 'var(--bs-text-sm)', pointerEvents: 'none',
+        }}><SearchIcon /></div>
       </div>
 
       {/* ─── LIST ─── */}
@@ -3458,12 +3485,12 @@ function LinkRowCard({
   onCopy: () => void
   onQR: () => void
 }) {
-  const features: { label: string; icon: string }[] = []
-  if (link.has_password)  features.push({ label: 'Password', icon: '🔒' })
-  if (link.cloak)         features.push({ label: 'Cloaked',  icon: '🪞' })
-  if (link.hide_referrer) features.push({ label: 'No ref',   icon: '🕶️' })
+  const features: { label: string; icon: React.ReactNode }[] = []
+  if (link.has_password)  features.push({ label: 'Password', icon: <LockIcon/> })
+  if (link.cloak)         features.push({ label: 'Cloaked',  icon: <CloakIcon/> })
+  if (link.hide_referrer) features.push({ label: 'No ref',   icon: <EyeOffIcon/> })
   if (link.deep_link_ios || link.deep_link_android)
-                          features.push({ label: 'Deep link', icon: '📱' })
+                          features.push({ label: 'Deep link', icon: <PhoneIcon/> })
 
   const expMs = link.expires_at ? new Date(link.expires_at).getTime() - Date.now() : null
   const limitReached = link.click_limit != null && link.click_count >= link.click_limit
@@ -3474,8 +3501,12 @@ function LinkRowCard({
       className="bs-lnk-card"
       style={{
         background: T.card,
-        border: `1px solid ${link.active && !isExpired && !limitReached ? '#1C1C1F' : T.border}`,
-        borderRadius: 16,
+        // Second Marketplace leak, same shape as the product card in Phase 7:
+        // #1C1C1F sits close to --bs-border-default in dark so the healthy
+        // state looked right there, and drew a near-black border on a white
+        // card in light. The healthy-vs-degraded distinction is preserved.
+        border: `1px solid ${link.active && !isExpired && !limitReached ? T.borderSubtle : T.border}`,
+        borderRadius: 'var(--bs-radius-lg)',
         padding: '16px 18px',
         display: 'flex',
         gap: 14,
@@ -3501,13 +3532,17 @@ function LinkRowCard({
           </span>
           {features.map(f => (
             <span key={f.label} title={f.label} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              height: 20, padding: '0 8px', borderRadius: 999,
+              display: 'inline-flex', alignItems: 'center', gap: 'var(--bs-space-1)',
+              height: 20, padding: '0 var(--bs-space-2)', borderRadius: 'var(--bs-radius-full)',
               background: 'rgba(var(--bs-accent-rgb), .1)',
               border: '1px solid rgba(var(--bs-accent-rgb), .25)',
-              color: T.accent, fontSize: 10, fontWeight: 600,
+              // Fifth instance of the on-tint bug: the label was plain
+              // T.accent on a 10% tint of itself. Was also 10px, under the
+              // 11 floor.
+              color: 'color-mix(in srgb, var(--bs-accent), var(--bs-on-tint-mix))',
+              fontSize: 'var(--bs-text-2xs)', fontWeight: 600,
             }}>
-              <span style={{ fontSize: 10 }}>{f.icon}</span>
+              {f.icon}
               {f.label}
             </span>
           ))}
@@ -3533,8 +3568,8 @@ function LinkRowCard({
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <IconBtn T={T} onClick={onCopy} title="Copy short URL">📋</IconBtn>
-        <IconBtn T={T} onClick={onQR} title="Show QR code">▦</IconBtn>
+        <IconBtn T={T} onClick={onCopy} title="Copy short URL">{<ClipboardIcon/>}</IconBtn>
+        <IconBtn T={T} onClick={onQR} title="Show QR code"><QrIcon /></IconBtn>
         <GhostBtn T={T} onClick={onEdit} variant="accent">Edit</GhostBtn>
         <GhostBtn T={T} onClick={onToggle}>
           {link.active ? 'Pause' : 'Resume'}
@@ -3602,7 +3637,7 @@ function LinkEditorDrawer({
           display: 'flex', alignItems: 'center', gap: 10,
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>
+            <div style={{ fontSize: 'var(--bs-text-lg)', fontWeight: 700, color: T.text }}>
               {isEdit ? 'Edit link' : 'New short link'}
             </div>
             {form.slug && (
@@ -3618,11 +3653,11 @@ function LinkEditorDrawer({
             onClick={onCancel}
             aria-label="Close"
             style={{
-              width: 32, height: 32, borderRadius: 8,
+              width: 32, height: 32, borderRadius: 'var(--bs-radius-md)',
               background: 'transparent', border: `1px solid ${T.border}`,
-              color: T.textSecondary, cursor: 'pointer', fontSize: 16,
+              color: T.textSecondary, cursor: 'pointer', fontSize: 'var(--bs-text-lg)',
             }}
-          >×</button>
+          ><XIcon /></button>
         </div>
 
         {/* Tabs */}
@@ -3676,7 +3711,7 @@ function LinkEditorDrawer({
               background: 'transparent',
               border: `1px solid ${T.border}`,
               color: T.textSecondary,
-              fontSize: 14, fontWeight: 600,
+              fontSize: 'var(--bs-text-sm)', fontWeight: 600,
               cursor: saving ? 'not-allowed' : 'pointer',
             }}
           >
@@ -3689,7 +3724,7 @@ function LinkEditorDrawer({
             style={{
               flex: 1, height: 44, borderRadius: 10,
               background: T.accentFill, border: 'none', color: '#fff',
-              fontSize: 14, fontWeight: 600,
+              fontSize: 'var(--bs-text-sm)', fontWeight: 600,
               cursor: saving ? 'not-allowed' : 'pointer',
               opacity: saving ? 0.6 : 1,
             }}
@@ -3709,7 +3744,7 @@ function LinkEditorDrawer({
 function SectionLabel({ T, children }: { T: Theme; children: React.ReactNode }) {
   return (
     <div style={{
-      fontSize: 10, color: T.textMuted, textTransform: 'uppercase',
+      fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase',
       letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10,
     }}>{children}</div>
   )
@@ -3745,7 +3780,7 @@ function ToggleRow({
         padding: '12px 14px',
         background: T.elevated,
         border: `1px solid ${T.border}`,
-        borderRadius: 12,
+        borderRadius: 'var(--bs-radius-lg)',
         cursor: 'pointer',
       }}
     >
@@ -3790,7 +3825,7 @@ function BasicsSection({ T, form, setForm, IS }: any) {
         </Label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
           <div style={{
-            height: 42, padding: '0 12px', display: 'flex', alignItems: 'center',
+            height: 'var(--bs-control-md)', padding: '0 12px', display: 'flex', alignItems: 'center',
             background: T.elevated, border: `1px solid ${T.border}`,
             borderRight: 'none', borderRadius: '10px 0 0 10px',
             fontSize: 13, color: T.textMuted,
@@ -3900,7 +3935,7 @@ function TargetingSection({ T, form, setForm, IS }: any) {
         <div style={{
           padding: 20, textAlign: 'center', fontSize: 13,
           color: T.textMuted,
-          background: T.elevated, border: `1px dashed ${T.border}`, borderRadius: 12,
+          background: T.elevated, border: `1px dashed ${T.border}`, borderRadius: 'var(--bs-radius-lg)',
         }}>
           No rules yet. All visitors go to the default destination.
         </div>
@@ -3908,7 +3943,7 @@ function TargetingSection({ T, form, setForm, IS }: any) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {form.rules.map((rule: LinkRule, idx: number) => (
             <div key={rule.id || idx} style={{
-              padding: 14, borderRadius: 12,
+              padding: 14, borderRadius: 'var(--bs-radius-lg)',
               background: T.elevated, border: `1px solid ${T.border}`,
               display: 'flex', flexDirection: 'column', gap: 10,
             }}>
@@ -3929,13 +3964,13 @@ function TargetingSection({ T, form, setForm, IS }: any) {
                   value={rule.priority}
                   onChange={(e: any) => updateRule(idx, { priority: parseInt(e.target.value, 10) || 0 })}
                   title="Priority (lower = evaluated first)"
-                  style={{ ...IS, width: 70, height: 30, fontSize: 12, padding: '0 8px' }}
+                  style={{ ...IS, width: 70, height: 'var(--bs-control-sm)', fontSize: 12, padding: '0 8px' }}
                 />
                 <button
                   onClick={() => removeRule(idx)}
                   className="bs-lnk-ghost-danger"
                   style={{
-                    height: 30, padding: '0 10px', borderRadius: 999,
+                    height: 'var(--bs-control-sm)', padding: '0 10px', borderRadius: 999,
                     background: 'transparent', border: `1px solid ${T.border}`,
                     color: T.textMuted, fontSize: 11, fontWeight: 600,
                     cursor: 'pointer',
@@ -4025,13 +4060,13 @@ function SecuritySection({ T, form, setForm, IS, isEdit }: any) {
             display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10,
           }}>
             <div style={{ fontSize: 13, color: T.text, display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span>🔒</span> Password is set
+              <LockIcon/> Password is set
             </div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button
                 onClick={() => setForm((f: any) => ({ ...f, password: ' ' }))}
                 style={{
-                  height: 30, padding: '0 12px', borderRadius: 999,
+                  height: 'var(--bs-control-sm)', padding: '0 12px', borderRadius: 999,
                   background: 'transparent', border: `1px solid ${T.border}`,
                   color: T.text, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 }}
@@ -4039,7 +4074,7 @@ function SecuritySection({ T, form, setForm, IS, isEdit }: any) {
               <button
                 onClick={() => setForm((f: any) => ({ ...f, clearPassword: true, password: '' }))}
                 style={{
-                  height: 30, padding: '0 12px', borderRadius: 999,
+                  height: 'var(--bs-control-sm)', padding: '0 12px', borderRadius: 999,
                   background: 'transparent', border: `1px solid ${T.border}`,
                   color: T.textMuted, fontSize: 12, fontWeight: 600, cursor: 'pointer',
                 }}
@@ -4082,7 +4117,7 @@ function SecuritySection({ T, form, setForm, IS, isEdit }: any) {
           border: `1px solid rgba(var(--bs-warning-rgb), 0.25)`,
           fontSize: 12, color: T.textSecondary, lineHeight: 1.5,
         }}>
-          ⚠ Many sites set <code>X-Frame-Options: DENY</code> which prevents cloaking.
+          <WarningIcon /> Many sites set <code>X-Frame-Options: DENY</code> which prevents cloaking.
           Test the link after enabling — if the destination goes blank, disable cloaking.
         </div>
       )}
@@ -4199,7 +4234,7 @@ function QrSection({ T, form, setForm, IS }: any) {
         <div style={{
           padding: 20, textAlign: 'center',
           background: T.elevated, border: `1px solid ${T.border}`,
-          borderRadius: 12, fontSize: 13, color: T.textMuted,
+          borderRadius: 'var(--bs-radius-lg)', fontSize: 13, color: T.textMuted,
         }}>
           Set a slug first to generate a QR code.
         </div>
@@ -4208,7 +4243,7 @@ function QrSection({ T, form, setForm, IS }: any) {
           <div style={{
             display: 'flex', justifyContent: 'center',
             padding: 20, background: T.elevated,
-            border: `1px solid ${T.border}`, borderRadius: 16,
+            border: `1px solid ${T.border}`, borderRadius: 'var(--bs-radius-lg)',
           }}>
             <QrPreview url={shortUrl} cfg={cfg} size={220} />
           </div>
@@ -4255,7 +4290,7 @@ function QrSection({ T, form, setForm, IS }: any) {
               background: 'transparent', border: `1px solid ${T.border}`,
               color: T.text, fontSize: 13, fontWeight: 600, cursor: 'pointer',
             }}
-          >⬇ Download QR (PNG)</button>
+          >{<BtnLabel icon={<DownloadIcon/>}>Download QR (PNG)</BtnLabel>}</button>
         </>
       )}
     </FieldStack>
@@ -4291,7 +4326,7 @@ function QrPreview({
       alt="QR code"
       width={size}
       height={size}
-      style={{ borderRadius: 12, display: 'block', background: cfg.bg || '#fff' }}
+      style={{ borderRadius: 'var(--bs-radius-lg)', display: 'block', background: cfg.bg || '#fff' }}
     />
   )
 }
@@ -4331,7 +4366,7 @@ function ColorInput({
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 8,
-      height: 42, padding: '0 10px',
+      height: 'var(--bs-control-md)', padding: '0 10px',
       background: T.elevated, border: `1px solid ${T.border}`,
       borderRadius: 10,
     }}>
@@ -4340,7 +4375,7 @@ function ColorInput({
         value={value}
         onChange={e => onChange(e.target.value)}
         style={{
-          width: 28, height: 28, padding: 0,
+          width: 28, height: 'var(--bs-control-sm)', padding: 0,
           border: 'none', borderRadius: 6,
           background: 'transparent', cursor: 'pointer',
         }}
@@ -4392,7 +4427,7 @@ function QrDialog({
           }}
         >
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 10 }}>
-            <div style={{ fontSize: 16, fontWeight: 700, color: T.text }}>QR code</div>
+            <div style={{ fontSize: 'var(--bs-text-lg)', fontWeight: 700, color: T.text }}>QR code</div>
             <div style={{
               fontSize: 12, color: T.textMuted,
               fontFamily: "'SF Mono', Menlo, monospace",
@@ -4402,7 +4437,7 @@ function QrDialog({
           <div style={{
             display: 'flex', justifyContent: 'center',
             padding: 20, background: T.elevated,
-            border: `1px solid ${T.border}`, borderRadius: 16,
+            border: `1px solid ${T.border}`, borderRadius: 'var(--bs-radius-lg)',
           }}>
             <QrPreview url={url} cfg={cfg} size={220} />
           </div>
@@ -4422,7 +4457,7 @@ function QrDialog({
             <button
               onClick={onClose}
               style={{
-                flex: 1, height: 42, borderRadius: 10,
+                flex: 1, height: 'var(--bs-control-md)', borderRadius: 10,
                 background: 'transparent', border: `1px solid ${T.border}`,
                 color: T.textSecondary, fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
@@ -4430,7 +4465,7 @@ function QrDialog({
             <button
               onClick={() => downloadQr(url, cfg)}
               style={{
-                flex: 1, height: 42, borderRadius: 10,
+                flex: 1, height: 'var(--bs-control-md)', borderRadius: 10,
                 background: 'transparent', border: `1px solid ${T.border}`,
                 color: T.text, fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
@@ -4438,7 +4473,7 @@ function QrDialog({
             <button
               onClick={async () => { await onSaveConfig(cfg); onClose() }}
               style={{
-                flex: 1, height: 42, borderRadius: 10,
+                flex: 1, height: 'var(--bs-control-md)', borderRadius: 10,
                 background: T.accentFill, border: 'none', color: '#fff',
                 fontSize: 13, fontWeight: 600, cursor: 'pointer',
               }}
