@@ -1013,13 +1013,26 @@ Phase 6 named Phase 9 as the closing act for two things. Their status differs:
    (`T_DARK` `:4`, `T_LIGHT` `:10`, consumed `:24`). That is **Phase 12**, not
    this phase.
 
-2. **The `T` prop threading: genuinely outstanding, and now unblocked.** Three
-   code comments point here (`app/admin/page.tsx:81`, `:325`, `:2230`). The
-   condition was "once the tabs are done", and they are. It is ~40 signatures
-   and 500+ dereferences of a module constant, so it is mechanical and
-   non-visual, but it spans all 13 tabs and therefore belongs in its own commit
-   rather than inside a phase — same reasoning as `--bs-accent-fill`. Two dead
-   props go with it: `Badge`'s unused `T` and `StatChip`'s unused `color`.
+2. **The `T` prop threading: done, in its own commit.** Removed 267 `T={T}`
+   JSX attributes, 39 `T: Theme` type members, the `T` entry on `useTheme`'s
+   return, and the `type Theme` alias itself, which existed only to annotate
+   those signatures. Components now read the module constant by lexical scope.
+   The two dead props went with it: `Badge`'s unused `T` and `StatChip`'s
+   unused `color` (plus its three call-site arguments).
+
+   **The gate was that nothing renders differently.** Computed styles for 23
+   properties on every element were captured across all 13 tabs in both themes,
+   before and after, and hashed: **25 of 26 byte-identical**. The 26th,
+   `dark/Affiliates`, was a stale baseline rather than a regression — proven
+   three ways: re-measuring it with a longer settle reproduces the after-value
+   exactly; `dark − light` element count is +1 for all 13 tabs afterwards
+   (the theme toggle's extra icon path) where the before-run had Affiliates
+   alone at −15; and that tab sat third in a 700ms-settle chunk, so its fetch
+   had not resolved and the run recorded its loading state.
+
+   Worth keeping for the next before/after diff: **let each tab settle long
+   enough to finish fetching, or the baseline captures loading states and
+   invents deltas.**
 
 ## Seams to watch
 - After Phase 12 restyles Navbar/Footer, the cart drawer inside Marketplace.tsx
@@ -1180,3 +1193,12 @@ Phase 6 named Phase 9 as the closing act for two things. Their status differs:
   Phase 12. The `T` prop threading is genuinely outstanding and now unblocked
   ("once the tabs are done"); it spans all 13 tabs so it belongs in its own
   commit rather than inside a phase.
+- 2026-08-04 — T prop threading removed, standalone commit. 267 T={T} JSX
+  attributes, 39 T: Theme type members, the T entry on useTheme's return and the
+  now-unreferenced `type Theme` alias all deleted; components read the module
+  constant by lexical scope. Badge's unused T prop and StatChip's unused color
+  prop dropped with it. Gate was that nothing renders differently: computed
+  styles for 23 properties on every element, all 13 tabs, both themes, hashed
+  before and after — 25 of 26 identical, and the 26th was a stale baseline that
+  had captured a loading state, proven by re-measurement and by the dark-minus-
+  light element count being +1 for every tab afterwards. tsc + build clean.

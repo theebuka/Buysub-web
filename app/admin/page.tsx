@@ -77,10 +77,12 @@ function useClientValue<T>(getter: () => T, fallback: T): T {
 // consumer of T.* — 500+ dereferences across 13 tabs — moves onto the token
 // layer without a single call site or signature changing.
 //
-// The T prop is still threaded through ~40 helpers. That threading is now
-// pure ceremony (the object is a module constant) and dies in Phase 9, once
-// the tabs are done. Removing it now would mean editing every tab, which is
-// what Phases 7-9 are for.
+// The T prop used to be threaded through ~40 helpers as a prop and a JSX
+// attribute. Once this became a module constant that threading was pure
+// ceremony — every call site passed the same object — so it was removed after
+// the tabs were done: 267 T={T} attributes, 39 type members and the `Theme`
+// alias that annotated them. Nothing renders differently; that was the gate.
+// Components now read this constant directly by lexical scope.
 //
 // Anything reading T.* is theme-correct for free. Anything still holding a
 // colour literal is NOT, and those are listed in REFACTOR.md per tab.
@@ -91,7 +93,7 @@ function useClientValue<T>(getter: () => T, fallback: T): T {
 // #F0F0F5, and light-mode textMuted #8896a6 -> #66717F (which was a 3.20:1
 // contrast failure). accentHover in dark was #9B85FF, a lighter tint that
 // exists in no palette; it is now --bs-accent-hover #6B4EE6 in both themes.
-const TOKENS = {
+const T = {
   bg: 'var(--bs-bg-base)',
   card: 'var(--bs-bg-card)',
   elevated: 'var(--bs-bg-elevated)',
@@ -118,16 +120,19 @@ const TOKENS = {
   shadow: 'var(--bs-elev-1)',
   shadowLg: 'var(--bs-elev-2)',
 }
-type Theme = typeof TOKENS
+// `type Theme` lived here to annotate the T prop on ~40 signatures. With the
+// threading gone nothing references it, so it went too. The comment block at
+// the Links section still mentions it as something sub-components import from
+// "the existing admin scope"; that note is now historical.
 
-// Wraps the shared controller so the return shape stays { T, isDark, toggle,
+// Wraps the shared controller so the return shape stays { isDark, toggle,
 // mounted } and Shell's props do not change. isDark now drives only the
 // toggle icon; it no longer picks the palette. The local read/write of
 // bs_admin_theme is gone — lib/theme.ts owns that key, and owning it in two
 // places is how the storefront toggle ended up writing a value nothing reads.
 function useTheme() {
   const { isDark, toggle, mounted } = useThemeController()
-  return { T: TOKENS, isDark, toggle, mounted }
+  return { isDark, toggle, mounted }
 }
 
 // ── Auth (only called inside useEffect / event handlers) ──
@@ -185,13 +190,13 @@ async function apiFetch(path: string, opts: RequestInit = {}) {
 //
 // fontFamily is inherited from the layout; the local 'Inter,sans-serif'
 // literals that used to sit in these style objects are gone.
-const inputStyle = (T: Theme): React.CSSProperties => ({
+const inputStyle = (): React.CSSProperties => ({
   height: 'var(--bs-control-md)', padding: '0 var(--bs-space-3)',
   borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)',
   width: '100%', flex: 1, background: T.input, border: `1px solid ${T.border}`,
   color: T.text, boxSizing: 'border-box', outline: 'none',
 })
-const pageBtnStyle = (T: Theme, disabled: boolean): React.CSSProperties => ({
+const pageBtnStyle = (disabled: boolean): React.CSSProperties => ({
   height: 'var(--bs-control-sm)', padding: '0 var(--bs-space-4)',
   borderRadius: 'var(--bs-radius-md)', border: `1px solid ${T.border}`, background: T.card,
   color: disabled ? T.textFaint : T.text, cursor: disabled ? 'not-allowed' : 'pointer',
@@ -270,7 +275,7 @@ const BtnLabel = ({ icon, children }: { icon: React.ReactNode; children: React.R
   </span>
 )
 
-function Shell({ T, isDark, toggle, adminEmail, children }: { T: Theme; isDark: boolean; toggle: () => void; adminEmail: string; children: React.ReactNode }) {
+function Shell({ isDark, toggle, adminEmail, children }: { isDark: boolean; toggle: () => void; adminEmail: string; children: React.ReactNode }) {
   return (
     <div style={{ background: T.bg, minHeight: '100dvh', color: T.text, padding: '0 var(--bs-space-6) var(--bs-space-12)', paddingTop: 'calc(2vh + var(--bs-space-4))', boxSizing: 'border-box', transition: 'background var(--bs-dur-2) var(--bs-ease-out), color var(--bs-dur-2) var(--bs-ease-out)' }}>
       {/* Focus rings. Admin had none: five style objects set outline:'none'
@@ -314,16 +319,13 @@ function Shell({ T, isDark, toggle, adminEmail, children }: { T: Theme; isDark: 
 // dense, where small-caps labels earn their space. That split is deliberate,
 // not an inconsistency for a later phase to "fix". Sizes move up to the 2xs
 // floor: these were 10px, and nothing renders below 11.
-function Card({ T, title, children, style }: { T: Theme; title: string; children: React.ReactNode; style?: React.CSSProperties }) {
+function Card({ title, children, style }: { title: string; children: React.ReactNode; style?: React.CSSProperties }) {
   return <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: 'var(--bs-space-5) var(--bs-space-6)', boxShadow: T.shadow, ...style }}><div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--bs-space-3)', fontWeight: 600 }}>{title}</div>{children}</div>
 }
-function KpiCard({ T, label, value, highlight }: { T: Theme; label: string; value: string; highlight?: boolean }) {
+function KpiCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return <div style={{ background: T.card, border: `1px solid ${highlight ? 'rgba(var(--bs-warning-rgb), 0.4)' : T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: 'var(--bs-space-4) var(--bs-space-5)', boxShadow: T.shadow }}><div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, marginBottom: 'var(--bs-space-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div><div style={{ fontSize: 'var(--bs-text-2xl)', fontWeight: 700, color: highlight ? T.warning : T.text }}>{value}</div></div>
 }
-// The T prop is unused — the colours come from statusColor, which is now
-// theme-argument-free. Kept in the signature so the 8 call sites stay valid;
-// it goes when the T threading is unwound in Phase 9.
-function Badge({ status }: { status: string; T?: Theme }) {
+function Badge({ status }: { status: string }) {
   const c = statusColor(status)
   return <span style={{ display: 'inline-block', padding: '3px var(--bs-space-2)', borderRadius: 'var(--bs-radius-full)', fontSize: 'var(--bs-text-2xs)', fontWeight: 500, background: c.bg, color: c.color, whiteSpace: 'nowrap' }}>{status.replace(/_/g, ' ')}</span>
 }
@@ -337,29 +339,29 @@ function Badge({ status }: { status: string; T?: Theme }) {
 // (text-muted, dark) — five of six colours failed AA in light and two of six
 // in dark. --bs-on-tint-mix pushes the text away from the fill by a
 // theme-appropriate amount. See the token comment in lib/constants.ts.
-function SmallBtn({ T, children, color, onClick, disabled }: { T: Theme; children: React.ReactNode; color: string; onClick: () => void; disabled?: boolean }) {
+function SmallBtn({ children, color, onClick, disabled }: { children: React.ReactNode; color: string; onClick: () => void; disabled?: boolean }) {
   return <button onClick={onClick} disabled={disabled} style={{ height: 'var(--bs-control-sm)', padding: '0 var(--bs-space-3)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-xs)', fontWeight: 500, border: `1px solid color-mix(in srgb, ${color} 30%, transparent)`, background: `color-mix(in srgb, ${color} 12%, transparent)`, color: `color-mix(in srgb, ${color}, var(--bs-on-tint-mix))`, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1, whiteSpace: 'nowrap' }}>{children}</button>
 }
-function Loading({ T }: { T: Theme }) { return <div style={{ padding: 'var(--bs-space-12) 0', textAlign: 'center', color: T.textMuted, fontSize: 'var(--bs-text-sm)' }}>Loading…</div> }
-function ErrorMsg({ msg, T }: { msg: string; T: Theme }) { return <div style={{ padding: 'var(--bs-space-5)', background: T.errorBg, border: `1px solid rgba(var(--bs-error-rgb), 0.2)`, borderRadius: 'var(--bs-radius-lg)', color: T.error, fontSize: 'var(--bs-text-sm)' }}>{msg}</div> }
-function EmptyState({ text, T }: { text: string; T: Theme }) { return <div style={{ padding: 'var(--bs-space-12) 0', textAlign: 'center', color: T.textMuted, fontSize: 'var(--bs-text-sm)' }}>{text}</div> }
-function PaginationBar({ T, pagination, onPage }: { T: Theme; pagination: Pagination; onPage: (p: number) => void }) {
-  return <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--bs-space-5)', fontSize: 'var(--bs-text-xs)', color: T.textMuted }}><span>Page {pagination.page} of {pagination.pages} ({pagination.total} total)</span><div style={{ display: 'flex', gap: 'var(--bs-space-2)' }}><button disabled={pagination.page <= 1} onClick={() => onPage(pagination.page - 1)} style={pageBtnStyle(T, pagination.page <= 1)}>← Prev</button><button disabled={pagination.page >= pagination.pages} onClick={() => onPage(pagination.page + 1)} style={pageBtnStyle(T, pagination.page >= pagination.pages)}>Next →</button></div></div>
+function Loading() { return <div style={{ padding: 'var(--bs-space-12) 0', textAlign: 'center', color: T.textMuted, fontSize: 'var(--bs-text-sm)' }}>Loading…</div> }
+function ErrorMsg({ msg }: { msg: string }) { return <div style={{ padding: 'var(--bs-space-5)', background: T.errorBg, border: `1px solid rgba(var(--bs-error-rgb), 0.2)`, borderRadius: 'var(--bs-radius-lg)', color: T.error, fontSize: 'var(--bs-text-sm)' }}>{msg}</div> }
+function EmptyState({ text }: { text: string }) { return <div style={{ padding: 'var(--bs-space-12) 0', textAlign: 'center', color: T.textMuted, fontSize: 'var(--bs-text-sm)' }}>{text}</div> }
+function PaginationBar({ pagination, onPage }: { pagination: Pagination; onPage: (p: number) => void }) {
+  return <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'var(--bs-space-5)', fontSize: 'var(--bs-text-xs)', color: T.textMuted }}><span>Page {pagination.page} of {pagination.pages} ({pagination.total} total)</span><div style={{ display: 'flex', gap: 'var(--bs-space-2)' }}><button disabled={pagination.page <= 1} onClick={() => onPage(pagination.page - 1)} style={pageBtnStyle(pagination.page <= 1)}>← Prev</button><button disabled={pagination.page >= pagination.pages} onClick={() => onPage(pagination.page + 1)} style={pageBtnStyle(pagination.page >= pagination.pages)}>Next →</button></div></div>
 }
-function DetailSection({ T, title, children }: { T: Theme; title: string; children: React.ReactNode }) {
+function DetailSection({ title, children }: { title: string; children: React.ReactNode }) {
   return <div><div style={{ fontSize: 'var(--bs-text-2xs)', fontWeight: 600, color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--bs-space-2)' }}>{title}</div>{children}</div>
 }
-function DRow({ T, label, value }: { T: Theme; label: string; value: string }) {
+function DRow({ label, value }: { label: string; value: string }) {
   return <div style={{ display: 'flex', justifyContent: 'space-between', gap: 'var(--bs-space-2)', padding: 'var(--bs-space-1) 0', fontSize: 'var(--bs-text-xs)' }}><span style={{ color: T.textMuted }}>{label}</span><span style={{ color: T.textSecondary, textAlign: 'right' }}>{value}</span></div>
 }
 
 // ── Field label (module-level, stable) ──
-function FieldLabel({ label, T, children }: { label: string; T: Theme; children: React.ReactNode }) {
+function FieldLabel({ label, children }: { label: string; children: React.ReactNode }) {
   return <div><div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 4 }}>{label}</div>{children}</div>
 }
 
 // ── Product form (module-level, stable — fixes focus loss) ──
-function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }: { T: Theme; form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
+function ProductFormPanel({ form, setForm, onSave, onCancel, saving, title }: { form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
   const IS: React.CSSProperties = {
     height: 'var(--bs-control-md)',
     padding: '0 14px',
@@ -383,21 +385,21 @@ function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }:
     <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: '20px 24px', marginBottom: 14 }}>
       <div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <FieldLabel label="Name *" T={T}><input style={IS} value={form.name || ''} onChange={e => updateField('name', e.target.value)} /></FieldLabel>
-        <FieldLabel label="Slug" T={T}><input style={IS} value={form.slug || ''} onChange={e => updateField('slug', e.target.value)} placeholder="auto-generated from name" /></FieldLabel>
+        <FieldLabel label="Name *"><input style={IS} value={form.name || ''} onChange={e => updateField('name', e.target.value)} /></FieldLabel>
+        <FieldLabel label="Slug"><input style={IS} value={form.slug || ''} onChange={e => updateField('slug', e.target.value)} placeholder="auto-generated from name" /></FieldLabel>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <FieldLabel label="Category" T={T}><select style={IS} value={form.category || ''} onChange={e => updateField('category', e.target.value)}><option value="">Select…</option>{ALL_CATEGORIES.filter(c => c !== 'all').map(c => <option key={c} value={c}>{sentenceCase(c)}</option>)}</select></FieldLabel>
-        <FieldLabel label="Tags" T={T}><input style={IS} value={form.tags || ''} onChange={e => updateField('tags', e.target.value)} placeholder="e.g. No Ads" /></FieldLabel>
-        <FieldLabel label="Domain" T={T}><input style={IS} value={form.domain || ''} onChange={e => updateField('domain', e.target.value)} placeholder="e.g. netflix.com" /></FieldLabel>
+        <FieldLabel label="Category"><select style={IS} value={form.category || ''} onChange={e => updateField('category', e.target.value)}><option value="">Select…</option>{ALL_CATEGORIES.filter(c => c !== 'all').map(c => <option key={c} value={c}>{sentenceCase(c)}</option>)}</select></FieldLabel>
+        <FieldLabel label="Tags"><input style={IS} value={form.tags || ''} onChange={e => updateField('tags', e.target.value)} placeholder="e.g. No Ads" /></FieldLabel>
+        <FieldLabel label="Domain"><input style={IS} value={form.domain || ''} onChange={e => updateField('domain', e.target.value)} placeholder="e.g. netflix.com" /></FieldLabel>
       </div>
-      <div style={{ marginBottom: 12 }}><FieldLabel label="Short Description" T={T}><input style={IS} value={form.short_description || ''} onChange={e => updateField('short_description', e.target.value)} /></FieldLabel></div>
-      <div style={{ marginBottom: 12 }}><FieldLabel label="Description" T={T}><textarea style={{ ...IS, height: 72, padding: '10px 14px', resize: 'vertical' } as any} value={form.description || ''} onChange={e => updateField('description', e.target.value)} /></FieldLabel></div>
+      <div style={{ marginBottom: 12 }}><FieldLabel label="Short Description"><input style={IS} value={form.short_description || ''} onChange={e => updateField('short_description', e.target.value)} /></FieldLabel></div>
+      <div style={{ marginBottom: 12 }}><FieldLabel label="Description"><textarea style={{ ...IS, height: 72, padding: '10px 14px', resize: 'vertical' } as any} value={form.description || ''} onChange={e => updateField('description', e.target.value)} /></FieldLabel></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10, marginBottom: 12 }}>
-        <FieldLabel label="Price 1M (₦)" T={T}><input style={IS} type="number" value={form.price_1m || ''} onChange={e => updateField('price_1m', Number(e.target.value))} /></FieldLabel>
-        <FieldLabel label="Price 3M (₦)" T={T}><input style={IS} type="number" value={form.price_3m || ''} onChange={e => updateField('price_3m', Number(e.target.value))} /></FieldLabel>
-        <FieldLabel label="Price 6M (₦)" T={T}><input style={IS} type="number" value={form.price_6m || ''} onChange={e => updateField('price_6m', Number(e.target.value))} /></FieldLabel>
-        <FieldLabel label="Price 1Y (₦)" T={T}><input style={IS} type="number" value={form.price_1y || ''} onChange={e => updateField('price_1y', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Price 1M (₦)"><input style={IS} type="number" value={form.price_1m || ''} onChange={e => updateField('price_1m', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Price 3M (₦)"><input style={IS} type="number" value={form.price_3m || ''} onChange={e => updateField('price_3m', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Price 6M (₦)"><input style={IS} type="number" value={form.price_6m || ''} onChange={e => updateField('price_6m', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Price 1Y (₦)"><input style={IS} type="number" value={form.price_1y || ''} onChange={e => updateField('price_1y', Number(e.target.value))} /></FieldLabel>
       </div>
       {/* ── New: WhatsApp & Social Links ─────────────── */}
       <div style={{
@@ -412,7 +414,7 @@ function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }:
         </div>
  
         <div style={{ marginBottom: 12 }}>
-          <FieldLabel label="WhatsApp Group URL" T={T}>
+          <FieldLabel label="WhatsApp Group URL">
             <input
               style={IS}
               value={form.whatsapp_group_url || ''}
@@ -426,72 +428,72 @@ function ProductFormPanel({ T, form, setForm, onSave, onCancel, saving, title }:
         </div>
  
         {/* <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
-          <FieldLabel label="Telegram" T={T}>
+          <FieldLabel label="Telegram">
             <input style={IS} value={sl.telegram || ''} onChange={e => updateSocial('telegram', e.target.value)} placeholder="https://t.me/…" />
           </FieldLabel>
-          <FieldLabel label="Discord" T={T}>
+          <FieldLabel label="Discord">
             <input style={IS} value={sl.discord || ''} onChange={e => updateSocial('discord', e.target.value)} placeholder="https://discord.gg/…" />
           </FieldLabel>
-          <FieldLabel label="Instagram" T={T}>
+          <FieldLabel label="Instagram">
             <input style={IS} value={sl.instagram || ''} onChange={e => updateSocial('instagram', e.target.value)} placeholder="https://instagram.com/…" />
           </FieldLabel>
-          <FieldLabel label="Twitter / X" T={T}>
+          <FieldLabel label="Twitter / X">
             <input style={IS} value={sl.twitter || ''} onChange={e => updateSocial('twitter', e.target.value)} placeholder="https://x.com/…" />
           </FieldLabel>
-          <FieldLabel label="TikTok" T={T}>
+          <FieldLabel label="TikTok">
             <input style={IS} value={sl.tiktok || ''} onChange={e => updateSocial('tiktok', e.target.value)} placeholder="https://tiktok.com/@…" />
           </FieldLabel>
-          <FieldLabel label="Website" T={T}>
+          <FieldLabel label="Website">
             <input style={IS} value={sl.website || ''} onChange={e => updateSocial('website', e.target.value)} placeholder="https://…" />
           </FieldLabel>
         </div> */}
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <FieldLabel label="Billing Type" T={T}><select style={IS} value={form.billing_type || 'subscription'} onChange={e => updateField('billing_type', e.target.value)}><option value="subscription">Subscription</option><option value="one_time">One-time</option></select></FieldLabel>
-        <FieldLabel label="Stock Status" T={T}><select style={IS} value={form.stock_status || 'in_stock'} onChange={e => updateField('stock_status', e.target.value)}><option value="in_stock">In Stock</option><option value="out_of_stock">Out of Stock</option><option value="preorder">Preorder</option></select></FieldLabel>
-        <FieldLabel label="Status" T={T}><select style={IS} value={form.status || 'active'} onChange={e => updateField('status', e.target.value)}><option value="active">Active</option><option value="hidden">hidden</option><option value="archived">Archived</option></select></FieldLabel>
-        <FieldLabel label="Sort Order" T={T}><input style={IS} type="number" value={form.sort_order ?? 100} onChange={e => updateField('sort_order', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Billing Type"><select style={IS} value={form.billing_type || 'subscription'} onChange={e => updateField('billing_type', e.target.value)}><option value="subscription">Subscription</option><option value="one_time">One-time</option></select></FieldLabel>
+        <FieldLabel label="Stock Status"><select style={IS} value={form.stock_status || 'in_stock'} onChange={e => updateField('stock_status', e.target.value)}><option value="in_stock">In Stock</option><option value="out_of_stock">Out of Stock</option><option value="preorder">Preorder</option></select></FieldLabel>
+        <FieldLabel label="Status"><select style={IS} value={form.status || 'active'} onChange={e => updateField('status', e.target.value)}><option value="active">Active</option><option value="hidden">hidden</option><option value="archived">Archived</option></select></FieldLabel>
+        <FieldLabel label="Sort Order"><input style={IS} type="number" value={form.sort_order ?? 100} onChange={e => updateField('sort_order', Number(e.target.value))} /></FieldLabel>
       </div>
       <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: T.text, cursor: 'pointer' }}><input type="checkbox" checked={!!form.featured} onChange={e => updateField('featured', e.target.checked)} style={{ accentColor: T.accent, width: 16, height: 16 }} />Featured</label>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <SmallBtn T={T} color={T.success} onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</SmallBtn>
-        <SmallBtn T={T} color={T.textMuted} onClick={onCancel}>Cancel</SmallBtn>
+        <SmallBtn color={T.success} onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</SmallBtn>
+        <SmallBtn color={T.textMuted} onClick={onCancel}>Cancel</SmallBtn>
       </div>
     </div>
   )
 }
 
 // ── Discount form (module-level, stable — fixes focus loss) ──
-function DiscountFormPanel({ T, form, setForm, onSave, onCancel, saving, title }: { T: Theme; form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
-  const IS = inputStyle(T)
+function DiscountFormPanel({ form, setForm, onSave, onCancel, saving, title }: { form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
+  const IS = inputStyle()
   const uf = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }))
   return (
     <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: '20px 24px', marginBottom: 14 }}>
       <div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 16, fontWeight: 600 }}>{title}</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <FieldLabel label="Code *" T={T}><input style={IS} value={form.code || ''} onChange={e => uf('code', e.target.value.toUpperCase())} placeholder="e.g. SAVE10" /></FieldLabel>
-        <FieldLabel label="Type" T={T}><select style={IS} value={form.type || 'percentage'} onChange={e => uf('type', e.target.value)}><option value="percentage">Percentage</option><option value="fixed">Fixed Amount (₦)</option></select></FieldLabel>
-        <FieldLabel label="Value" T={T}><input style={IS} type="number" value={form.value || ''} onChange={e => uf('value', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Code *"><input style={IS} value={form.code || ''} onChange={e => uf('code', e.target.value.toUpperCase())} placeholder="e.g. SAVE10" /></FieldLabel>
+        <FieldLabel label="Type"><select style={IS} value={form.type || 'percentage'} onChange={e => uf('type', e.target.value)}><option value="percentage">Percentage</option><option value="fixed">Fixed Amount (₦)</option></select></FieldLabel>
+        <FieldLabel label="Value"><input style={IS} type="number" value={form.value || ''} onChange={e => uf('value', Number(e.target.value))} /></FieldLabel>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <FieldLabel label="Min Order (₦)" T={T}><input style={IS} type="number" value={form.min_order_ngn || ''} onChange={e => uf('min_order_ngn', Number(e.target.value))} /></FieldLabel>
-        <FieldLabel label="Max Discount (₦)" T={T}><input style={IS} type="number" value={form.max_discount_ngn || ''} onChange={e => uf('max_discount_ngn', Number(e.target.value) || null)} placeholder="No cap" /></FieldLabel>
-        <FieldLabel label="Max Uses" T={T}><input style={IS} type="number" value={form.max_uses || ''} onChange={e => uf('max_uses', Number(e.target.value) || null)} placeholder="Unlimited" /></FieldLabel>
-        <FieldLabel label="Scope" T={T}><select style={IS} value={form.scope || 'site_wide'} onChange={e => uf('scope', e.target.value)}><option value="site_wide">Site-wide</option><option value="category">Category</option></select></FieldLabel>
+        <FieldLabel label="Min Order (₦)"><input style={IS} type="number" value={form.min_order_ngn || ''} onChange={e => uf('min_order_ngn', Number(e.target.value))} /></FieldLabel>
+        <FieldLabel label="Max Discount (₦)"><input style={IS} type="number" value={form.max_discount_ngn || ''} onChange={e => uf('max_discount_ngn', Number(e.target.value) || null)} placeholder="No cap" /></FieldLabel>
+        <FieldLabel label="Max Uses"><input style={IS} type="number" value={form.max_uses || ''} onChange={e => uf('max_uses', Number(e.target.value) || null)} placeholder="Unlimited" /></FieldLabel>
+        <FieldLabel label="Scope"><select style={IS} value={form.scope || 'site_wide'} onChange={e => uf('scope', e.target.value)}><option value="site_wide">Site-wide</option><option value="category">Category</option></select></FieldLabel>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <FieldLabel label="Active From" T={T}><input style={{ ...IS, colorScheme: 'dark' }} type="date" value={form.active_from || ''} onChange={e => uf('active_from', e.target.value || null)} /></FieldLabel>
-        <FieldLabel label="Expires" T={T}><input style={{ ...IS, colorScheme: 'dark' }} type="date" value={form.expires_at || ''} onChange={e => uf('expires_at', e.target.value || null)} /></FieldLabel>
+        <FieldLabel label="Active From"><input style={{ ...IS, colorScheme: 'dark' }} type="date" value={form.active_from || ''} onChange={e => uf('active_from', e.target.value || null)} /></FieldLabel>
+        <FieldLabel label="Expires"><input style={{ ...IS, colorScheme: 'dark' }} type="date" value={form.expires_at || ''} onChange={e => uf('expires_at', e.target.value || null)} /></FieldLabel>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <FieldLabel label="Included Products" T={T}><input style={IS} value={form.included_products || ''} onChange={e => uf('included_products', e.target.value || null)} placeholder="All products" /></FieldLabel>
-        <FieldLabel label="Excluded Products" T={T}><input style={IS} value={form.excluded_products || ''} onChange={e => uf('excluded_products', e.target.value || null)} /></FieldLabel>
+        <FieldLabel label="Included Products"><input style={IS} value={form.included_products || ''} onChange={e => uf('included_products', e.target.value || null)} placeholder="All products" /></FieldLabel>
+        <FieldLabel label="Excluded Products"><input style={IS} value={form.excluded_products || ''} onChange={e => uf('excluded_products', e.target.value || null)} /></FieldLabel>
       </div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-        <FieldLabel label="Included Categories" T={T}><input style={IS} value={form.included_categories || ''} onChange={e => uf('included_categories', e.target.value || null)} placeholder="All categories" /></FieldLabel>
-        <FieldLabel label="Excluded Categories" T={T}><input style={IS} value={form.excluded_categories || ''} onChange={e => uf('excluded_categories', e.target.value || null)} /></FieldLabel>
+        <FieldLabel label="Included Categories"><input style={IS} value={form.included_categories || ''} onChange={e => uf('included_categories', e.target.value || null)} placeholder="All categories" /></FieldLabel>
+        <FieldLabel label="Excluded Categories"><input style={IS} value={form.excluded_categories || ''} onChange={e => uf('excluded_categories', e.target.value || null)} /></FieldLabel>
       </div>
       <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginBottom: 16 }}>
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: T.text, cursor: 'pointer' }}><input type="checkbox" checked={!!form.active} onChange={e => uf('active', e.target.checked)} style={{ accentColor: T.accent, width: 16, height: 16 }} />Active</label>
@@ -499,8 +501,8 @@ function DiscountFormPanel({ T, form, setForm, onSave, onCancel, saving, title }
         <label style={{ display: 'flex', gap: 8, alignItems: 'center', fontSize: 13, color: T.text, cursor: 'pointer' }}><input type="checkbox" checked={!!form.exclusive} onChange={e => uf('exclusive', e.target.checked)} style={{ accentColor: T.accent, width: 16, height: 16 }} />Exclusive</label>
       </div>
       <div style={{ display: 'flex', gap: 8 }}>
-        <SmallBtn T={T} color={T.success} onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</SmallBtn>
-        <SmallBtn T={T} color={T.textMuted} onClick={onCancel}>Cancel</SmallBtn>
+        <SmallBtn color={T.success} onClick={onSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</SmallBtn>
+        <SmallBtn color={T.textMuted} onClick={onCancel}>Cancel</SmallBtn>
       </div>
     </div>
   )
@@ -555,9 +557,8 @@ function newItemRow(): NewOrderItem {
 
 // ── Inline product search combobox (stable, module-level) ──
 function ProductSearchBox({
-  T, allProducts, value, onChange,
+  allProducts, value, onChange,
 }: {
-  T: Theme
   allProducts: Product[]
   value: NewOrderItem
   onChange: (patch: Partial<NewOrderItem>) => void
@@ -657,9 +658,8 @@ function ProductSearchBox({
 
 // ── Main drawer ──
 function NewOrderDrawer({
-  T, allProducts, onClose, onCreated,
+  allProducts, onClose, onCreated,
 }: {
-  T: Theme
   allProducts: Product[]
   onClose: () => void
   onCreated: () => void
@@ -889,7 +889,7 @@ function NewOrderDrawer({
                   {/* Row 1: product search + remove */}
                   <div style={{ display:'flex', gap:8, alignItems:'center', marginBottom:10 }}>
                     <ProductSearchBox
-                      T={T}
+                     
                       allProducts={allProducts}
                       value={item}
                       onChange={patch => setItem(item._key, patch)}
@@ -1145,7 +1145,7 @@ const TABS = ['Overview','Orders','Rejected','Products','Customers','Partners','
 type Tab = typeof TABS[number]
 
 export default function AdminDashboard() {
-  const { T, isDark, toggle, mounted } = useTheme()
+  const { isDark, toggle, mounted } = useTheme()
   const [tab, setTab] = useState<Tab>('Overview')
   const [token, setToken] = useState('')
   const adminEmail = useClientValue(readAdminEmail, '')
@@ -1180,7 +1180,7 @@ export default function AdminDashboard() {
   if (!mounted) return null
 
   if (!token) return (
-    <Shell T={T} isDark={isDark} toggle={toggle} adminEmail="">
+    <Shell isDark={isDark} toggle={toggle} adminEmail="">
       <div style={{ textAlign: 'center', padding: '80px 20px' }}>
         <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
         <div style={{ fontSize: 20, fontWeight: 600, color: T.text, marginBottom: 8 }}>Admin Access Required</div>
@@ -1191,7 +1191,7 @@ export default function AdminDashboard() {
   )
 
   return (
-    <Shell T={T} isDark={isDark} toggle={toggle} adminEmail={adminEmail}>
+    <Shell isDark={isDark} toggle={toggle} adminEmail={adminEmail}>
       <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${T.border}`, marginBottom: 28, overflowX: 'auto', paddingBottom: 0 }}>
         {TABS.map(t => (
           <button key={t} onClick={() => setTab(t)} style={{
@@ -1201,43 +1201,43 @@ export default function AdminDashboard() {
           }}>{t}</button>
         ))}
       </div>
-      {tab === 'Overview' && <OverviewTab T={T} />}
-      {tab === 'Orders' && <OrdersTab T={T} />}
-      {tab === 'Rejected' && <RejectedTab T={T} />}
-      {tab === 'Products' && <ProductsTab T={T} />}
-      {tab === 'Customers' && <CustomersTab T={T} />}
-      {tab === 'Partners' && <PartnersTab T={T} />}
-      {tab === 'Wallets' && <WalletsTab T={T} />}
-      {tab === 'Affiliates' && <AffiliatesTab T={T} />}
-      {tab === 'Links' && <LinksTab T={T} />}
-      {tab === 'Ads' && <AdsTab T={T} />}
-      {tab === 'Discounts' && <DiscountsTab T={T} />}
-      {tab === 'Notifications' && <NotificationsTab T={T} />}
-      {tab === 'Settings' && <SettingsTab T={T} />}
+      {tab === 'Overview' && <OverviewTab />}
+      {tab === 'Orders' && <OrdersTab />}
+      {tab === 'Rejected' && <RejectedTab />}
+      {tab === 'Products' && <ProductsTab />}
+      {tab === 'Customers' && <CustomersTab />}
+      {tab === 'Partners' && <PartnersTab />}
+      {tab === 'Wallets' && <WalletsTab />}
+      {tab === 'Affiliates' && <AffiliatesTab />}
+      {tab === 'Links' && <LinksTab />}
+      {tab === 'Ads' && <AdsTab />}
+      {tab === 'Discounts' && <DiscountsTab />}
+      {tab === 'Notifications' && <NotificationsTab />}
+      {tab === 'Settings' && <SettingsTab />}
     </Shell>
   )
 }
 
 // ════════════════════ OVERVIEW ════════════════════
-function OverviewTab({T}:{T:Theme}) {
+function OverviewTab() {
   const [stats,setStats]=useState<Stats|null>(null); const [loading,setLoading]=useState(true); const [error,setError]=useState('')
   useEffect(()=>{apiFetch('/v2/admin/stats').then(r=>{if(r.ok)setStats(r.data);else setError(r.error||'Failed')}).catch(()=>setError('Network error')).finally(()=>setLoading(false))},[])
-  if(loading) return <Loading T={T}/>; if(error) return <ErrorMsg msg={error} T={T}/>; if(!stats) return null
+  if(loading) return <Loading/>; if(error) return <ErrorMsg msg={error}/>; if(!stats) return null
   return (
     <div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,marginBottom:28}}>
-        <KpiCard T={T} label="Revenue Today" value={fmt(stats.revenue_today)}/>
-        <KpiCard T={T} label="Revenue (Month)" value={fmt(stats.revenue_this_month)}/>
-        <KpiCard T={T} label="Total Revenue" value={fmt(stats.total_revenue)}/>
-        <KpiCard T={T} label="Orders Today" value={String(stats.orders_today)}/>
-        <KpiCard T={T} label="Pending WhatsApp" value={String(stats.orders_pending_manual)} highlight={stats.orders_pending_manual>0}/>
-        <KpiCard T={T} label="Active Products" value={`${stats.products_active}/${stats.products_total}`}/>
-        <KpiCard T={T} label="Customers" value={String(stats.customers_total)}/>
-        <KpiCard T={T} label="Partners Pending" value={String(stats.partners_pending)} highlight={stats.partners_pending>0}/>
+        <KpiCard label="Revenue Today" value={fmt(stats.revenue_today)}/>
+        <KpiCard label="Revenue (Month)" value={fmt(stats.revenue_this_month)}/>
+        <KpiCard label="Total Revenue" value={fmt(stats.total_revenue)}/>
+        <KpiCard label="Orders Today" value={String(stats.orders_today)}/>
+        <KpiCard label="Pending WhatsApp" value={String(stats.orders_pending_manual)} highlight={stats.orders_pending_manual>0}/>
+        <KpiCard label="Active Products" value={`${stats.products_active}/${stats.products_total}`}/>
+        <KpiCard label="Customers" value={String(stats.customers_total)}/>
+        <KpiCard label="Partners Pending" value={String(stats.partners_pending)} highlight={stats.partners_pending>0}/>
       </div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(380px,1fr))',gap:18}}>
-        <Card T={T} title="Top Products (by revenue)">
-          {(!stats.top_products||stats.top_products.length===0)&&<EmptyState text="No sales data yet" T={T}/>}
+        <Card title="Top Products (by revenue)">
+          {(!stats.top_products||stats.top_products.length===0)&&<EmptyState text="No sales data yet"/>}
           {stats.top_products?.map((p,i)=>(
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:i<stats.top_products.length-1?`1px solid ${T.borderSubtle}`:'none'}}>
               <div><div style={{fontSize:13,color:T.text}}>{p.name}</div><div style={{fontSize:11,color:T.textMuted}}>{p.order_count} orders</div></div>
@@ -1245,13 +1245,13 @@ function OverviewTab({T}:{T:Theme}) {
             </div>
           ))}
         </Card>
-        <Card T={T} title="Recent Orders">
-          {(!stats.recent_orders||stats.recent_orders.length===0)&&<EmptyState text="No orders yet" T={T}/>}
+        <Card title="Recent Orders">
+          {(!stats.recent_orders||stats.recent_orders.length===0)&&<EmptyState text="No orders yet"/>}
           {stats.recent_orders?.map((o:any,i:number)=>(
             <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:i<stats.recent_orders.length-1?`1px solid ${T.borderSubtle}`:'none',gap:12}}>
               <div style={{minWidth:0}}>
                 <div style={{fontSize:13,color:T.text,display:'flex',gap:8,alignItems:'center'}}>
-                  <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:12}}>{o.order_ref}</span><Badge status={o.status} T={T}/>
+                  <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:12}}>{o.order_ref}</span><Badge status={o.status}/>
                 </div>
                 <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{o.customer_name||o.customer_email||'—'} · {fmtFull(o.created_at)}</div>
               </div>
@@ -1261,7 +1261,7 @@ function OverviewTab({T}:{T:Theme}) {
         </Card>
       </div>
       {stats.revenue_by_day&&stats.revenue_by_day.length>0&&(
-        <Card T={T} title="Revenue (Last 30 Days)" style={{marginTop:18}}>
+        <Card title="Revenue (Last 30 Days)" style={{marginTop:18}}>
           <div style={{display:'flex',alignItems:'flex-end',gap:3,height:140,paddingTop:8}}>
             {(()=>{const max=Math.max(...stats.revenue_by_day.map(d=>d.revenue),1);return stats.revenue_by_day.map((d,i)=>(
               <div key={i} title={`${fmtDate(d.day)}: ${fmt(d.revenue)} (${d.orders} orders)`} style={{flex:1,minWidth:4,maxWidth:24,height:`${Math.max(2,(d.revenue/max)*100)}%`,background:T.accent,borderRadius:'4px 4px 0 0',cursor:'help',opacity:0.65,transition:'opacity 0.15s'}} onMouseEnter={e=>(e.currentTarget.style.opacity='1')} onMouseLeave={e=>(e.currentTarget.style.opacity='0.65')}/>
@@ -1274,7 +1274,7 @@ function OverviewTab({T}:{T:Theme}) {
 }
 
 // ════════════════════ ORDERS TAB (accordion, sub-filters) ════════════════════
-function OrdersTab({T}:{T:Theme}) {
+function OrdersTab() {
   const [orders,setOrders]=useState<Order[]>([]); const [pagination,setPagination]=useState<Pagination>(emptyPagination)
   const [loading,setLoading]=useState(true); const [statusFilter,setStatusFilter]=useState(''); const [search,setSearch]=useState('')
   const [actionLoading,setActionLoading]=useState<string|null>(null); const [expanded,setExpanded]=useState<string|null>(null)
@@ -1380,9 +1380,9 @@ useEffect(() => {
         </button>
       </div>
 
-      <div style={{marginBottom:20}}><input placeholder="Search by ref, name, or email…" value={search} onChange={e=>onSearch(e.target.value)} style={inputStyle(T)}/></div>
+      <div style={{marginBottom:20}}><input placeholder="Search by ref, name, or email…" value={search} onChange={e=>onSearch(e.target.value)} style={inputStyle()}/></div>
 
-      {loading?<Loading T={T}/>:orders.length===0?<EmptyState text="No orders found" T={T}/>:(
+      {loading?<Loading/>:orders.length===0?<EmptyState text="No orders found"/>:(
         <div style={{display:'flex',flexDirection:'column',gap:6}}>
           {grouped.map(group=>(
             <div key={group.day}>
@@ -1396,7 +1396,7 @@ useEffect(() => {
                     <div onClick={()=>toggleExpand(o.order_ref)} style={{padding:'14px 20px',cursor:'pointer',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
                       <div style={{display:'flex',gap:10,alignItems:'center',minWidth:0,flex:1}}>
                         <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:13,fontWeight:600,color:T.text}}>{o.order_ref}</span>
-                        <Badge status={o.status} T={T}/>
+                        <Badge status={o.status}/>
                         <span style={{fontSize:12,color:T.textSecondary}}>{o.customer_name||'—'}</span>
                         <span style={{fontSize:11,color:T.textMuted}}>{fmtTime(o.created_at)}</span>
                       </div>
@@ -1409,25 +1409,25 @@ useEffect(() => {
                     {isExp&&(
                       <div style={{padding:'0 20px 18px',borderTop:`1px solid ${T.borderSubtle}`}}>
                         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:20,padding:'16px 0'}}>
-                          <DetailSection T={T} title="Customer">
-                            <DRow T={T} label="Name" value={o.customer_name||'—'}/>
-                            <DRow T={T} label="Email" value={o.customer_email||'—'}/>
-                            <DRow T={T} label="Phone" value={o.customer_phone||'—'}/>
+                          <DetailSection title="Customer">
+                            <DRow label="Name" value={o.customer_name||'—'}/>
+                            <DRow label="Email" value={o.customer_email||'—'}/>
+                            <DRow label="Phone" value={o.customer_phone||'—'}/>
                           </DetailSection>
-                          <DetailSection T={T} title="Order">
-                            <DRow T={T} label="Ref" value={o.order_ref}/>
-                            <DRow T={T} label="Status" value={o.status.replace(/_/g,' ')}/>
-                            <DRow T={T} label="Payment" value={o.payment_method||'—'}/>
-                            <DRow T={T} label="Currency" value={o.currency}/>
+                          <DetailSection title="Order">
+                            <DRow label="Ref" value={o.order_ref}/>
+                            <DRow label="Status" value={o.status.replace(/_/g,' ')}/>
+                            <DRow label="Payment" value={o.payment_method||'—'}/>
+                            <DRow label="Currency" value={o.currency}/>
                           </DetailSection>
-                          <DetailSection T={T} title="Amounts">
-                            <DRow T={T} label="Subtotal" value={fmt(o.subtotal_ngn)}/>
-                            {o.discount_ngn>0&&<DRow T={T} label="Discount" value={`-${fmt(o.discount_ngn)}`}/>}
-                            <DRow T={T} label="Total" value={fmt(o.total_ngn)}/>
+                          <DetailSection title="Amounts">
+                            <DRow label="Subtotal" value={fmt(o.subtotal_ngn)}/>
+                            {o.discount_ngn>0&&<DRow label="Discount" value={`-${fmt(o.discount_ngn)}`}/>}
+                            <DRow label="Total" value={fmt(o.total_ngn)}/>
                           </DetailSection>
-                          <DetailSection T={T} title="Timestamps">
-                            <DRow T={T} label="Created" value={fmtFull(o.created_at)}/>
-                            <DRow T={T} label="Updated" value={fmtFull(o.updated_at)}/>
+                          <DetailSection title="Timestamps">
+                            <DRow label="Created" value={fmtFull(o.created_at)}/>
+                            <DRow label="Updated" value={fmtFull(o.updated_at)}/>
                           </DetailSection>
                         </div>
                         {det?.order_items&&det.order_items.length>0&&(
@@ -1444,10 +1444,10 @@ useEffect(() => {
                         {o.notes&&<div style={{fontSize:12,color:T.textMuted,marginBottom:10}}>Notes: {o.notes}</div>}
                         <div style={{display:'flex',gap:8,flexWrap:'wrap'}}>
                           {o.status==='pending_manual'&&<>
-                            <SmallBtn T={T} color={T.success} onClick={()=>approve(o.order_ref)} disabled={actionLoading===o.order_ref}>{actionLoading===o.order_ref?'…':<BtnLabel icon={<CheckIcon/>}>Approve</BtnLabel>}</SmallBtn>
-                            <SmallBtn T={T} color={T.error} onClick={()=>reject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<XIcon/>}>Reject</BtnLabel></SmallBtn>
+                            <SmallBtn color={T.success} onClick={()=>approve(o.order_ref)} disabled={actionLoading===o.order_ref}>{actionLoading===o.order_ref?'…':<BtnLabel icon={<CheckIcon/>}>Approve</BtnLabel>}</SmallBtn>
+                            <SmallBtn color={T.error} onClick={()=>reject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<XIcon/>}>Reject</BtnLabel></SmallBtn>
                           </>}
-                          {o.status==='paid'&&<SmallBtn T={T} color={T.accent} onClick={()=>openReceipt(o.order_ref)}><BtnLabel icon={<DocumentIcon/>}>Receipt</BtnLabel></SmallBtn>}
+                          {o.status==='paid'&&<SmallBtn color={T.accent} onClick={()=>openReceipt(o.order_ref)}><BtnLabel icon={<DocumentIcon/>}>Receipt</BtnLabel></SmallBtn>}
                         </div>
                       </div>
                     )}
@@ -1458,10 +1458,10 @@ useEffect(() => {
           ))}
         </div>
       )}
-      {pagination?.pages>1&&<PaginationBar T={T} pagination={pagination} onPage={p=>load(p)}/>}
+      {pagination?.pages>1&&<PaginationBar pagination={pagination} onPage={p=>load(p)}/>}
       {showNewOrder && (
         <NewOrderDrawer
-          T={T}
+         
           allProducts={allProducts}
           onClose={() => setShowNewOrder(false)}
           onCreated={() => load(pagination.page)}
@@ -1472,7 +1472,7 @@ useEffect(() => {
 }
 
 // ════════════════════ REJECTED TAB ════════════════════
-function RejectedTab({T}:{T:Theme}) {
+function RejectedTab() {
   const [orders,setOrders]=useState<Order[]>([]); const [loading,setLoading]=useState(true); const [actionLoading,setActionLoading]=useState<string|null>(null)
   const load=useCallback(async()=>{setLoading(true);const r=await apiFetch('/v2/admin/orders?status=rejected_pending&limit=50');if(r.ok)setOrders(r.data||[]);setLoading(false)},[])
   useEffect(()=>{load()},[])
@@ -1481,21 +1481,21 @@ function RejectedTab({T}:{T:Theme}) {
   return (
     <div>
       <div style={{fontSize:13,color:T.warning,marginBottom:20,padding:'12px 16px',background:T.warningBg,borderRadius:'var(--bs-radius-lg)',border:`1px solid rgba(var(--bs-warning-rgb), 0.2)`}}>Orders here need a second confirmation before permanent cancellation. Use Undo to restore.</div>
-      {loading?<Loading T={T}/>:orders.length===0?<EmptyState text="No rejected orders pending" T={T}/>:(
+      {loading?<Loading/>:orders.length===0?<EmptyState text="No rejected orders pending"/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {orders.map(o=>(
             <div key={o.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'18px 22px'}}>
               <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
                 <div>
-                  <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:6}}><span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:13,fontWeight:600,color:T.text}}>{o.order_ref}</span><Badge status="rejected_pending" T={T}/></div>
+                  <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:6}}><span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:13,fontWeight:600,color:T.text}}>{o.order_ref}</span><Badge status="rejected_pending"/></div>
                   <div style={{fontSize:13,color:T.textSecondary}}>{o.customer_name||o.customer_email||'—'}</div>
                   {o.notes&&<div style={{fontSize:12,color:T.textMuted,marginTop:4}}>Reason: {o.notes}</div>}
                 </div>
                 <div style={{fontSize:20,fontWeight:700,color:T.text}}>{fmt(o.total_ngn)}</div>
               </div>
               <div style={{display:'flex',gap:8,marginTop:12}}>
-                <SmallBtn T={T} color={T.success} onClick={()=>undoReject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<UndoIcon/>}>Undo</BtnLabel></SmallBtn>
-                <SmallBtn T={T} color={T.error} onClick={()=>confirmReject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<XIcon/>}>Confirm</BtnLabel></SmallBtn>
+                <SmallBtn color={T.success} onClick={()=>undoReject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<UndoIcon/>}>Undo</BtnLabel></SmallBtn>
+                <SmallBtn color={T.error} onClick={()=>confirmReject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<XIcon/>}>Confirm</BtnLabel></SmallBtn>
               </div>
             </div>
           ))}
@@ -1530,7 +1530,7 @@ const EMPTY_PRODUCT = (): Partial<Product> & { [k: string]: any } => ({
   social_links: { telegram: '', instagram: '', twitter: '', tiktok: '', discord: '', website: '' },
 })
 
-function ProductsTab({ T }: { T: Theme }) {
+function ProductsTab() {
   const [allProducts, setAllProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -1685,7 +1685,7 @@ function ProductsTab({ T }: { T: Theme }) {
     setCreating(false)
   }
 
-  const IS = inputStyle(T)
+  const IS = inputStyle()
 
   // Uppercase section label style (tiny all-caps)
   const metaLabel: React.CSSProperties = {
@@ -1787,9 +1787,9 @@ function ProductsTab({ T }: { T: Theme }) {
         <div style={{ flex: 1 }} />
 
         <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          <StatChip T={T} label="Active" value={counts.active} color={T.success} />
-          <StatChip T={T} label="Hidden" value={counts.hidden} color={T.textMuted} />
-          <StatChip T={T} label="Out of stock" value={counts.oos} color={T.warning} />
+          <StatChip label="Active" value={counts.active} />
+          <StatChip label="Hidden" value={counts.hidden} />
+          <StatChip label="Out of stock" value={counts.oos} />
         </div>
       </div>
 
@@ -1902,13 +1902,13 @@ function ProductsTab({ T }: { T: Theme }) {
         </div>
       )}
 
-      {showCreate && <ProductFormPanel T={T} form={newProduct} setForm={setNewProduct} onSave={createProduct} onCancel={() => setShowCreate(false)} saving={creating} title="Create New Product" />}
-      {editingId && <ProductFormPanel T={T} form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Product" />}
+      {showCreate && <ProductFormPanel form={newProduct} setForm={setNewProduct} onSave={createProduct} onCancel={() => setShowCreate(false)} saving={creating} title="Create New Product" />}
+      {editingId && <ProductFormPanel form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Product" />}
 
       {loading ? (
-        <Loading T={T} />
+        <Loading />
       ) : paged.length === 0 ? (
-        <EmptyState text="No products found" T={T} />
+        <EmptyState text="No products found" />
       ) : (
         <div style={{
           display: 'grid',
@@ -2043,7 +2043,7 @@ function ProductsTab({ T }: { T: Theme }) {
                 {/* ── STATUS BADGES ROW ── */}
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                   <PillBadge
-                    T={T}
+                   
                     color={p.status === 'active' ? T.success : T.textMuted}
                     tone="soft"
                     dot
@@ -2051,19 +2051,19 @@ function ProductsTab({ T }: { T: Theme }) {
                     {sentenceCase(p.status || 'active')}
                   </PillBadge>
                   <PillBadge
-                    T={T}
+                   
                     color={isOOS ? T.warning : T.success}
                     tone="soft"
                   >
                     {isOOS ? 'Out of stock' : 'In stock'}
                   </PillBadge>
                   {p.billing_type && p.billing_type !== 'subscription' && (
-                    <PillBadge T={T} color={T.textSecondary} tone="ghost">
+                    <PillBadge color={T.textSecondary} tone="ghost">
                       {sentenceCase(p.billing_type)}
                     </PillBadge>
                   )}
                   {p.tags && (
-                    <PillBadge T={T} color={T.textSecondary} tone="ghost">
+                    <PillBadge color={T.textSecondary} tone="ghost">
                       {sentenceCase(String(p.tags).split(',')[0])}
                       {String(p.tags).split(',').length > 1 && ` +${String(p.tags).split(',').length - 1}`}
                     </PillBadge>
@@ -2135,28 +2135,28 @@ function ProductsTab({ T }: { T: Theme }) {
                   <button
                     onClick={() => startEdit(p)}
                     className="bs-pt-action bs-pt-action-accent"
-                    style={actionBtnStyle(T)}
+                    style={actionBtnStyle()}
                   >
                     Edit
                   </button>
                   <button
                     onClick={() => toggleStatus(p)}
                     className="bs-pt-action"
-                    style={actionBtnStyle(T)}
+                    style={actionBtnStyle()}
                   >
                     {p.status === 'active' ? 'Hide' : 'Show'}
                   </button>
                   <button
                     onClick={() => toggleStock(p)}
                     className="bs-pt-action"
-                    style={actionBtnStyle(T)}
+                    style={actionBtnStyle()}
                   >
                     {p.stock_status === 'in_stock' ? 'Mark OOS' : 'In stock'}
                   </button>
                   <button
                     onClick={() => archiveProduct(p)}
                     className="bs-pt-action bs-pt-action-danger"
-                    style={actionBtnStyle(T)}
+                    style={actionBtnStyle()}
                   >
                     Archive
                   </button>
@@ -2192,7 +2192,7 @@ function ProductsTab({ T }: { T: Theme }) {
               disabled={page <= 1}
               onClick={() => setPage(page - 1)}
               className="bs-pt-page-btn"
-              style={refinedPageBtnStyle(T, page <= 1)}
+              style={refinedPageBtnStyle(page <= 1)}
             >
               ← Prev
             </button>
@@ -2209,7 +2209,7 @@ function ProductsTab({ T }: { T: Theme }) {
               disabled={page >= totalPages}
               onClick={() => setPage(page + 1)}
               className="bs-pt-page-btn"
-              style={refinedPageBtnStyle(T, page >= totalPages)}
+              style={refinedPageBtnStyle(page >= totalPages)}
             >
               Next →
             </button>
@@ -2229,8 +2229,8 @@ function ProductsTab({ T }: { T: Theme }) {
 // marks real status. `color` stays in the signature so the 3 call sites are
 // untouched; it is unused and goes with the T threading in Phase 9.
 function StatChip({
-  T, label, value,
-}: { T: Theme; label: string; value: number; color?: string }) {
+  label, value,
+}: { label: string; value: number }) {
   return (
     <div style={{
       display: 'inline-flex',
@@ -2251,9 +2251,8 @@ function StatChip({
 }
 
 function PillBadge({
-  T, color, tone = 'soft', dot = false, children,
+  color, tone = 'soft', dot = false, children,
 }: {
-  T: Theme
   color: string
   tone?: 'soft' | 'ghost'
   dot?: boolean
@@ -2308,7 +2307,7 @@ function PillBadge({
 // them — merging means editing call sites inside the tabs, which is Phases
 // 7-9. Doing it in this order makes that dedupe a no-op with no visual delta,
 // safe to land one tab at a time.
-function actionBtnStyle(T: Theme): React.CSSProperties {
+function actionBtnStyle(): React.CSSProperties {
   return {
     height: 'var(--bs-control-sm)',
     padding: '0 var(--bs-space-3)',
@@ -2323,7 +2322,7 @@ function actionBtnStyle(T: Theme): React.CSSProperties {
   }
 }
 
-function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
+function refinedPageBtnStyle(disabled: boolean): React.CSSProperties {
   return {
     height: 'var(--bs-control-sm)',
     padding: '0 var(--bs-space-3)',
@@ -2343,7 +2342,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
 
 
 // ════════════════════ CUSTOMERS TAB ════════════════════
-/* function CustomersTab({T}:{T:Theme}) {
+/* function CustomersTab() {
   const [customers,setCustomers]=useState<Customer[]>([]); const [pagination,setPagination]=useState<Pagination>(emptyPagination)
   const [loading,setLoading]=useState(true); const [search,setSearch]=useState(''); const searchTimer=useRef<any>(null)
   const load=useCallback(async(page=1,q=search)=>{setLoading(true);const params=new URLSearchParams({page:String(page),limit:'30'});if(q)params.set('q',q);const r=await apiFetch(`/v2/admin/customers?${params}`);if(r.ok){setCustomers(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[search])
@@ -2351,8 +2350,8 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
   const onSearch=(q:string)=>{setSearch(q);clearTimeout(searchTimer.current);searchTimer.current=setTimeout(()=>load(1,q),400)}
   return (
     <div>
-      <input placeholder="Search customers…" value={search} onChange={e=>onSearch(e.target.value)} style={{...inputStyle(T),marginBottom:20}}/>
-      {loading?<Loading T={T}/>:customers.length===0?<EmptyState text="No customers found" T={T}/>:(
+      <input placeholder="Search customers…" value={search} onChange={e=>onSearch(e.target.value)} style={{...inputStyle(),marginBottom:20}}/>
+      {loading?<Loading/>:customers.length===0?<EmptyState text="No customers found"/>:(
         <div style={{overflowX:'auto'}}>
           <table style={{width:'100%',borderCollapse:'collapse',fontSize:13}}>
             <thead><tr style={{borderBottom:`2px solid ${T.border}`}}>
@@ -2365,19 +2364,19 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                 <td style={{padding:12,color:T.textSecondary}}>{c.phone||'—'}</td>
                 <td style={{padding:12,color:T.textMuted}}>{c.category||'—'}</td>
                 <td style={{padding:12,color:T.textMuted}}>{c.source||'—'}</td>
-                <td style={{padding:12}}><Badge status={c.is_active?'active':'hidden'} T={T}/></td>
+                <td style={{padding:12}}><Badge status={c.is_active?'active':'hidden'}/></td>
                 <td style={{padding:12,color:T.textMuted,whiteSpace:'nowrap'}}>{fmtDate(c.created_at)}</td>
               </tr>
             ))}</tbody>
           </table>
         </div>
       )}
-      {pagination?.pages>1&&<PaginationBar T={T} pagination={pagination} onPage={p=>load(p)}/>}
+      {pagination?.pages>1&&<PaginationBar pagination={pagination} onPage={p=>load(p)}/>}
     </div>
   )
 } */
 
-  function CustomersTab({ T }: { T: Theme }) {
+  function CustomersTab() {
     const [customers, setCustomers]         = useState<Customer[]>([])
     const [pagination, setPagination]       = useState<Pagination>(emptyPagination)
     const [loading, setLoading]             = useState(true)
@@ -2469,7 +2468,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
         {/* Send message panel */}
         {msgPanel && (
           <SendMessagePanel
-            T={T}
+           
             customer={msgPanel}
             onClose={() => setMsgPanel(null)}
             onSent={() => { setMsgPanel(null); toast.success('Message sent') }}
@@ -2479,7 +2478,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
         {/* Wallet top-up panel */}
         {walletPanel && (
           <WalletTopupPanel
-            T={T}
+           
             customer={walletPanel}
             onClose={() => setWalletPanel(null)}
             onDone={() => { setWalletPanel(null); toast.success('Wallet topped up') }}
@@ -2488,7 +2487,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
 
           {debitCustomer && (
             <WalletDebitPanel
-              T={T}
+             
               customer={debitCustomer}
               onClose={() => setDebitCustomer(null)}
               onDone={() => {
@@ -2503,10 +2502,10 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
           placeholder="Search customers…"
           value={search}
           onChange={e => onSearch(e.target.value)}
-          style={{ ...inputStyle(T), marginBottom: 20 }}
+          style={{ ...inputStyle(), marginBottom: 20 }}
         />
    
-        {loading ? <Loading T={T} /> : customers.length === 0 ? <EmptyState text="No customers found" T={T} /> : (
+        {loading ? <Loading /> : customers.length === 0 ? <EmptyState text="No customers found" /> : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {customers.map(c => {
               const isExp = expanded === c.id
@@ -2536,7 +2535,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                       </div>
                     </div>
                     <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                      <Badge status={c.is_active ? 'active' : 'hidden'} T={T} />
+                      <Badge status={c.is_active ? 'active' : 'hidden'} />
                       <span style={{ color: T.textMuted, fontSize: 12 }}><ChevronIcon open={isExp} /></span>
                     </div>
                   </div>
@@ -2545,26 +2544,26 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
                   {isExp && (
                     <div style={{ borderTop: `1px solid ${T.borderSubtle}`, padding: '14px 20px' }}>
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 16, marginBottom: 16 }}>
-                        <DetailSection T={T} title="Contact">
-                          <DRow T={T} label="Email"    value={c.email   || '—'} />
-                          <DRow T={T} label="Phone"    value={c.phone   || '—'} />
-                          <DRow T={T} label="Category" value={c.category|| '—'} />
-                          <DRow T={T} label="Source"   value={c.source  || '—'} />
-                          <DRow T={T} label="Joined"   value={fmtDate(c.created_at)} />
+                        <DetailSection title="Contact">
+                          <DRow label="Email"    value={c.email   || '—'} />
+                          <DRow label="Phone"    value={c.phone   || '—'} />
+                          <DRow label="Category" value={c.category|| '—'} />
+                          <DRow label="Source"   value={c.source  || '—'} />
+                          <DRow label="Joined"   value={fmtDate(c.created_at)} />
                         </DetailSection>
                       </div>
                       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                        <SmallBtn T={T} color={T.accent}   onClick={() => setMsgPanel(c)}>
+                        <SmallBtn color={T.accent}   onClick={() => setMsgPanel(c)}>
                           <BtnLabel icon={<MailIcon/>}>Send Message</BtnLabel>
                         </SmallBtn>
-                        <SmallBtn T={T} color={T.success}  onClick={() => setWalletPanel(c)}>
+                        <SmallBtn color={T.success}  onClick={() => setWalletPanel(c)}>
                           <BtnLabel icon={<CardIcon/>}>Top Up Wallet</BtnLabel>
                         </SmallBtn>
-                        <SmallBtn T={T} color={T.warning}  onClick={() => setDebitCustomer(c)}>
+                        <SmallBtn color={T.warning}  onClick={() => setDebitCustomer(c)}>
                           <BtnLabel icon={<CardIcon/>}>Debit Wallet</BtnLabel>
                         </SmallBtn>
                         <SmallBtn
-                          T={T}
+                         
                           color={T.warning}
                           onClick={() => forceReset(c)}
                           disabled={actionLoading === c.id}
@@ -2579,16 +2578,15 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
             })}
           </div>
         )}
-        {pagination?.pages > 1 && <PaginationBar T={T} pagination={pagination} onPage={p => load(p)} />}
+        {pagination?.pages > 1 && <PaginationBar pagination={pagination} onPage={p => load(p)} />}
       </div>
     )
   }
    
   // ── MODULE-LEVEL: Send Message Panel ─────────────────────────────
   function SendMessagePanel({
-    T, customer, onClose, onSent,
+    customer, onClose, onSent,
   }: {
-    T: Theme
     customer: { id: string; name: string; email: string }
     onClose: () => void
     onSent: () => void
@@ -2601,7 +2599,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
       expires_at:     '',
     })
     const [saving, setSaving] = useState(false)
-    const IS = inputStyle(T)
+    const IS = inputStyle()
    
     const send = async () => {
       if (!form.subject.trim()) { toast.error('Subject is required'); return }
@@ -2648,19 +2646,19 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
           {/* Body */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 14 }}>
    
-            <FieldLabel label="Subject *" T={T}>
+            <FieldLabel label="Subject *">
               <input style={IS} value={form.subject}
                 onChange={e => setForm(f => ({ ...f, subject: e.target.value }))}
                 placeholder="e.g. Your Netflix credentials" />
             </FieldLabel>
    
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              <FieldLabel label="Product Name" T={T}>
+              <FieldLabel label="Product Name">
                 <input style={IS} value={form.product_name}
                   onChange={e => setForm(f => ({ ...f, product_name: e.target.value }))}
                   placeholder="e.g. Netflix" />
               </FieldLabel>
-              <FieldLabel label="Product Domain" T={T}>
+              <FieldLabel label="Product Domain">
                 <input style={IS} value={form.product_domain}
                   onChange={e => setForm(f => ({ ...f, product_domain: e.target.value }))}
                   placeholder="e.g. netflix.com" />
@@ -2679,7 +2677,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
               </div>
             )}
    
-            <FieldLabel label="Message Body *" T={T}>
+            <FieldLabel label="Message Body *">
               <textarea
                 style={{ ...IS, height: 200, padding: '10px 14px', resize: 'vertical', lineHeight: 1.7, fontFamily: "'SF Mono', Menlo, monospace", fontSize: 12 } as any}
                 value={form.body}
@@ -2691,7 +2689,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
               </div>
             </FieldLabel>
    
-            <FieldLabel label="Expires (optional)" T={T}>
+            <FieldLabel label="Expires (optional)">
               <input style={{ ...IS, colorScheme: 'dark' }} type="date"
                 value={form.expires_at}
                 onChange={e => setForm(f => ({ ...f, expires_at: e.target.value }))} />
@@ -2717,9 +2715,8 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
    
   // ── MODULE-LEVEL: Wallet Top-Up Panel ────────────────────────────
   function WalletTopupPanel({
-    T, customer, onClose, onDone,
+    customer, onClose, onDone,
   }: {
-    T: Theme
     customer: { id: string; name: string; email: string }
     onClose: () => void
     onDone: () => void
@@ -2730,7 +2727,7 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
     const [note,      setNote]      = useState('')
     const [saving,    setSaving]    = useState(false)
     const [balance,   setBalance]   = useState<number | null>(null)
-    const IS = inputStyle(T)
+    const IS = inputStyle()
    
     // Load current balance
     useEffect(() => {
@@ -2806,23 +2803,23 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
               </span>
             </div>
    
-            <FieldLabel label="Amount (₦) *" T={T}>
+            <FieldLabel label="Amount (₦) *">
               <input style={IS} type="number" min={1} value={amount}
                 onChange={e => setAmount(e.target.value)} placeholder="e.g. 5000" autoFocus />
             </FieldLabel>
    
-            <FieldLabel label="Source" T={T}>
+            <FieldLabel label="Source">
               <select style={IS} value={source} onChange={e => setSource(e.target.value)}>
                 {TOPUP_SOURCES.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
               </select>
             </FieldLabel>
    
-            <FieldLabel label="Reference (optional)" T={T}>
+            <FieldLabel label="Reference (optional)">
               <input style={IS} value={reference}
                 onChange={e => setReference(e.target.value)} placeholder="e.g. order ref, transaction ID" />
             </FieldLabel>
    
-            <FieldLabel label="Internal Note (optional)" T={T}>
+            <FieldLabel label="Internal Note (optional)">
               <input style={IS} value={note}
                 onChange={e => setNote(e.target.value)} placeholder="Reason for top-up" />
             </FieldLabel>
@@ -2852,9 +2849,8 @@ function refinedPageBtnStyle(T: Theme, disabled: boolean): React.CSSProperties {
   }
 
 function WalletDebitPanel({
-  T, customer, onClose, onDone,
+  customer, onClose, onDone,
 }: {
-  T: Theme
   customer: { id: string; name: string; email: string } | null
   onClose: () => void
   onDone: () => void
@@ -2864,7 +2860,7 @@ function WalletDebitPanel({
   const [saving, setSaving] = useState(false)
   const [balance, setBalance] = useState<number | null>(null)
 
-  const IS = inputStyle(T)
+  const IS = inputStyle()
 
   // hooks must come before any early return
   useEffect(() => {
@@ -2925,12 +2921,12 @@ function WalletDebitPanel({
             </span>
           </div>
 
-          <FieldLabel label="Amount to Deduct (₦) *" T={T}>
+          <FieldLabel label="Amount to Deduct (₦) *">
             <input style={IS} type="number" min={1} value={amount}
               onChange={e => setAmount(e.target.value)} placeholder="e.g. 2000" autoFocus />
           </FieldLabel>
 
-          <FieldLabel label="Reason (optional)" T={T}>
+          <FieldLabel label="Reason (optional)">
             <input style={IS} value={reference}
               onChange={e => setReference(e.target.value)} placeholder="e.g. subscription charge, correction" />
           </FieldLabel>
@@ -2960,7 +2956,7 @@ function WalletDebitPanel({
 }
 
 // ════════════════════ PARTNERS TAB ════════════════════
-function PartnersTab({T}:{T:Theme}) {
+function PartnersTab() {
   const [apps,setApps]=useState<PartnerApp[]>([]); const [pagination,setPagination]=useState<Pagination>(emptyPagination)
   const [loading,setLoading]=useState(true); const [statusFilter,setStatusFilter]=useState(''); const [expanded,setExpanded]=useState<string|null>(null)
   const [actionLoading,setActionLoading]=useState<string|null>(null)
@@ -2970,10 +2966,10 @@ function PartnersTab({T}:{T:Theme}) {
   const reject=async(id:string)=>{const reason=prompt('Rejection reason:');if(!reason)return;setActionLoading(id);const r=await apiFetch(`/v2/admin/partners/${id}/reject`,{method:'POST',body:JSON.stringify({reason})});if(r.ok)await load(pagination.page);else toast.error(r.error||'Failed');setActionLoading(null)}
   return (
     <div>
-      <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);load(1,e.target.value)}} style={{...inputStyle(T),width:200,marginBottom:20}}>
+      <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);load(1,e.target.value)}} style={{...inputStyle(),width:200,marginBottom:20}}>
         <option value="">All applications</option><option value="pending_review">Pending Review</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
       </select>
-      {loading?<Loading T={T}/>:apps.length===0?<EmptyState text="No partner applications" T={T}/>:(
+      {loading?<Loading/>:apps.length===0?<EmptyState text="No partner applications"/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {apps.map(a=>(
             <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',overflow:'hidden'}}>
@@ -2983,31 +2979,31 @@ function PartnersTab({T}:{T:Theme}) {
                   <div style={{fontSize:12,color:T.textMuted,marginTop:3}}>{a.owner_name} · {a.business_email} · {a.state}</div>
                 </div>
                 <div style={{display:'flex',gap:8,alignItems:'center',flexShrink:0}}>
-                  <Badge status={a.status} T={T}/><span style={{fontSize:11,color:T.textMuted}}>{fmtDate(a.created_at)}</span>
+                  <Badge status={a.status}/><span style={{fontSize:11,color:T.textMuted}}>{fmtDate(a.created_at)}</span>
                   <span style={{color:T.textMuted}}><ChevronIcon open={expanded===a.id} /></span>
                 </div>
               </div>
               {expanded===a.id&&(
                 <div style={{padding:'0 22px 22px',borderTop:`1px solid ${T.borderSubtle}`}}>
                   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:20,padding:'18px 0'}}>
-                    <DetailSection T={T} title="Business">
-                      <DRow T={T} label="Store" value={a.store_name}/><DRow T={T} label="Address" value={a.address}/>
-                      <DRow T={T} label="LGA/State" value={`${a.lga}, ${a.state}`}/><DRow T={T} label="Phone" value={a.business_phone}/>
-                      <DRow T={T} label="CAC" value={a.cac_number||'—'}/>
+                    <DetailSection title="Business">
+                      <DRow label="Store" value={a.store_name}/><DRow label="Address" value={a.address}/>
+                      <DRow label="LGA/State" value={`${a.lga}, ${a.state}`}/><DRow label="Phone" value={a.business_phone}/>
+                      <DRow label="CAC" value={a.cac_number||'—'}/>
                     </DetailSection>
-                    <DetailSection T={T} title="Owner">
-                      <DRow T={T} label="Name" value={a.owner_name}/><DRow T={T} label="Email" value={a.owner_email}/>
-                      <DRow T={T} label="Phone" value={a.owner_phone}/><DRow T={T} label="Gender" value={a.gender||'—'}/>
+                    <DetailSection title="Owner">
+                      <DRow label="Name" value={a.owner_name}/><DRow label="Email" value={a.owner_email}/>
+                      <DRow label="Phone" value={a.owner_phone}/><DRow label="Gender" value={a.gender||'—'}/>
                     </DetailSection>
-                    <DetailSection T={T} title="Payout">
-                      <DRow T={T} label="Frequency" value={a.payout_frequency}/><DRow T={T} label="Method" value={a.payout_method}/>
-                      {a.bank_name&&<DRow T={T} label="Bank" value={`${a.bank_name} - ${a.account_name}`}/>}
+                    <DetailSection title="Payout">
+                      <DRow label="Frequency" value={a.payout_frequency}/><DRow label="Method" value={a.payout_method}/>
+                      {a.bank_name&&<DRow label="Bank" value={`${a.bank_name} - ${a.account_name}`}/>}
                     </DetailSection>
                   </div>
                   {a.status==='pending_review'&&(
                     <div style={{display:'flex',gap:8}}>
-                      <SmallBtn T={T} color={T.success} onClick={()=>approve(a.id)} disabled={actionLoading===a.id}>{actionLoading===a.id?'…':'✓ Approve'}</SmallBtn>
-                      <SmallBtn T={T} color={T.error} onClick={()=>reject(a.id)} disabled={actionLoading===a.id}><BtnLabel icon={<XIcon/>}>Reject</BtnLabel></SmallBtn>
+                      <SmallBtn color={T.success} onClick={()=>approve(a.id)} disabled={actionLoading===a.id}>{actionLoading===a.id?'…':'✓ Approve'}</SmallBtn>
+                      <SmallBtn color={T.error} onClick={()=>reject(a.id)} disabled={actionLoading===a.id}><BtnLabel icon={<XIcon/>}>Reject</BtnLabel></SmallBtn>
                     </div>
                   )}
                 </div>
@@ -3016,21 +3012,21 @@ function PartnersTab({T}:{T:Theme}) {
           ))}
         </div>
       )}
-      {pagination?.pages>1&&<PaginationBar T={T} pagination={pagination} onPage={p=>load(p)}/>}
+      {pagination?.pages>1&&<PaginationBar pagination={pagination} onPage={p=>load(p)}/>}
     </div>
   )
 }
 
 // ════════════════════ WALLETS TAB ════════════════════
-function WalletsTab({T}:{T:Theme}) {
+function WalletsTab() {
   const [loading,setLoading]=useState(true)
   useEffect(()=>{apiFetch('/v2/admin/wallets?page=1&limit=20').finally(()=>setLoading(false))},[])
-  if(loading) return <Loading T={T}/>
-  return <EmptyState text="Wallet transactions will appear here once customers start using wallets." T={T}/>
+  if(loading) return <Loading/>
+  return <EmptyState text="Wallet transactions will appear here once customers start using wallets."/>
 }
 
 // ════════════════════ AFFILIATES TAB ════════════════════
-function AffiliatesTab({T}:{T:Theme}) {
+function AffiliatesTab() {
   const [affiliates,setAffiliates]=useState<any[]>([]); const [pagination,setPagination]=useState<Pagination>(emptyPagination)
   const [loading,setLoading]=useState(true); const [statusFilter,setStatusFilter]=useState(''); const [actionLoading,setActionLoading]=useState<string|null>(null)
   const load=useCallback(async(page=1,status=statusFilter)=>{setLoading(true);const params=new URLSearchParams({page:String(page),limit:'20'});if(status)params.set('status',status);const r=await apiFetch(`/v2/admin/affiliates?${params}`);if(r.ok){setAffiliates(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[statusFilter])
@@ -3039,10 +3035,10 @@ function AffiliatesTab({T}:{T:Theme}) {
   const suspend=async(id:string)=>{setActionLoading(id);await apiFetch(`/v2/admin/affiliates/${id}/suspend`,{method:'POST',body:JSON.stringify({reason:'Admin action'})});await load(pagination.page);setActionLoading(null)}
   return (
     <div>
-      <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);load(1,e.target.value)}} style={{...inputStyle(T),width:170,marginBottom:20}}>
+      <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);load(1,e.target.value)}} style={{...inputStyle(),width:170,marginBottom:20}}>
         <option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="suspended">Suspended</option>
       </select>
-      {loading?<Loading T={T}/>:affiliates.length===0?<EmptyState text="No affiliates" T={T}/>:(
+      {loading?<Loading/>:affiliates.length===0?<EmptyState text="No affiliates"/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {affiliates.map((a:any)=>(
             <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'16px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
@@ -3051,15 +3047,15 @@ function AffiliatesTab({T}:{T:Theme}) {
                 <div style={{fontSize:12,color:T.textMuted,marginTop:3}}>Code: <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',background:T.elevated,padding:'2px 8px',borderRadius:6}}>{a.referral_code}</span> · {a.commission_rate}%</div>
               </div>
               <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                <Badge status={a.status} T={T}/>
-                {a.status==='pending'&&<SmallBtn T={T} color={T.success} onClick={()=>approve(a.id)} disabled={actionLoading===a.id}>Approve</SmallBtn>}
-                {a.status==='approved'&&<SmallBtn T={T} color={T.warning} onClick={()=>suspend(a.id)} disabled={actionLoading===a.id}>Suspend</SmallBtn>}
+                <Badge status={a.status}/>
+                {a.status==='pending'&&<SmallBtn color={T.success} onClick={()=>approve(a.id)} disabled={actionLoading===a.id}>Approve</SmallBtn>}
+                {a.status==='approved'&&<SmallBtn color={T.warning} onClick={()=>suspend(a.id)} disabled={actionLoading===a.id}>Suspend</SmallBtn>}
               </div>
             </div>
           ))}
         </div>
       )}
-      {pagination?.pages>1&&<PaginationBar T={T} pagination={pagination} onPage={p=>load(p)}/>}
+      {pagination?.pages>1&&<PaginationBar pagination={pagination} onPage={p=>load(p)}/>}
     </div>
   )
 }
@@ -3168,7 +3164,7 @@ function fromDtLocal(v: string): string | null {
 // ════════════════════════════════════════════════════════════════════
 // MAIN TAB
 // ════════════════════════════════════════════════════════════════════
-function LinksTab({ T }: { T: Theme }) {
+function LinksTab() {
   const [links, setLinks] = useState<LinkRow[]>([])
   const [pagination, setPagination] = useState<Pagination>(emptyPagination)
   const [loading, setLoading] = useState(true)
@@ -3342,7 +3338,7 @@ function LinksTab({ T }: { T: Theme }) {
     }
   }
 
-  const IS = inputStyle(T)
+  const IS = inputStyle()
 
   return (
     <div>
@@ -3412,15 +3408,15 @@ function LinksTab({ T }: { T: Theme }) {
 
       {/* ─── LIST ─── */}
       {loading ? (
-        <Loading T={T} />
+        <Loading />
       ) : links.length === 0 ? (
-        <EmptyState text="No links yet — create your first one" T={T} />
+        <EmptyState text="No links yet — create your first one" />
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
           {links.map(l => (
             <LinkRowCard
               key={l.id}
-              T={T}
+             
               link={l}
               onEdit={() => openEdit(l)}
               onToggle={() => toggleActive(l)}
@@ -3434,14 +3430,14 @@ function LinksTab({ T }: { T: Theme }) {
 
       {pagination?.pages > 1 && (
         <div style={{ marginTop: 20 }}>
-          <PaginationBar T={T} pagination={pagination} onPage={p => load(p)} />
+          <PaginationBar pagination={pagination} onPage={p => load(p)} />
         </div>
       )}
 
       {/* ─── EDITOR DRAWER ─── */}
       {panelOpen && (
         <LinkEditorDrawer
-          T={T}
+         
           form={form}
           setForm={setForm}
           onSave={saveLink}
@@ -3454,7 +3450,7 @@ function LinksTab({ T }: { T: Theme }) {
       {/* ─── QR DIALOG ─── */}
       {qrFor && (
         <QrDialog
-          T={T}
+         
           link={qrFor}
           onClose={() => setQrFor(null)}
           onSaveConfig={async (cfg) => {
@@ -3475,9 +3471,8 @@ function LinksTab({ T }: { T: Theme }) {
 // LIST ROW
 // ════════════════════════════════════════════════════════════════════
 function LinkRowCard({
-  T, link, onEdit, onToggle, onDelete, onCopy, onQR,
+  link, onEdit, onToggle, onDelete, onCopy, onQR,
 }: {
-  T: Theme
   link: LinkRow
   onEdit: () => void
   onToggle: () => void
@@ -3568,13 +3563,13 @@ function LinkRowCard({
 
       {/* Actions */}
       <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <IconBtn T={T} onClick={onCopy} title="Copy short URL">{<ClipboardIcon/>}</IconBtn>
-        <IconBtn T={T} onClick={onQR} title="Show QR code"><QrIcon /></IconBtn>
-        <GhostBtn T={T} onClick={onEdit} variant="accent">Edit</GhostBtn>
-        <GhostBtn T={T} onClick={onToggle}>
+        <IconBtn onClick={onCopy} title="Copy short URL">{<ClipboardIcon/>}</IconBtn>
+        <IconBtn onClick={onQR} title="Show QR code"><QrIcon /></IconBtn>
+        <GhostBtn onClick={onEdit} variant="accent">Edit</GhostBtn>
+        <GhostBtn onClick={onToggle}>
           {link.active ? 'Pause' : 'Resume'}
         </GhostBtn>
-        <GhostBtn T={T} onClick={onDelete} variant="danger">Delete</GhostBtn>
+        <GhostBtn onClick={onDelete} variant="danger">Delete</GhostBtn>
       </div>
     </div>
   )
@@ -3586,9 +3581,8 @@ function LinkRowCard({
 type EditorTab = 'basics' | 'targeting' | 'security' | 'deeplinks' | 'utm' | 'qr'
 
 function LinkEditorDrawer({
-  T, form, setForm, onSave, onCancel, saving, isEdit,
+  form, setForm, onSave, onCancel, saving, isEdit,
 }: {
-  T: Theme
   form: LinkFormState
   setForm: React.Dispatch<React.SetStateAction<LinkFormState>>
   onSave: () => void
@@ -3597,7 +3591,7 @@ function LinkEditorDrawer({
   isEdit: boolean
 }) {
   const [tab, setTab] = useState<EditorTab>('basics')
-  const IS = inputStyle(T)
+  const IS = inputStyle()
 
   const tabs: { id: EditorTab; label: string; hint: string }[] = [
     { id: 'basics',    label: 'Basics',     hint: 'URL, slug, expiry' },
@@ -3689,12 +3683,12 @@ function LinkEditorDrawer({
 
         {/* Body */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '20px 24px' }}>
-          {tab === 'basics'    && <BasicsSection T={T} form={form} setForm={setForm} IS={IS} />}
-          {tab === 'targeting' && <TargetingSection T={T} form={form} setForm={setForm} IS={IS} />}
-          {tab === 'security'  && <SecuritySection T={T} form={form} setForm={setForm} IS={IS} isEdit={isEdit} />}
-          {tab === 'deeplinks' && <DeepLinksSection T={T} form={form} setForm={setForm} IS={IS} />}
-          {tab === 'utm'       && <UtmSection T={T} form={form} setForm={setForm} IS={IS} />}
-          {tab === 'qr'        && <QrSection T={T} form={form} setForm={setForm} IS={IS} />}
+          {tab === 'basics'    && <BasicsSection form={form} setForm={setForm} IS={IS} />}
+          {tab === 'targeting' && <TargetingSection form={form} setForm={setForm} IS={IS} />}
+          {tab === 'security'  && <SecuritySection form={form} setForm={setForm} IS={IS} isEdit={isEdit} />}
+          {tab === 'deeplinks' && <DeepLinksSection form={form} setForm={setForm} IS={IS} />}
+          {tab === 'utm'       && <UtmSection form={form} setForm={setForm} IS={IS} />}
+          {tab === 'qr'        && <QrSection form={form} setForm={setForm} IS={IS} />}
         </div>
 
         {/* Footer */}
@@ -3741,7 +3735,7 @@ function LinkEditorDrawer({
 // EDITOR SECTIONS (module-level to preserve focus)
 // ════════════════════════════════════════════════════════════════════
 
-function SectionLabel({ T, children }: { T: Theme; children: React.ReactNode }) {
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
       fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase',
@@ -3758,7 +3752,7 @@ function FieldRow({ children }: { children: React.ReactNode }) {
   return <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>{children}</div>
 }
 
-function Label({ T, children, hint }: { T: Theme; children: React.ReactNode; hint?: string }) {
+function Label({ children, hint }: { children: React.ReactNode; hint?: string }) {
   return (
     <div style={{ marginBottom: 6 }}>
       <div style={{ fontSize: 12, color: T.text, fontWeight: 500 }}>{children}</div>
@@ -3768,9 +3762,9 @@ function Label({ T, children, hint }: { T: Theme; children: React.ReactNode; hin
 }
 
 function ToggleRow({
-  T, label, hint, value, onChange,
+  label, hint, value, onChange,
 }: {
-  T: Theme; label: string; hint?: string; value: boolean; onChange: (v: boolean) => void
+  label: string; hint?: string; value: boolean; onChange: (v: boolean) => void
 }) {
   return (
     <div
@@ -3804,12 +3798,12 @@ function ToggleRow({
 }
 
 // ── BASICS ──────────────────────────────────────────────────────────
-function BasicsSection({ T, form, setForm, IS }: any) {
+function BasicsSection({ form, setForm, IS }: any) {
   return (
     <FieldStack>
-      <SectionLabel T={T}>Destination</SectionLabel>
+      <SectionLabel>Destination</SectionLabel>
       <div>
-        <Label T={T} hint="The full URL visitors will land on.">Destination URL *</Label>
+        <Label hint="The full URL visitors will land on.">Destination URL *</Label>
         <input
           className="bs-lnk-input"
           value={form.destination_url || ''}
@@ -3820,7 +3814,7 @@ function BasicsSection({ T, form, setForm, IS }: any) {
       </div>
 
       <div>
-        <Label T={T} hint="Leave blank to auto-generate. Lowercase letters, numbers, and dashes only.">
+        <Label hint="Leave blank to auto-generate. Lowercase letters, numbers, and dashes only.">
           Custom slug
         </Label>
         <div style={{ display: 'flex', alignItems: 'center', gap: 0 }}>
@@ -3847,7 +3841,7 @@ function BasicsSection({ T, form, setForm, IS }: any) {
       </div>
 
       <div>
-        <Label T={T}>Tags</Label>
+        <Label>Tags</Label>
         <input
           className="bs-lnk-input"
           value={form.tags || ''}
@@ -3858,11 +3852,11 @@ function BasicsSection({ T, form, setForm, IS }: any) {
       </div>
 
       <div style={{ height: 1, background: T.border, margin: '8px 0' }} />
-      <SectionLabel T={T}>Expiration</SectionLabel>
+      <SectionLabel>Expiration</SectionLabel>
 
       <FieldRow>
         <div>
-          <Label T={T} hint="Link stops working after this date.">Expires at</Label>
+          <Label hint="Link stops working after this date.">Expires at</Label>
           <input
             className="bs-lnk-input"
             type="datetime-local"
@@ -3872,7 +3866,7 @@ function BasicsSection({ T, form, setForm, IS }: any) {
           />
         </div>
         <div>
-          <Label T={T} hint="Stop after N clicks. Blank = no limit.">Click limit</Label>
+          <Label hint="Stop after N clicks. Blank = no limit.">Click limit</Label>
           <input
             className="bs-lnk-input"
             type="number"
@@ -3892,7 +3886,7 @@ function BasicsSection({ T, form, setForm, IS }: any) {
 }
 
 // ── TARGETING ───────────────────────────────────────────────────────
-function TargetingSection({ T, form, setForm, IS }: any) {
+function TargetingSection({ form, setForm, IS }: any) {
   const addRule = () => {
     setForm((f: any) => ({
       ...f,
@@ -3919,7 +3913,7 @@ function TargetingSection({ T, form, setForm, IS }: any) {
 
   return (
     <FieldStack>
-      <SectionLabel T={T}>Targeting rules</SectionLabel>
+      <SectionLabel>Targeting rules</SectionLabel>
       <div style={{
         padding: 12, borderRadius: 10,
         background: `rgba(var(--bs-accent-rgb), 0.06)`,
@@ -4043,14 +4037,14 @@ function TargetingSection({ T, form, setForm, IS }: any) {
 }
 
 // ── SECURITY ────────────────────────────────────────────────────────
-function SecuritySection({ T, form, setForm, IS, isEdit }: any) {
+function SecuritySection({ form, setForm, IS, isEdit }: any) {
   const alreadyHasPassword = isEdit && (form as any).has_password && !form.clearPassword
   return (
     <FieldStack>
-      <SectionLabel T={T}>Access control</SectionLabel>
+      <SectionLabel>Access control</SectionLabel>
 
       <div>
-        <Label T={T} hint="Visitors must enter this password before being redirected.">
+        <Label hint="Visitors must enter this password before being redirected.">
           Password protection
         </Label>
         {alreadyHasPassword && !form.password ? (
@@ -4095,7 +4089,7 @@ function SecuritySection({ T, form, setForm, IS, isEdit }: any) {
       </div>
 
       <ToggleRow
-        T={T}
+       
         label="Link cloaking"
         hint="Keep the short URL in the address bar by loading the destination inside a frame."
         value={!!form.cloak}
@@ -4103,7 +4097,7 @@ function SecuritySection({ T, form, setForm, IS, isEdit }: any) {
       />
 
       <ToggleRow
-        T={T}
+       
         label="Hide referrer"
         hint="Strip the Referer header so the destination site doesn't see where visitors came from."
         value={!!form.hide_referrer}
@@ -4126,12 +4120,12 @@ function SecuritySection({ T, form, setForm, IS, isEdit }: any) {
 }
 
 // ── DEEP LINKS ──────────────────────────────────────────────────────
-function DeepLinksSection({ T, form, setForm, IS }: any) {
+function DeepLinksSection({ form, setForm, IS }: any) {
   return (
     <FieldStack>
-      <SectionLabel T={T}>iOS</SectionLabel>
+      <SectionLabel>iOS</SectionLabel>
       <div>
-        <Label T={T} hint="e.g. instagram://user?username=buysub">iOS URL scheme</Label>
+        <Label hint="e.g. instagram://user?username=buysub">iOS URL scheme</Label>
         <input
           className="bs-lnk-input"
           value={form.deep_link_ios || ''}
@@ -4141,7 +4135,7 @@ function DeepLinksSection({ T, form, setForm, IS }: any) {
         />
       </div>
       <div>
-        <Label T={T} hint="Used as fallback if the app isn't installed.">App Store ID</Label>
+        <Label hint="Used as fallback if the app isn't installed.">App Store ID</Label>
         <input
           className="bs-lnk-input"
           value={form.ios_app_store_id || ''}
@@ -4152,9 +4146,9 @@ function DeepLinksSection({ T, form, setForm, IS }: any) {
       </div>
 
       <div style={{ height: 1, background: T.border, margin: '8px 0' }} />
-      <SectionLabel T={T}>Android</SectionLabel>
+      <SectionLabel>Android</SectionLabel>
       <div>
-        <Label T={T} hint="e.g. intent://... or a custom scheme.">Android deep link</Label>
+        <Label hint="e.g. intent://... or a custom scheme.">Android deep link</Label>
         <input
           className="bs-lnk-input"
           value={form.deep_link_android || ''}
@@ -4164,7 +4158,7 @@ function DeepLinksSection({ T, form, setForm, IS }: any) {
         />
       </div>
       <div>
-        <Label T={T} hint="Used as Play Store fallback.">Package name</Label>
+        <Label hint="Used as Play Store fallback.">Package name</Label>
         <input
           className="bs-lnk-input"
           value={form.android_package || ''}
@@ -4189,7 +4183,7 @@ function DeepLinksSection({ T, form, setForm, IS }: any) {
 }
 
 // ── UTM ─────────────────────────────────────────────────────────────
-function UtmSection({ T, form, setForm, IS }: any) {
+function UtmSection({ form, setForm, IS }: any) {
   const fields = [
     { key: 'utm_source',   label: 'utm_source',   placeholder: 'e.g. newsletter' },
     { key: 'utm_medium',   label: 'utm_medium',   placeholder: 'e.g. email' },
@@ -4199,13 +4193,13 @@ function UtmSection({ T, form, setForm, IS }: any) {
   ]
   return (
     <FieldStack>
-      <SectionLabel T={T}>UTM parameters</SectionLabel>
+      <SectionLabel>UTM parameters</SectionLabel>
       <div style={{ fontSize: 12, color: T.textMuted, marginBottom: 4 }}>
         Appended to the destination URL when visitors click.
       </div>
       {fields.map(f => (
         <div key={f.key}>
-          <Label T={T}>{f.label}</Label>
+          <Label>{f.label}</Label>
           <input
             className="bs-lnk-input"
             value={form[f.key] || ''}
@@ -4220,7 +4214,7 @@ function UtmSection({ T, form, setForm, IS }: any) {
 }
 
 // ── QR (inside drawer) ──────────────────────────────────────────────
-function QrSection({ T, form, setForm, IS }: any) {
+function QrSection({ form, setForm, IS }: any) {
   const cfg = form.qr_config || { fg: '#000000', bg: '#ffffff', ecc: 'M' }
   const shortUrl = form.slug ? `${SHORT_BASE}/${form.slug}` : ''
 
@@ -4229,7 +4223,7 @@ function QrSection({ T, form, setForm, IS }: any) {
 
   return (
     <FieldStack>
-      <SectionLabel T={T}>QR code</SectionLabel>
+      <SectionLabel>QR code</SectionLabel>
       {!shortUrl ? (
         <div style={{
           padding: 20, textAlign: 'center',
@@ -4250,17 +4244,17 @@ function QrSection({ T, form, setForm, IS }: any) {
 
           <FieldRow>
             <div>
-              <Label T={T}>Foreground</Label>
-              <ColorInput T={T} value={cfg.fg || '#000000'} onChange={v => setCfg({ fg: v })} />
+              <Label>Foreground</Label>
+              <ColorInput value={cfg.fg || '#000000'} onChange={v => setCfg({ fg: v })} />
             </div>
             <div>
-              <Label T={T}>Background</Label>
-              <ColorInput T={T} value={cfg.bg || '#ffffff'} onChange={v => setCfg({ bg: v })} />
+              <Label>Background</Label>
+              <ColorInput value={cfg.bg || '#ffffff'} onChange={v => setCfg({ bg: v })} />
             </div>
           </FieldRow>
 
           <div>
-            <Label T={T} hint="Higher = more tolerant of logos/damage, but denser pattern.">
+            <Label hint="Higher = more tolerant of logos/damage, but denser pattern.">
               Error correction
             </Label>
             <div style={{
@@ -4361,8 +4355,8 @@ async function downloadQr(
 }
 
 function ColorInput({
-  T, value, onChange,
-}: { T: Theme; value: string; onChange: (v: string) => void }) {
+  value, onChange,
+}: { value: string; onChange: (v: string) => void }) {
   return (
     <div style={{
       display: 'flex', alignItems: 'center', gap: 8,
@@ -4398,9 +4392,8 @@ function ColorInput({
 // QR DIALOG (invoked from list row)
 // ════════════════════════════════════════════════════════════════════
 function QrDialog({
-  T, link, onClose, onSaveConfig,
+  link, onClose, onSaveConfig,
 }: {
-  T: Theme
   link: LinkRow
   onClose: () => void
   onSaveConfig: (cfg: any) => Promise<void>
@@ -4444,12 +4437,12 @@ function QrDialog({
 
           <FieldRow>
             <div>
-              <Label T={T}>Foreground</Label>
-              <ColorInput T={T} value={cfg.fg || '#000'} onChange={v => setCfg(c => ({ ...c, fg: v }))} />
+              <Label>Foreground</Label>
+              <ColorInput value={cfg.fg || '#000'} onChange={v => setCfg(c => ({ ...c, fg: v }))} />
             </div>
             <div>
-              <Label T={T}>Background</Label>
-              <ColorInput T={T} value={cfg.bg || '#fff'} onChange={v => setCfg(c => ({ ...c, bg: v }))} />
+              <Label>Background</Label>
+              <ColorInput value={cfg.bg || '#fff'} onChange={v => setCfg(c => ({ ...c, bg: v }))} />
             </div>
           </FieldRow>
 
@@ -4489,8 +4482,8 @@ function QrDialog({
 // SMALL SHARED BUTTONS
 // ════════════════════════════════════════════════════════════════════
 function IconBtn({
-  T, onClick, title, children,
-}: { T: Theme; onClick: () => void; title: string; children: React.ReactNode }) {
+  onClick, title, children,
+}: { onClick: () => void; title: string; children: React.ReactNode }) {
   return (
     <button
       onClick={onClick}
@@ -4510,9 +4503,8 @@ function IconBtn({
 }
 
 function GhostBtn({
-  T, onClick, children, variant,
+  onClick, children, variant,
 }: {
-  T: Theme
   onClick: () => void
   children: React.ReactNode
   variant?: 'accent' | 'danger'
@@ -4537,7 +4529,7 @@ function GhostBtn({
 }
 
 // ════════════════════ ADS TAB ════════════════════
-function AdsTab({T}:{T:Theme}) {
+function AdsTab() {
   const [ads,setAds]=useState<any[]>([]); const [pagination,setPagination]=useState<Pagination>(emptyPagination)
   const [loading,setLoading]=useState(true); const [showCreate,setShowCreate]=useState(false); const [creating,setCreating]=useState(false)
   const PLACEMENTS=['shop_banner','shop_sidebar','shop_product_card','cart_drawer','receipt_footer']
@@ -4547,7 +4539,7 @@ function AdsTab({T}:{T:Theme}) {
   const createAd=async()=>{if(!newAd.title||!newAd.image_url||!newAd.link)return;setCreating(true);const r=await apiFetch('/v2/admin/ads',{method:'POST',body:JSON.stringify(newAd)});if(r.ok){setNewAd({title:'',image_url:'',link:'',placement:'shop_banner'});setShowCreate(false);await load(1)}else toast.error(r.error||'Failed');setCreating(false)}
   const toggleActive=async(a:any)=>{const r=await apiFetch(`/v2/admin/ads/${a.id}`,{method:'PATCH',body:JSON.stringify({active:!a.active})});if(r.ok)setAds(prev=>prev.map(x=>x.id===a.id?{...x,active:!a.active}:x))}
   const deleteAd=async(id:string)=>{if(!confirm('Delete this ad?'))return;await apiFetch(`/v2/admin/ads/${id}`,{method:'DELETE'});await load(pagination.page)}
-  const IS=inputStyle(T)
+  const IS=inputStyle()
   return (
     <div>
       <button onClick={()=>setShowCreate(!showCreate)} style={{height:'var(--bs-control-md)',padding:'0 20px',borderRadius:10,background:T.accentFill,border:'none',color:'#fff',cursor:'pointer',fontSize:13,fontWeight:600,marginBottom:20}}>+ New Ad</button>
@@ -4559,10 +4551,10 @@ function AdsTab({T}:{T:Theme}) {
             <input placeholder="Link URL *" value={newAd.link} onChange={e=>setNewAd({...newAd,link:e.target.value})} style={IS}/>
             <select value={newAd.placement} onChange={e=>setNewAd({...newAd,placement:e.target.value})} style={IS}>{PLACEMENTS.map(p=><option key={p} value={p}>{p.replace(/_/g,' ')}</option>)}</select>
           </div>
-          <div style={{display:'flex',gap:6}}><SmallBtn T={T} color={T.accent} onClick={createAd}>{creating?'…':'Create'}</SmallBtn><SmallBtn T={T} color={T.textMuted} onClick={()=>setShowCreate(false)}>Cancel</SmallBtn></div>
+          <div style={{display:'flex',gap:6}}><SmallBtn color={T.accent} onClick={createAd}>{creating?'…':'Create'}</SmallBtn><SmallBtn color={T.textMuted} onClick={()=>setShowCreate(false)}>Cancel</SmallBtn></div>
         </div>
       )}
-      {loading?<Loading T={T}/>:ads.length===0?<EmptyState text="No ads" T={T}/>:(
+      {loading?<Loading/>:ads.length===0?<EmptyState text="No ads"/>:(
         <div style={{display:'flex',flexDirection:'column',gap:10}}>
           {ads.map((a:any)=>(
             <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'14px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,opacity:a.active?1:0.5,flexWrap:'wrap'}}>
@@ -4571,14 +4563,14 @@ function AdsTab({T}:{T:Theme}) {
                 <div style={{minWidth:0}}><div style={{fontSize:13,fontWeight:500,color:T.text}}>{a.title}</div><div style={{fontSize:11,color:T.textMuted}}>{a.placement?.replace(/_/g,' ')} · {a.click_count||0} clicks · {a.view_count||0} views</div></div>
               </div>
               <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                <SmallBtn T={T} color={a.active?T.warning:T.success} onClick={()=>toggleActive(a)}>{a.active?'Pause':'Resume'}</SmallBtn>
-                <SmallBtn T={T} color={T.error} onClick={()=>deleteAd(a.id)}>Delete</SmallBtn>
+                <SmallBtn color={a.active?T.warning:T.success} onClick={()=>toggleActive(a)}>{a.active?'Pause':'Resume'}</SmallBtn>
+                <SmallBtn color={T.error} onClick={()=>deleteAd(a.id)}>Delete</SmallBtn>
               </div>
             </div>
           ))}
         </div>
       )}
-      {pagination?.pages>1&&<PaginationBar T={T} pagination={pagination} onPage={p=>load(p)}/>}
+      {pagination?.pages>1&&<PaginationBar pagination={pagination} onPage={p=>load(p)}/>}
     </div>
   )
 }
@@ -4587,7 +4579,7 @@ function AdsTab({T}:{T:Theme}) {
 // ════════════════════ DISCOUNTS TAB (full CRUD) ════════════════════
 const EMPTY_DISCOUNT = (): any => ({ code: '', type: 'percentage', value: 0, active: true, min_order_ngn: 0, max_uses: null, expires_at: null, active_from: null, max_discount_ngn: null, included_products: null, excluded_products: null, included_categories: null, excluded_categories: null, auto_apply: false, scope: 'site_wide', exclusive: false })
 
-function DiscountsTab({ T }: { T: Theme }) {
+function DiscountsTab() {
   const [discounts, setDiscounts] = useState<Discount[]>([]); const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false); const [creating, setCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -4642,10 +4634,10 @@ function DiscountsTab({ T }: { T: Theme }) {
     <div>
       <button onClick={() => { setShowCreate(!showCreate); setEditingId(null) }} style={{ height: 'var(--bs-control-md)', padding: '0 20px', borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>+ New Discount</button>
 
-      {showCreate && <DiscountFormPanel T={T} form={newDiscount} setForm={setNewDiscount} onSave={createDiscount} onCancel={() => setShowCreate(false)} saving={creating} title="Create Discount Code" />}
-      {editingId && <DiscountFormPanel T={T} form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Discount Code" />}
+      {showCreate && <DiscountFormPanel form={newDiscount} setForm={setNewDiscount} onSave={createDiscount} onCancel={() => setShowCreate(false)} saving={creating} title="Create Discount Code" />}
+      {editingId && <DiscountFormPanel form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Discount Code" />}
 
-      {loading ? <Loading T={T} /> : discounts.length === 0 ? <EmptyState text="No discount codes" T={T} /> : (
+      {loading ? <Loading /> : discounts.length === 0 ? <EmptyState text="No discount codes" /> : (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {discounts.map(d => (
             <div key={d.id} style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', overflow: 'hidden', opacity: d.active ? 1 : 0.55 }}>
@@ -4653,7 +4645,7 @@ function DiscountsTab({ T }: { T: Theme }) {
                 <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                   <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 'var(--bs-text-sm)', fontWeight: 700, color: 'var(--bs-accent-on-surface)', background: 'rgba(var(--bs-accent-rgb), 0.09)', padding: '3px 10px', borderRadius: 6 }}>{d.code}</span>
                   <span style={{ fontSize: 13, color: T.text }}>{d.type === 'percentage' ? `${d.value}% off` : `₦${Number(d.value).toLocaleString()} off`}</span>
-                  <Badge status={d.active ? 'active' : 'hidden'} T={T} />
+                  <Badge status={d.active ? 'active' : 'hidden'} />
                   {d.auto_apply && <span style={{ fontSize: 'var(--bs-text-2xs)', padding: '2px 8px', borderRadius: 'var(--bs-radius-sm)', background: 'rgba(var(--bs-accent-rgb), 0.08)', color: 'var(--bs-accent-on-surface)', fontWeight: 600 }}>Auto</span>}
                 </div>
                 <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
@@ -4664,27 +4656,27 @@ function DiscountsTab({ T }: { T: Theme }) {
               {expanded === d.id && (
                 <div style={{ padding: '0 22px 18px', borderTop: `1px solid ${T.borderSubtle}` }}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16, padding: '14px 0' }}>
-                    <DetailSection T={T} title="Rules">
-                      <DRow T={T} label="Min Order" value={d.min_order_ngn ? fmt(d.min_order_ngn) : 'None'} />
-                      <DRow T={T} label="Max Discount" value={d.max_discount_ngn ? fmt(d.max_discount_ngn) : 'No cap'} />
-                      <DRow T={T} label="Max Uses" value={d.max_uses ? String(d.max_uses) : 'Unlimited'} />
-                      <DRow T={T} label="Used" value={String(d.times_used || 0)} />
+                    <DetailSection title="Rules">
+                      <DRow label="Min Order" value={d.min_order_ngn ? fmt(d.min_order_ngn) : 'None'} />
+                      <DRow label="Max Discount" value={d.max_discount_ngn ? fmt(d.max_discount_ngn) : 'No cap'} />
+                      <DRow label="Max Uses" value={d.max_uses ? String(d.max_uses) : 'Unlimited'} />
+                      <DRow label="Used" value={String(d.times_used || 0)} />
                     </DetailSection>
-                    <DetailSection T={T} title="Dates">
-                      <DRow T={T} label="Active From" value={d.active_from ? fmtDate(d.active_from) : 'Immediately'} />
-                      <DRow T={T} label="Expires" value={d.expires_at ? fmtDate(d.expires_at) : 'Never'} />
-                      <DRow T={T} label="Created" value={fmtDate(d.created_at)} />
+                    <DetailSection title="Dates">
+                      <DRow label="Active From" value={d.active_from ? fmtDate(d.active_from) : 'Immediately'} />
+                      <DRow label="Expires" value={d.expires_at ? fmtDate(d.expires_at) : 'Never'} />
+                      <DRow label="Created" value={fmtDate(d.created_at)} />
                     </DetailSection>
-                    <DetailSection T={T} title="Targeting">
-                      <DRow T={T} label="Scope" value={d.scope || 'site_wide'} />
-                      <DRow T={T} label="Incl. Products" value={d.included_products || 'All'} />
-                      <DRow T={T} label="Excl. Products" value={d.excluded_products || 'None'} />
+                    <DetailSection title="Targeting">
+                      <DRow label="Scope" value={d.scope || 'site_wide'} />
+                      <DRow label="Incl. Products" value={d.included_products || 'All'} />
+                      <DRow label="Excl. Products" value={d.excluded_products || 'None'} />
                     </DetailSection>
                   </div>
                   <div style={{ display: 'flex', gap: 8 }}>
-                    <SmallBtn T={T} color={T.accent} onClick={() => startEdit(d)}>Edit</SmallBtn>
-                    <SmallBtn T={T} color={d.active ? T.warning : T.success} onClick={() => toggleActive(d)}>{d.active ? 'Deactivate' : 'Activate'}</SmallBtn>
-                    <SmallBtn T={T} color={T.error} onClick={() => deleteDiscount(d.id)}>Delete</SmallBtn>
+                    <SmallBtn color={T.accent} onClick={() => startEdit(d)}>Edit</SmallBtn>
+                    <SmallBtn color={d.active ? T.warning : T.success} onClick={() => toggleActive(d)}>{d.active ? 'Deactivate' : 'Activate'}</SmallBtn>
+                    <SmallBtn color={T.error} onClick={() => deleteDiscount(d.id)}>Delete</SmallBtn>
                   </div>
                 </div>
               )}
@@ -4696,7 +4688,7 @@ function DiscountsTab({ T }: { T: Theme }) {
   )
 }
 
-function NotificationsTab({ T }: { T: Theme }) {
+function NotificationsTab() {
   const initialForm = {
     title: '',
     message: '',
@@ -4836,7 +4828,7 @@ function NotificationsTab({ T }: { T: Theme }) {
     setSending(false)
   }
 
-  const IS = inputStyle(T)
+  const IS = inputStyle()
 
   // Panel section label style (uppercase small caps)
   const sectionLabel: React.CSSProperties = {
@@ -4958,7 +4950,7 @@ function NotificationsTab({ T }: { T: Theme }) {
       {/* LEFT COLUMN — COMPOSER                                       */}
       {/* ============================================================ */}
       <div>
-        <Card T={T} title={editingId ? 'Edit Notification' : 'Send Notification'}>
+        <Card title={editingId ? 'Edit Notification' : 'Send Notification'}>
 
           {editingId && (
             <div style={{
@@ -5003,7 +4995,7 @@ function NotificationsTab({ T }: { T: Theme }) {
           <div style={sectionLabel}>Basics</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
-            <FieldLabel label="Type" T={T}>
+            <FieldLabel label="Type">
               <select
                 className="bs-notif-input"
                 style={IS}
@@ -5016,7 +5008,7 @@ function NotificationsTab({ T }: { T: Theme }) {
               </select>
             </FieldLabel>
 
-            <FieldLabel label="Audience" T={T}>
+            <FieldLabel label="Audience">
               <select
                 className="bs-notif-input"
                 style={IS}
@@ -5031,7 +5023,7 @@ function NotificationsTab({ T }: { T: Theme }) {
           </div>
 
           <div style={{ marginBottom: 14 }}>
-            <FieldLabel label="Title (optional)" T={T}>
+            <FieldLabel label="Title (optional)">
               <input
                 className="bs-notif-input"
                 style={IS}
@@ -5043,7 +5035,7 @@ function NotificationsTab({ T }: { T: Theme }) {
           </div>
 
           <div style={{ marginBottom: 8 }}>
-            <FieldLabel label="Message" T={T}>
+            <FieldLabel label="Message">
               <textarea
                 className="bs-notif-input"
                 style={{
@@ -5183,7 +5175,7 @@ function NotificationsTab({ T }: { T: Theme }) {
           <div style={sectionLabel}>Media</div>
 
           <div style={{ marginBottom: 12 }}>
-            <FieldLabel label="Image URL (optional)" T={T}>
+            <FieldLabel label="Image URL (optional)">
               <input
                 className="bs-notif-input"
                 style={IS}
@@ -5195,7 +5187,7 @@ function NotificationsTab({ T }: { T: Theme }) {
           </div>
 
           <div style={{ marginBottom: 4 }}>
-            <FieldLabel label="Image Position" T={T}>
+            <FieldLabel label="Image Position">
               <div style={{
                 display: 'flex',
                 gap: 4,
@@ -5238,7 +5230,7 @@ function NotificationsTab({ T }: { T: Theme }) {
           <div style={sectionLabel}>Scheduling</div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 4 }}>
-            <FieldLabel label="Schedule (optional)" T={T}>
+            <FieldLabel label="Schedule (optional)">
               <input
                 className="bs-notif-input"
                 type="datetime-local"
@@ -5248,7 +5240,7 @@ function NotificationsTab({ T }: { T: Theme }) {
               />
             </FieldLabel>
 
-            <FieldLabel label="Expiry (optional)" T={T}>
+            <FieldLabel label="Expiry (optional)">
               <input
                 className="bs-notif-input"
                 type="datetime-local"
@@ -5314,7 +5306,7 @@ function NotificationsTab({ T }: { T: Theme }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
 
         {/* Live preview */}
-        <Card T={T} title="Live Preview">
+        <Card title="Live Preview">
           <div style={sectionLabel}>How it will appear</div>
 
           <div style={{
@@ -5471,7 +5463,7 @@ function NotificationsTab({ T }: { T: Theme }) {
         </Card>
 
         {/* History */}
-        <Card T={T} title="History">
+        <Card title="History">
           {list.length === 0 ? (
             <div style={{
               padding: '32px 16px',
@@ -5607,7 +5599,7 @@ function NotificationsTab({ T }: { T: Theme }) {
 }
 
 
-function SettingsTab({ T }: { T: Theme }) {
+function SettingsTab() {
   const [settings, setSettings] = useState<any>({})
   const [loading, setLoading] = useState(true)
 
@@ -5638,14 +5630,14 @@ function SettingsTab({ T }: { T: Theme }) {
     else toast.error(r?.error || 'Failed to save')
   }
 
-  if (loading) return <Loading T={T} />
+  if (loading) return <Loading />
 
   return (
-    <Card T={T} title="General Settings">
+    <Card title="General Settings">
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-        <FieldLabel label="Phone" T={T}>
+        <FieldLabel label="Phone">
           <input
-            style={inputStyle(T)}
+            style={inputStyle()}
             value={settings.phone || ''}
             onChange={e =>
               setSettings((s: any) => ({ ...s, phone: e.target.value }))
@@ -5653,9 +5645,9 @@ function SettingsTab({ T }: { T: Theme }) {
           />
         </FieldLabel>
 
-        <FieldLabel label="Instagram" T={T}>
+        <FieldLabel label="Instagram">
           <input
-            style={inputStyle(T)}
+            style={inputStyle()}
             value={settings.instagram || ''}
             onChange={e =>
               setSettings((s: any) => ({ ...s, instagram: e.target.value }))
@@ -5663,9 +5655,9 @@ function SettingsTab({ T }: { T: Theme }) {
           />
         </FieldLabel>
 
-        <FieldLabel label="Facebook" T={T}>
+        <FieldLabel label="Facebook">
           <input
-            style={inputStyle(T)}
+            style={inputStyle()}
             value={settings.facebook || ''}
             onChange={e =>
               setSettings((s: any) => ({ ...s, facebook: e.target.value }))
@@ -5673,9 +5665,9 @@ function SettingsTab({ T }: { T: Theme }) {
           />
         </FieldLabel>
 
-        <FieldLabel label="X (Twitter)" T={T}>
+        <FieldLabel label="X (Twitter)">
           <input
-            style={inputStyle(T)}
+            style={inputStyle()}
             value={settings.x || ''}
             onChange={e =>
               setSettings((s: any) => ({ ...s, x: e.target.value }))
@@ -5683,9 +5675,9 @@ function SettingsTab({ T }: { T: Theme }) {
           />
         </FieldLabel>
 
-        <FieldLabel label="TikTok" T={T}>
+        <FieldLabel label="TikTok">
           <input
-            style={inputStyle(T)}
+            style={inputStyle()}
             value={settings.tiktok || ''}
             onChange={e =>
               setSettings((s: any) => ({ ...s, tiktok: e.target.value }))
@@ -5693,9 +5685,9 @@ function SettingsTab({ T }: { T: Theme }) {
           />
         </FieldLabel>
 
-        <FieldLabel label="Receipt Caption (optional)" T={T}>
+        <FieldLabel label="Receipt Caption (optional)">
           <textarea
-            style={{ ...inputStyle(T), height: 80, padding: '10px 14px' } as any}
+            style={{ ...inputStyle(), height: 80, padding: '10px 14px' } as any}
             value={settings.receipt_caption || ''}
             onChange={e =>
               setSettings((s: any) => ({
@@ -5707,7 +5699,7 @@ function SettingsTab({ T }: { T: Theme }) {
         </FieldLabel>
 
         <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-          <SmallBtn T={T} color={T.accent} onClick={saveSettings}>
+          <SmallBtn color={T.accent} onClick={saveSettings}>
             Save Settings
           </SmallBtn>
         </div>
