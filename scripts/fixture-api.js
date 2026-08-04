@@ -280,6 +280,39 @@ const PRODUCTS = [
     billing_type: 'one_time', billing_period: null,
     tags: null, domain: 'steampowered.com',
     stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 6 },
+  // ── Rows 7-10 exist to make SponsoredProductCard reachable ─────────────
+  // Marketplace calls interleaveAds(visible, sponsoredCards, 8), which inserts
+  // an ad only after every 8th product. At six rows the modulo never fires, so
+  // the sponsored card had never rendered — the sixth fixture gap, found in
+  // Phase 13. Keep this list at nine or more or that component goes dark again.
+  { id: 'p-yt', name: 'YouTube Premium Family', slug: 'youtube-premium-family',
+    category: 'video streaming', description: 'Ad-free for up to five members.',
+    short_description: 'Ad-free for five', category_tagline: 'Streaming',
+    price_1m: 7200, price_3m: 21500, price_6m: 41000, price_1y: 78000,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'youtube.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 7 },
+  { id: 'p-notion', name: 'Notion Plus', slug: 'notion-plus',
+    category: 'productivity', description: 'Unlimited blocks and file uploads.',
+    short_description: 'Unlimited blocks', category_tagline: 'Productivity',
+    price_1m: 8400, price_3m: 24000, price_6m: 46000, price_1y: 88000,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'notion.so',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 8 },
+  { id: 'p-duo', name: 'Duolingo Super', slug: 'duolingo-super',
+    category: 'education', description: 'No ads and unlimited hearts.',
+    short_description: 'No ads, unlimited hearts', category_tagline: 'Education',
+    price_1m: 5100, price_3m: 14500, price_6m: 27500, price_1y: 52000,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'duolingo.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 9 },
+  { id: 'p-icloud', name: 'iCloud+ 2TB', slug: 'icloud-plus-2tb',
+    category: 'cloud', description: 'Two terabytes with Private Relay.',
+    short_description: '2TB with Private Relay', category_tagline: 'Cloud',
+    price_1m: 4800, price_3m: 13800, price_6m: 26400, price_1y: 50000,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'icloud.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 10 },
 ]
 
 // Ads occupy the storefront the navbar is measured against, so they have to be
@@ -611,9 +644,26 @@ const ROUTES = [
   // Nested under data.discounts, not data — lib/api.ts types it
   // `{ discounts: any[] }` and Marketplace reads `res.data?.discounts`, so a
   // bare array here silently yields no auto-applied discount.
+  // ReferralBanner had never rendered before Phase 13, and this route is why.
+  // lib/useReferral.ts:63 resolves the ?ref= code here and gates on
+  // `data.data?.valid` at :66. The catch-all returns `data: []`, and
+  // `[].valid` is undefined, so affiliateInfo stayed null and
+  // Marketplace.tsx:1136 never mounted the banner. Reach it with
+  // /shop?ref=OKONKWO-DIGITAL-2026. `code=missing` returns the invalid branch.
+  [/^\/v2\/affiliates\/resolve$/, q => {
+    const code = q.get('code') || ''
+    if (code === 'missing') return { ok: true, data: { valid: false } }
+    return { ok: true, data: {
+      valid: true,
+      affiliate_id: 'aff-1',
+      referral_code: code || 'OKONKWO-DIGITAL-2026',
+      // Long enough to push the banner's flex-wrap on a 360px viewport.
+      store_name: 'Okonkwo Digital Subscriptions',
+    } }
+  }],
   // /v2/discount/validate needs no route: it is a POST, and every non-GET is
-  // acknowledged generically above. /v2/ads/impression and /v2/ads/click are
-  // POSTs for the same reason.
+  // acknowledged generically above. /v2/ads/impression, /v2/ads/click and
+  // /v2/affiliates/click are POSTs for the same reason.
   [/^\/v2\/discount\/auto-apply$/, () => ({ ok: true, data: { discounts: [AUTO_DISCOUNT] } })],
   [/^\/v2\/admin\/stats$/,              () => ({ ok: true, data: ADMIN_STATS })],
   // Admin reads a wider row than the customer dashboard: OrdersTab renders

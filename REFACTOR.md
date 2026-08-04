@@ -2,6 +2,26 @@
 
 Read this file first in any session. Update it before finishing.
 
+## Status: complete (Phases 0-13, 2026-08-02 to 2026-08-05)
+
+Every planned surface is on the token layer. What remains is not this refactor's
+work, and is listed here so the next session does not have to reconstruct it:
+
+- **`components/Marketplace.tsx` is the one file never touched**, by standing
+  rule. It is the last surface the owner intends to refactor, and doing so is
+  what lifts the `/shop` theme exclusion. Four things are queued against that
+  moment and recorded in place: the Navbar theme toggle starts rendering, the
+  `--bs-muted-rgb` alias can be deleted, the sponsored-card divergence can be
+  unified, and the sticky-header collision below can be fixed.
+- **Fix first when it opens:** `top: 64` on `stickyControls`
+  (`Marketplace.tsx:2067`). Today the whole header is unreachable on scroll on
+  the app's only public page. One property.
+- **Deferred** below holds the logic, perf and product questions found along the
+  way. None of it is styling, and none of it was fixed by design.
+- **Two items need the owner, not an engineer**: white on the brief-pinned
+  WhatsApp green at 1.98:1 (Phase 10), and the unreliable partner
+  terms-acceptance records (see "For the owner").
+
 ## Rules
 - UI only. No logic, no perf, no data flow changes.
 - Off-limits: components/Marketplace.tsx. Hand-written, includes the cart
@@ -130,7 +150,7 @@ Read this file first in any session. Update it before finishing.
 - [x] 12. components/Navbar.tsx and components/Footer.tsx
        (these render on /shop — the cart drawer inside Marketplace.tsx keeps
        its existing styling, so check the seam visually before committing)
-- [ ] 13. components/ShopAds.tsx
+- [x] 13. components/ShopAds.tsx — **the refactor is complete**
 
 ## Decisions made
 
@@ -502,9 +522,9 @@ an engineering one.
   "nothing acts on" — `bs_admin_theme` *is* `THEME_STORAGE_KEY`, so the write was
   live and global while the missing read left the icon reporting dark on every
   load. Now on `useTheme()` and gated on `isThemeableRoute()`.
-- ShopAds.tsx:102 rotates the banner carousel on a 6s setInterval. The global
-  reduced-motion CSS cannot stop a JS timer; this needs its own
-  `matchMedia('(prefers-reduced-motion: reduce)')` guard in Phase 13.
+- ~~ShopAds.tsx:102 rotates the banner carousel on a 6s setInterval without a
+  reduced-motion guard.~~ **Resolved in Phase 13**, together with the WCAG 2.2.2
+  pause requirement the entry did not mention.
 - Lifting the /shop theme exclusion is blocked on Marketplace.tsx becoming
   editable (see Theme mechanism above). Confirmed concretely in Phase 1: forcing
   data-theme="light" on /shop turns the product card white while its #1C1C1F
@@ -1160,7 +1180,101 @@ toggle mounted so the future state is included: 16+16 padding + 64.5 wordmark +
 165.9 links + 24 gaps + 44 toggle = **330.3px, 29.7px of headroom at 360**. One
 line, nothing under 44px.
 
+### Phase 13 — ShopAds, and the refactor is complete
+
+The least token-aware file left: 16 stale `var(--bs-*, #hex)` fallbacks with
+**seven of eight drifted** (`--bs-bg-card` fell back to `#111114` against the
+real `#0B0B0F`, `--bs-text-muted` to `#6b6b7e` against the corrected `#838392`),
+ten `#7C5CFF` literals including four hex-alpha concatenations, and three 9px
+sizes below the 11 floor. All cleared.
+
+**Instances 8, 9 and 10 of the on-tint bug**, all in one file: the sponsored
+badge and the "Learn More" chip (`#7C5CFF` on `#7C5CFF20`) and `ReferralBanner`'s
+store name (on a `#7C5CFF12` field). Now on `--bs-on-tint-mix`, measured 5.28
+dark / 6.21 light — the same numbers Phases 6 and 7 recorded, which is the point
+of having the token.
+
+Also: `--bs-text-faint` misused twice for text a user has to read (the sidebar
+"Sponsored" heading and the Remove button), both to `--bs-text-muted`; the `✕`
+glyph to an inline `XIcon`; and the `onMouseEnter`/`onMouseLeave` handlers that
+mutated `style.borderColor` replaced with `:hover` in a scoped `<style>` block,
+which also gave these links the `:focus-visible` ring they never had.
+
+**The "Ad" chip stopped depending on the image underneath it.** It printed
+`#888` on a `rgba(0,0,0,0.6)` scrim over arbitrary ad artwork, so its contrast
+was whatever the photo happened to be — over a pale image the composite lands
+near 1.9:1. It is now an opaque `--bs-bg-card` fill at 7.62 dark / 7.53 light.
+Same reasoning Phase 6 used to make the admin badges opaque: an opaque fill
+cannot composite with what sits beneath it.
+
+**The carousel: reduced motion, and WCAG 2.2.2.** The 6s `setInterval` now has a
+`matchMedia('(prefers-reduced-motion: reduce)')` guard following the house
+pattern at `app/login/page.tsx:360`, so a preference changed mid-session is
+honoured. Reduced motion alone does not discharge 2.2.2, which applies to
+anything auto-updating past 5 seconds and covers users who never set the OS
+preference, so choosing a slide now cancels rotation permanently and hover or
+focus pauses it. **Behavioural addition**, as in Phases 2, 3 and 11.
+
+The dots were the whole control at 6x6 with **no accessible name at all**. They
+now carry a 44px target with an 8px visible mark inside, `aria-label`,
+`aria-current` and a focus ring.
+
+**The sponsored card stretches to its grid row now.** Its `<a>` is the grid item
+and stretched, but the card inside had auto height and stopped short, so the ad
+sat visibly shorter than the real cards beside it. Measured after the fix: 237px
+against row mates of 237, 237, 237.
+
+#### Verified against a frozen renderer, which is worth recording
+
+The automated tab freezes its timers between CDP calls — a 200ms sampler
+recorded **nothing** across a 5s external wait, and two 20s+ evaluations returned
+"renderer may be frozen". A 6s carousel period is invisible under that, and it
+briefly looked like a code defect. It was not. Three techniques got past it, and
+a future session should reach for them rather than re-deriving:
+
+1. **Do all timing inside a single evaluate**, under ~20s.
+2. **Read component state from the React fiber** rather than inferring it from
+   the DOM over time. Walking `__reactFiber$…` up to the owning component and
+   reading the `memoizedState` chain gives `[current, tookControl, engaged,
+   reduce]` plus the effect's dep array directly — deterministic, no waiting.
+3. **Synthetic mouse events do not drive React's enter/leave synthesis.** A
+   dispatched `mouseover` left `engaged` false; the `computer` tool's `hover`
+   action, which produces a trusted event, flipped it immediately. `.click()`
+   does work, so it is specific to enter/leave. Nor does `.focus()` fire, since
+   the tab never holds document focus.
+
+Both directions of the guard were proven by temporarily inverting the media query
+to one that currently matches, rebuilding, and reading the fiber: `reduce=true`,
+effect deps `[2,true,false,false]`, index frozen — against `0101010101` with the
+guard off. Query restored, and the restoration proven.
+
 ## Seams to watch
+- **The sponsored ad card sits one border value off the real product cards it
+  imitates.** `SponsoredProductCard` takes `cardStyle(isMobile)` from
+  `Marketplace.tsx:2056` and is meant to look like a product card. Measured
+  against the real one, it diverges in six places:
+
+  | | real card | sponsored card |
+  |---|---|---|
+  | logo tile | 48x48, radius 14 | 36/44, radius md |
+  | name | weight 600, size inherited (16) | weight 600, base 15 |
+  | price | weight 700, size inherited (16) | weight 700, base/lg |
+  | category | 12, `#7C5CFF` | 2xs, `--bs-text-muted` |
+  | card border | `1px solid #1C1C1F` | `--bs-border-subtle` (`#16161E`) |
+  | top row gap | 14 | `space-3` |
+
+  Phase 13 closed only the two weights, on the Phase 0 rule that 700 is reserved
+  for prices, rather than chasing Marketplace's numbers. The border is the honest
+  seam: matching it would mean re-introducing the `#1C1C1F` literal that Phases 7
+  and 8 removed elsewhere. **Unify both sides when Marketplace moves onto
+  tokens** — that is the one moment they can actually be made to match.
+- **A 0% discount renders a literal `0` on the product card.** Visible on the
+  fixture's YouTube Premium Family row, where `price_1m * 3` (21,600) barely
+  exceeds `price_3m` (21,500), so `discountPct` rounds to 0 — and `{0 && …}`
+  renders the zero rather than nothing, the standard React falsy-render trap.
+  It is in `Marketplace.tsx`, so it is off-limits; the fixture deliberately keeps
+  the row that reproduces it. Any real product priced within ~0.5% of its monthly
+  rate hits this in production.
 - The cart drawer inside Marketplace.tsx keeps its existing styling on the same
   page as the restyled Navbar/Footer. Checked visually in Phase 12 with a
   populated cart: no clash. The drawer is dark against a dark navbar, its
@@ -1628,4 +1742,27 @@ z-index scale is a Phase 0-shaped addition touching many files.
   #1C1C1F card borders, so "half-light" overstated it. Logged the sticky-header
   collision as the first thing to fix when Marketplace opens, and the Tawk.to
   bubble overlapping the footer wordmark as Deferred.
+  tsc + build clean, no 127.0.0.1:8787 in chunks.
+- 2026-08-05 — Phase 13. components/ShopAds.tsx on the token layer; the refactor
+  is complete. 16 stale var() fallbacks stripped (seven of eight had drifted),
+  ten #7C5CFF literals and four hex-alpha concatenations onto accent tokens,
+  three 9px sizes to the 11 floor, two --bs-text-faint misuses to text-muted, the
+  ✕ glyph to an inline XIcon, and the JS-driven hover handlers replaced with CSS
+  so the ad links finally have focus rings. Instances 8, 9 and 10 of the on-tint
+  bug fixed with --bs-on-tint-mix, measuring 5.28 dark / 6.21 light, the same
+  numbers as Phases 6 and 7. The "Ad" chip moved off a translucent scrim whose
+  contrast depended on the artwork underneath onto an opaque fill (7.62 / 7.53).
+  Carousel given its reduced-motion guard plus a WCAG 2.2.2 stop mechanism —
+  choosing a slide cancels rotation, hover and focus pause it — recorded as a
+  behavioural addition. Dots went from a 6px unnamed control to a 44px target
+  with aria-label, aria-current and a focus ring. Sponsored card now stretches to
+  its grid row (237px against row mates of 237). Two fixture gaps closed:
+  /v2/affiliates/resolve, without which ReferralBanner had never rendered, and
+  four more products, without which interleaveAds never fired and
+  SponsoredProductCard had never rendered either — the fifth and sixth times a
+  fixture gap has hidden a screen. Guard proven in both directions by inverting
+  the media query and reading the React fiber, then restored; light tokens
+  verified by temporarily lifting the /shop guard, then restored with an empty
+  diff on lib/theme.ts. Logged the sponsored-vs-real card divergence and a
+  pre-existing `{0 && …}` falsy-render bug in Marketplace against that phase.
   tsc + build clean, no 127.0.0.1:8787 in chunks.
