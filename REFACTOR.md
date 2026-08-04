@@ -22,6 +22,49 @@ work, and is listed here so the next session does not have to reconstruct it:
   WhatsApp green at 1.98:1 (Phase 10), and the unreliable partner
   terms-acceptance records (see "For the owner").
 
+## Needs fixing soon — a bare `0` reads as a price of zero
+
+Not deferred, and not a seam. On a product card whose discount rounds to 0%,
+`Marketplace.tsx` renders a literal **`0`** in the row directly beneath the
+price — the row where every other card shows its strikethrough original. So a
+paid product displays:
+
+```
+₦21,500 / 3 mo
+0                  <- where "₦21,600  Save 1%" belongs
+In stock
+```
+
+It does not read as an absent discount. It reads as **a price of zero on a paid
+product**, immediately under the real price, in the position the eye already
+associates with a second price.
+
+**Cause, at `components/Marketplace.tsx:1356`:**
+
+```jsx
+{!isOutright && discount && (
+```
+
+`discount` comes from `discountPct(monthly, price, cfg.months)` at `:1206`,
+which returns `Math.round(...)`. When it rounds to `0`, the expression evaluates
+`true && 0` → `0`, and `0` is a *renderable* React child, so React prints it.
+The standard falsy-render trap: `{someNumber && <X/>}` prints the number when it
+is zero.
+
+**Reproduce:** the fixture's YouTube Premium Family row, priced so that
+`price_1m * 3` (21,600) barely exceeds `price_3m` (21,500) and the discount
+rounds to 0. That row exists for this reason; do not "fix" the fixture data.
+
+**Fix:** `{!isOutright && discount > 0 && (`, or coerce with `!!discount`. One
+character class of change, one line, no styling involved. It is inside
+`Marketplace.tsx`, which is why Phase 13 did not do it — but it is a
+**money-display defect on the public storefront**, so it should not wait for that
+whole phase. Any real product priced within roughly 0.5% of its monthly rate
+triggers it in production.
+
+Worth a grep for the same pattern while in there: `{someNumber && …}` is the
+shape, and this file renders several counts and amounts.
+
 ## Rules
 - UI only. No logic, no perf, no data flow changes.
 - Off-limits: components/Marketplace.tsx. Hand-written, includes the cart
@@ -1268,13 +1311,30 @@ guard off. Query restored, and the restoration proven.
   seam: matching it would mean re-introducing the `#1C1C1F` literal that Phases 7
   and 8 removed elsewhere. **Unify both sides when Marketplace moves onto
   tokens** — that is the one moment they can actually be made to match.
-- **A 0% discount renders a literal `0` on the product card.** Visible on the
-  fixture's YouTube Premium Family row, where `price_1m * 3` (21,600) barely
-  exceeds `price_3m` (21,500), so `discountPct` rounds to 0 — and `{0 && …}`
-  renders the zero rather than nothing, the standard React falsy-render trap.
-  It is in `Marketplace.tsx`, so it is off-limits; the fixture deliberately keeps
-  the row that reproduces it. Any real product priced within ~0.5% of its monthly
-  rate hits this in production.
+
+  **But do not start from that table. None of those six properties is what
+  actually breaks the illusion.** Measured side by side, the sponsored card reads
+  as belonging: same surface, same radius, same type, same rhythm. What gives it
+  away is the **missing lower half**:
+
+  - no strikethrough original price,
+  - no "Save N%",
+  - no stock badge,
+  - and a small "Learn More" chip where every real card has a full-width
+    "Add to cart" button.
+
+  Phase 13 made the card box stretch to the row height, so it no longer measures
+  short (237px against row mates of 237). That fix moved the problem rather than
+  removing it: the box now matches while its bottom half is empty, so the card
+  reads as sitting short because of the dead space, not because of its height.
+
+  **The fix is to make the CTA full-width so the bottom edge matches, not to
+  invent the missing fields.** An ad has no original price, no discount and no
+  stock, and fabricating them would be worse than the seam — it would make paid
+  placements imitate product data they do not have. Match the shape, not the
+  content.
+- A 0% discount renders a bare `0` where the strikethrough price belongs. **This
+  is not a seam — see "Needs fixing soon" above.**
 - The cart drawer inside Marketplace.tsx keeps its existing styling on the same
   page as the restyled Navbar/Footer. Checked visually in Phase 12 with a
   populated cart: no clash. The drawer is dark against a dark navbar, its
