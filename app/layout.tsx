@@ -1,6 +1,6 @@
 import { CSS_VARS } from '@/lib/constants';
 import AppShell from '../components/AppShell'
-import { Toaster } from 'sonner';
+import ThemedToaster from '../components/ThemedToaster'
 
 export const metadata = {
   title: 'BuySub — Digital Subscription Marketplace',
@@ -72,7 +72,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           {children}
         </AppShell>
 
-        <Toaster richColors position="top-right" />
+        <ThemedToaster />
         <script
           dangerouslySetInnerHTML={{
             __html: `

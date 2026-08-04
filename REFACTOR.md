@@ -126,7 +126,7 @@ Read this file first in any session. Update it before finishing.
 - [x] 10. app/admin/receipt/page.tsx — the web form only, never the PDF
        (see the off-limits rule above: anything reaching the rendered
        document is out of scope)
-- [ ] 11. components/AppShell.tsx notification toasts/banners/modals
+- [x] 11. components/AppShell.tsx notification toasts/banners/modals
 - [ ] 12. components/Navbar.tsx and components/Footer.tsx
        (these render on /shop — the cart drawer inside Marketplace.tsx keeps
        its existing styling, so check the seam visually before committing)
@@ -1379,3 +1379,83 @@ a promo code is typed.
   to an inline XIcon, 17 sizing values to the scales. White on the brief-pinned
   WhatsApp green stays at 1.98:1 pending an owner decision. tsc + build clean,
   no 127.0.0.1:8787 in chunks.
+
+### Phase 11 — AppShell notifications
+
+The least token-aware surface left. Measured against the code before the change:
+modal "Skip" `#aaa` on white **2.32**, banner white on the `#0ea5e9 -> #6366f1`
+gradient **2.77** at one end and **4.47** at the other — it failed across its
+whole span, not just one edge.
+
+**Banner.** Off-palette gradient (its own comment called it "brand feel") moved
+to `--bs-accent-fill -> --bs-accent-hover`, the Phase 2 wallet-gradient pattern;
+white now measures 4.61 and 5.44. It was a click-to-dismiss `<div>`, so it is now
+a `<button>` with an accessible name. `fontSize: 11.5` — fractional and
+off-scale — to the 2xs floor. The commented-out marquee was deleted.
+
+**Modal.** It rendered `background: "white"` with `#151515` / `#666` / `#000` /
+`#ddd` / `#eee` / `black` regardless of theme; it now uses surface, text and
+accent tokens and follows `data-theme` like everything else. Skip promoted from
+a `<div onClick>` to a button (2.32 -> **7.53** light, **7.62** dark). The Back
+button set no `color`, so it fell through to the UA `buttontext` — the same
+defect that produced the Phase 2 money-colour bug — and is now explicit.
+Next/Done is on `--bs-accent-fill`, since it is a fill carrying text.
+
+**Behavioural addition, recorded as such** (as in Phases 2 and 3): the modal has
+`role="dialog"`, `aria-modal`, `aria-labelledby` on the step title, Escape to
+close, and focus moved in on open and restored on close. Escape marks the
+notification seen, so it does not resurrect on the next 15s poll.
+
+**Toasts are dispatched here but rendered by sonner in `app/layout.tsx`.** That
+`<Toaster>` had no theme, making toasts the one surface ignoring `data-theme`.
+`layout.tsx` is the only server component, so a small client wrapper —
+`components/ThemedToaster.tsx` — now supplies it. Two traps, both real:
+
+- **Not `theme="system"`.** That follows `prefers-color-scheme`, which this app
+  deliberately ignores everywhere else.
+- **Not the raw `useTheme()` value either.** That returns the stored
+  *preference*; the `/shop` exclusion is applied by `applyTheme()` when it sets
+  the attribute, not to the returned value. A light-mode user standing on
+  `/shop` has `theme === 'light'` while the storefront renders dark, so passing
+  it straight through drops a light toast onto the dark storefront — exactly the
+  half-light seam the `/shop` guard exists to prevent. The wrapper applies
+  `isThemeableRoute()` too.
+
+Verified in both directions, which matters because "always dark" would also pass
+the `/shop` test on its own:
+
+| route | stored preference | `data-theme` | toast |
+|---|---|---|---|
+| `/shop` | light | absent | **black** `rgb(0,0,0)`, 20.47:1 |
+| `/login` | light | `light` | **white** `rgb(255,255,255)`, 17.93:1 |
+
+**Untouched, and confirmed by diff:** `isNoShell` (so `/login`, `/dashboard`
+and `/order/verify` keep no chrome), the exact-match `/partners` footer
+exception, and `syncThemeToRoute`.
+
+`/v2/notifications` had been returning `[]`, so none of these three surfaces had
+ever rendered. It now carries one per type plus an `admins`-only row proving the
+audience filter still excludes it on customer routes. A 4-second toast is nearly
+impossible to catch during verification because `notif_<id>` plus AppShell's
+in-memory `seenCache` suppress repeats — a temporary fixture change rotating the
+toast id per request made it catchable, and was reverted before committing.
+
+**Noted, not done.** The app has an undocumented z-index ladder — 10, 50, 150,
+200, 250, 300, 301, 1000 — with no token. AppShell's modal sits at 1000, above
+everything, which is right for a global modal but nothing enforces it. A
+z-index scale is a Phase 0-shaped addition touching many files.
+- 2026-08-04 — Phase 11. AppShell notifications on the token layer. Banner
+  gradient off #0ea5e9 -> #6366f1 (white failed at 2.77-4.47 across the whole
+  span) onto accent-fill -> accent-hover, and promoted from a click-to-dismiss
+  div to a labelled button. Modal moved off hardcoded white/#151515/#666/#000/
+  #ddd/#eee/black onto tokens so it finally follows data-theme; Skip promoted
+  from a div at 2.32:1 to a button at 7.53/7.62; the Back button's missing
+  color set explicitly (the Phase 2 UA-buttontext defect). Behavioural addition:
+  dialog semantics with Escape and focus restore, as in Phases 2-3. Toasts
+  themed via a new components/ThemedToaster.tsx, because app/layout.tsx is a
+  server component and cannot read the theme — and because neither "system" nor
+  the raw useTheme() value is correct, the latter would put a light toast on the
+  permanently-dark /shop. Verified both directions: /shop light-preference gives
+  a black toast, /login light-preference a white one. /v2/notifications
+  populated; isNoShell, the /partners footer exception and syncThemeToRoute
+  confirmed untouched by diff. tsc + build clean, no fixture leak.

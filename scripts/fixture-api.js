@@ -441,6 +441,29 @@ const ADMIN_SETTINGS = {
   x: 'https://x.com/buysubng',
 }
 
+// Rendered by components/AppShell.tsx: one per type, so the toast, the banner
+// and the multi-step modal all mount. The modal carries an image_url and three
+// steps so the image block, the dot row and the Back/Next path all render.
+const SHELL_NOTIFICATIONS = [
+  { id: 'sn-toast', type: 'toast', audience: 'users',
+    message: 'Wallet top-ups are live. Fund your wallet and check out in one tap.' },
+  { id: 'sn-banner', type: 'banner', audience: 'users',
+    message: 'Free delivery on annual plans until 31 August.' },
+  { id: 'sn-modal', type: 'modal', audience: 'users',
+    title: 'What changed this month',
+    message: 'A short summary lives on the first step.',
+    image_url: 'https://picsum.photos/seed/buysub-notif/1280/440',
+    steps: [
+      { title: 'Wallet top-ups', message: 'Fund a wallet once and check out without re-entering card details.',
+        image_url: 'https://picsum.photos/seed/buysub-notif-1/1280/440' },
+      { title: 'Faster renewals', message: 'Renewals now confirm in under a minute on Paystack.' },
+      { title: 'Partner payouts', message: 'Payouts move to a weekly Tuesday schedule from September.' },
+    ] },
+  // audience: 'admins' — AppShell must NOT show this on a customer route.
+  { id: 'sn-admin-only', type: 'banner', audience: 'admins',
+    message: 'Admin-only banner. If this appears on a customer page the audience filter broke.' },
+]
+
 // ── routing ─────────────────────────────────────────────────────────────
 const ROUTES = [
   [/^\/v2\/me$/,                        () => ({ ok: true, data: PROFILE })],
@@ -451,7 +474,14 @@ const ROUTES = [
   [/^\/v2\/me\/wallet\/transactions$/,  () => ({ ok: true, data: TXNS })],
   [/^\/v2\/partners\/me\/stats$/,        () => ({ ok: true, data: PARTNER_STATS })],
   [/^\/v2\/partners\/me$/,              () => ({ ok: true, data: { profile: PARTNER_PROFILE, affiliate: PARTNER_AFFILIATE } })],
-  [/^\/v2\/notifications$/,             () => ({ ok: true, data: [] })],
+  // AppShell polls THIS endpoint (not /v2/admin/notifications, which is the
+  // admin CRUD list). It returned [] until Phase 11, so the toast, banner and
+  // multi-step modal had never rendered and none had been measured.
+  // AppShell filters on `audience`, so the admins-only row proves that filter
+  // still excludes it on customer routes. Note it also de-dupes via
+  // localStorage `notif_<id>` — clear those keys between verification runs or
+  // each one shows exactly once, ever.
+  [/^\/v2\/notifications$/,             () => ({ ok: true, data: SHELL_NOTIFICATIONS })],
   // /order/verify reads this through lib/api.ts, i.e. NEXT_PUBLIC_API_URL.
   [/^\/v2\/pay\/verify$/, () => VERIFY_OK
     ? ({ ok: true, data: { verified: true, order_ref: 'BS-24118' } })

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
 import Navbar from "./Navbar"
 import Footer from "./Footer"
@@ -27,6 +27,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // must not remove either from this list — see REFACTOR.md.
   const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard") || pathname.startsWith("/login") || pathname.startsWith("/order/verify")
   const [stepIndex, setStepIndex] = useState(0)
+  const dialogRef = useRef<HTMLDivElement>(null)
 
   // Keeps data-theme correct for the current route. The pre-paint script in
   // app/layout.tsx only runs on a full document load; this covers every route
@@ -75,35 +76,67 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     if (modal) setStepIndex(0)
   }, [modal])
 
+  // Dialog semantics for the multi-step modal, following what Phase 2 did for
+  // the dashboard message modal and Phase 3 for the partner terms modal. This
+  // is a BEHAVIOURAL addition, not styling, and is recorded as such: Escape
+  // closes, focus moves into the dialog on open and returns to whatever had it
+  // before, and the notification is marked seen on either exit so Escape does
+  // not resurrect it on the next poll.
+  const dismissModal = useCallback(() => {
+    if (!modal) return
+    try { localStorage.setItem(`notif_${modal.id}`, "1") } catch {}
+    setModal(null)
+  }, [modal])
+
+  useEffect(() => {
+    if (!modal) return
+    const previouslyFocused = document.activeElement as HTMLElement | null
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") dismissModal() }
+    document.addEventListener("keydown", onKey)
+    dialogRef.current?.focus()
+    return () => {
+      document.removeEventListener("keydown", onKey)
+      previouslyFocused?.focus?.()
+    }
+  }, [modal, dismissModal])
+
   return (
     <>
       {banner && !isAdmin && (
-        <div
+        // Was a click-to-dismiss <div>: not focusable, no role, no accessible
+        // name. Promoted to a button, same treatment the dashboard rows got in
+        // Phase 2. The gradient was #0ea5e9 -> #6366f1, off-palette and
+        // labelled "brand feel" in a comment; white measured 2.77 at the left
+        // end and 4.47 at the right, so it failed across the whole span. It is
+        // now accent-fill -> accent-hover (the Phase 2 wallet-gradient pattern),
+        // where white measures 4.61 and 5.44.
+        <button
+          type="button"
+          aria-label={`Dismiss announcement: ${banner.message}`}
           onClick={() => {
             localStorage.setItem(`notif_${banner.id}`, "1")
             setBanner(null)
           }}
           style={{
-            height: 32,
-            background: "linear-gradient(90deg, #0ea5e9, #6366f1)", // brand feel
-            color: "white",
+            width: "100%",
+            height: "var(--bs-control-sm)",
+            background: "linear-gradient(90deg, var(--bs-accent-fill), var(--bs-accent-hover))",
+            color: "#fff",
+            border: "none",
             display: "flex",
             alignItems: "center",
+            justifyContent: "center",
             overflow: "hidden",
-            fontSize: 11.5,
+            fontSize: "var(--bs-text-2xs)",
             fontWeight: 500,
-            letterSpacing: 0.2
+            letterSpacing: "0.2px",
+            cursor: "pointer",
           }}
         >
-          <div style={{
-            whiteSpace: "nowrap",
-            textAlign: "center"
-            // animation: "scroll 48s linear infinite",
-            // paddingLeft: "1%"
-          }}>
+          <span style={{ whiteSpace: "nowrap", textAlign: "center" }}>
             {banner.message}
-          </div>
-        </div>
+          </span>
+        </button>
       )}
       {!isNoShell && <Navbar />}
 
@@ -111,12 +144,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         style={
           isNoShell
             ? {
-                minHeight: 'calc(100vh - 120px)',
+                minHeight: 'calc(100dvh - 120px)',
                 background: 'var(--bs-bg-base)'
               }
             : {
-                minHeight: 'calc(100vh - 120px)',
-                padding: '48px 24px',
+                minHeight: 'calc(100dvh - 120px)',
+                padding: 'var(--bs-space-12) var(--bs-space-6)',
                 margin: '0 auto'
               }
         }
@@ -137,42 +170,58 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <div style={{
         position: "fixed",
         inset: 0,
+        // Scrim stays a black wash in both themes: it darkens whatever is
+        // behind it, which is the same job either way.
         background: "rgba(0,0,0,0.6)",
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
         zIndex: 1000
       }}>
-        <div style={{
-          position: "relative",
-          background: "white",
-          borderRadius: 20,
-          maxWidth: 640,
-          width: "92%",
-          maxHeight: "90vh",
-          overflow: "hidden",
-          display: "flex",
-          flexDirection: "column"
-        }}>
+        <div
+          ref={dialogRef}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={step.title ? "bs-notif-modal-title" : undefined}
+          aria-label={step.title ? undefined : "Announcement"}
+          tabIndex={-1}
+          style={{
+            position: "relative",
+            // Was hardcoded white, so the modal rendered light on a dark page
+            // regardless of theme — the only surface left doing that.
+            background: "var(--bs-bg-card)",
+            border: "1px solid var(--bs-border-subtle)",
+            borderRadius: "var(--bs-radius-xl)",
+            maxWidth: 640,
+            width: "92%",
+            maxHeight: "90dvh",
+            overflow: "hidden",
+            display: "flex",
+            flexDirection: "column",
+            outline: "none",
+            boxShadow: "var(--bs-elev-3)",
+          }}>
 
-          {/* Skip */}
-          <div
-            onClick={() => {
-              localStorage.setItem(`notif_${modal.id}`, "1")
-              setModal(null)
-            }}
+          {/* Skip. Was a <div onClick> printing #aaa on white at 2.32:1 —
+              unreachable by keyboard and below AA. */}
+          <button
+            type="button"
+            onClick={dismissModal}
             style={{
               position: "absolute",
-              top: 14,
-              right: 18,
-              fontSize: 12,
-              color: "#aaa",
+              top: "var(--bs-space-3)",
+              right: "var(--bs-space-4)",
+              fontSize: "var(--bs-text-xs)",
+              color: "var(--bs-text-secondary)",
+              background: "transparent",
+              border: "none",
               cursor: "pointer",
-              zIndex: 10
+              zIndex: 10,
+              padding: "var(--bs-space-1) var(--bs-space-2)",
             }}
           >
             Skip
-          </div>
+          </button>
 
           {/* IMAGE */}
           {step.image_url && (
@@ -185,13 +234,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           )}
 
           {/* BODY */}
-          <div style={{ padding: 20, overflowY: "auto" }}>
+          <div style={{ padding: "var(--bs-space-5)", overflowY: "auto" }}>
             {step.title && (
-              <h2 style={{ fontSize: 22, fontWeight: 600, marginBottom: 8, color: "#151515" }}>
+              <h2 id="bs-notif-modal-title" style={{
+                fontSize: "var(--bs-text-2xl)", fontWeight: 600,
+                marginBottom: "var(--bs-space-2)", color: "var(--bs-text-primary)",
+                lineHeight: "var(--bs-leading-tight)",
+              }}>
                 {step.title}
               </h2>
             )}
-            <p style={{ fontSize: 14, color: "#666", lineHeight: 1.5 }}>
+            <p style={{
+              fontSize: "var(--bs-text-base)", color: "var(--bs-text-secondary)",
+              lineHeight: "var(--bs-leading-relaxed)",
+            }}>
               {step.message}
             </p>
           </div>
@@ -210,8 +266,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                   style={{
                     width: 6,
                     height: 6,
-                    borderRadius: "50%",
-                    background: i === stepIndex ? "#000" : "#ddd"
+                    borderRadius: "var(--bs-radius-full)",
+                    background: i === stepIndex ? "var(--bs-accent)" : "var(--bs-border-strong)"
                   }}
                 />
               ))}
@@ -220,8 +276,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
           {/* FOOTER */}
           <div style={{
-            padding: 16,
-            borderTop: "1px solid #eee",
+            padding: "var(--bs-space-4)",
+            borderTop: "1px solid var(--bs-border-subtle)",
             display: "flex",
             justifyContent: "space-between"
           }}>
@@ -232,7 +288,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 opacity: stepIndex === 0 ? 0.3 : 1,
                 background: "transparent",
                 border: "none",
-                cursor: "pointer"
+                // Was unset. <button> does not inherit color, so it fell
+                // through to the UA `buttontext` — the same defect that put
+                // black money values on the dark dashboard in Phase 2.
+                color: "var(--bs-text-primary)",
+                fontSize: "var(--bs-text-sm)",
+                height: "var(--bs-control-lg)",
+                padding: "0 var(--bs-space-4)",
+                cursor: stepIndex === 0 ? "not-allowed" : "pointer"
               }}
             >
               Back
@@ -243,16 +306,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 if (!isLast) {
                   setStepIndex(i => i + 1)
                 } else {
-                  localStorage.setItem(`notif_${modal.id}`, "1")
-                  setModal(null)
+                  dismissModal()
                 }
               }}
               style={{
-                background: "black",
-                color: "white",
+                // An accent fill carrying text, so --bs-accent-fill, not
+                // --bs-accent. Was hardcoded black-on-white.
+                background: "var(--bs-accent-fill)",
+                color: "#fff",
                 border: "none",
-                borderRadius: 999,
-                padding: "10px 18px",
+                borderRadius: "var(--bs-radius-full)",
+                height: "var(--bs-control-lg)",
+                padding: "0 var(--bs-space-5)",
+                fontSize: "var(--bs-text-sm)",
+                fontWeight: 600,
                 cursor: "pointer"
               }}
             >
