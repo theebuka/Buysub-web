@@ -123,7 +123,7 @@ Read this file first in any session. Update it before finishing.
        edited** — see the Phase 8 note.
 - [x] 9. app/admin — tabs 10–13 (Ads, Discounts, Notifications, Settings) plus
        DiscountFormPanel, held back from Phase 7. **admin is now complete.**
-- [ ] 10. app/admin/receipt/page.tsx — the web form only, never the PDF
+- [x] 10. app/admin/receipt/page.tsx — the web form only, never the PDF
        (see the off-limits rule above: anything reaching the rendered
        document is out of scope)
 - [ ] 11. components/AppShell.tsx notification toasts/banners/modals
@@ -1316,3 +1316,66 @@ Light was untouched and unchanged. The scan did surface a symmetric near-miss
 there, pre-existing and not caused by this change: **light `--bs-text-muted`
 #66717F measures 4.46 on `--bs-bg-elevated` #F1F3F5** (12 elements in
 Products). Phase 0's light correction targeted bg-base only. Logged, not fixed.
+
+### Phase 10 — the receipt web form
+
+**The form/PDF boundary is mechanical, not a judgement call.** The concern was
+that colours in this one file serve both sides with no way to tell them apart.
+They can be, and it was verified three ways:
+
+1. The PDF specifies colour **only** as numeric RGB triples passed to jsPDF —
+   27 calls, all `setTextColor/setFillColor/setDrawColor(n, n, n)`. All 27 sit
+   inside `buildPDF` (186-335); there are none anywhere else in the file.
+2. `buildPDF` contains **zero** CSS colour strings — no `#hex`, no `rgba()`, no
+   `var(--bs-*)`.
+3. **No colour flows into the PDF from the form.** `buildPDF`'s parameter object
+   carries only strings, numbers, booleans and line items; there is no colour
+   field, and the two call sites pass that object and nothing else.
+
+So: CSS colour syntax is form-side and in scope; `doc.set*Color(n,n,n)` is the
+document and is off-limits. Nothing in the file is ambiguous under that test.
+Note the PDF has its own accent, `setFillColor(83, 64, 254)` = `#5340FE`, which
+is not `--bs-accent`. That divergence is the document's business and stays.
+
+**The gate was that the PDF does not change, and it was measured, not assumed.**
+Two runs with no code change differ only in `/CreationDate` and `/ID`, and the
+receipt reference is regenerated per mount from `Date.now()` + `Math.random()`,
+so a byte comparison across a rebuild is meaningless. Instead the PDF's content
+stream (uncompressed, so directly readable) was reduced to its ordered sequence
+of appearance operators — fill and stroke colours, rectangles, line widths, font
+sizes — giving a 68-operator fingerprint, `a7e5967d`, with 27 fill colours and
+sizes 8/8.5/9/9.5/10/10.5/22. **Identical before and after.** If a future phase
+touches this file, reuse that fingerprint rather than hashing the bytes.
+
+Work: 52 stale `var(--bs-*, #hex)` fallbacks stripped — every one had drifted
+from its token (`#e8e8ec` vs `#F0F0F5`, `#111114` vs `#0B0B0F`, `#6b6b7e` vs the
+new `#838392`), the same dead-but-misleading pattern Phase 3 cleared from
+partners. Accent-as-text moved to `--bs-accent-on-surface`, raw `rgba(124,…)`
+and `rgba(34,197,94,…)` tints onto the `-rgb` companions, `#16a34a` (a
+pre-token success colour) onto `--bs-success` with `--bs-on-tint-mix` where it
+prints on its own tint. Four `×` glyphs replaced with a local inline `XIcon`.
+17 sizing values to the scales, `100vh` -> `100dvh`, the `DD` shadow to
+`--bs-elev-2`, one `Inter` literal removed.
+
+**Not fixed, needs a decision.** White on the WhatsApp green `#25D366` measures
+**1.98:1** on "Send & Download Receipt". By the syntax rule this is form-side,
+but Phase 5 records that the brief pins `#25D366`. Changing a brief-pinned brand
+colour is the owner's call. Options: darken the green until white clears 4.5,
+keep the green and use a dark label, or accept it as a documented exception.
+
+Also left alone deliberately: the disabled "Apply" button (1.99 dark / 2.97
+light). WCAG 1.4.3 exempts disabled controls, and it is genuinely disabled until
+a promo code is typed.
+- 2026-08-04 — Phase 10. Receipt web form on the token layer; the generated PDF
+  untouched and proven so. The form/PDF boundary turned out to be mechanical:
+  the document specifies colour only as numeric jsPDF triples (27 calls, all
+  inside buildPDF), the form only as CSS strings, and no colour flows into
+  buildPDF's parameter object — so the two vocabularies are disjoint and nothing
+  in the file is ambiguous. Gate was a 68-operator appearance fingerprint of the
+  PDF content stream (fill/stroke colours, rectangles, line widths, font sizes),
+  a7e5967d, identical before and after; a byte hash would not have worked
+  because the receipt ref is regenerated per mount. 52 stale var() fallbacks
+  stripped, accent-as-text and pre-token #16a34a moved onto tokens, four glyphs
+  to an inline XIcon, 17 sizing values to the scales. White on the brief-pinned
+  WhatsApp green stays at 1.98:1 pending an owner decision. tsc + build clean,
+  no 127.0.0.1:8787 in chunks.

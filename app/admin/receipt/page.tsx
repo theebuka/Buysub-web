@@ -338,6 +338,18 @@ const buildPDF = async (p: {
    COMBOBOXES — identical to Airtable version
 ════════════════════════════════════════════════════════════ */
 
+// Inline SVG, matching the house pattern established in Phases 1-9 (24x24
+// viewBox, currentColor, strokeWidth 2, round caps). Local to this file: the
+// admin icon set lives in app/admin/page.tsx and these two repos of components
+// do not import from each other.
+const XIcon = ({ size = 14 }: { size?: number }) => (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"
+    style={{ flexShrink: 0 }}>
+    <path d="M18 6 6 18M6 6l12 12" />
+  </svg>
+)
+
 const ProductCombobox = ({ products, value, onChange }: {
   products: Product[]; value: string; onChange: (p: Product | null) => void
 }) => {
@@ -383,19 +395,19 @@ const ProductCombobox = ({ products, value, onChange }: {
         {query && (
           <button onClick={clear} style={{
             position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
-            background: 'none', border: 'none', color: 'var(--bs-text-faint, #6b6b7e)', cursor: 'pointer', fontSize: 16, lineHeight: 1, padding: '0 2px',
-          }}>×</button>
+            background: 'none', border: 'none', color: 'var(--bs-text-faint)', cursor: 'pointer', fontSize: 'var(--bs-text-lg)', lineHeight: 1, padding: '0 2px',
+          }}><XIcon /></button>
         )}
       </div>
       {open && filtered.length > 0 && (
         <div style={DD}>
           {filtered.map((p, i) => (
             <div key={p.id} onClick={() => select(p)} onMouseEnter={() => setActive(i)}
-              style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle, #1c1c22)', background: i === active ? 'var(--bs-bg-muted, #18181c)' : 'transparent' }}>
-              <div style={{ fontSize: 13, color: 'var(--bs-text-primary, #e8e8ec)' }}>{p.name}</div>
-              <div style={{ fontSize: 11, color: 'var(--bs-text-muted, #6b6b7e)', marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
+              style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle)', background: i === active ? 'var(--bs-bg-muted)' : 'transparent' }}>
+              <div style={{ fontSize: 13, color: 'var(--bs-text-primary)' }}>{p.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--bs-text-muted)', marginTop: 2, display: 'flex', justifyContent: 'space-between' }}>
                 <span>{p.category}{p.tags ? `  ·  ${sentenceCase(p.tags)}` : ''}</span>
-                <span style={{ color: 'var(--bs-text-faint, #4a4a5e)' }}>
+                <span style={{ color: 'var(--bs-text-faint)' }}>
                   {p.isOutright ? `₦${(p.prices['One-time'] || 0).toLocaleString()}` : `₦${(p.prices.Annual || p.prices.Quarterly || 0).toLocaleString()} /yr`}
                 </span>
               </div>
@@ -444,7 +456,7 @@ const CustomerCombobox = ({ onSelect, onOrderFound }: { onSelect: (c: Customer) 
       <div style={{ position: 'relative' }}>
         <input value={query} onChange={e => { setQuery(e.target.value); setOpen(true) }}
           onFocus={() => setOpen(true)} placeholder="Search by name, email, phone, or order ref (BS-…)" style={IS} />
-        {loading && <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-faint, #6b6b7e)' }}>…</span>}
+        {loading && <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-faint)' }}>…</span>}
       </div>
       {open && (results.length > 0 || orderResult) && (
         <div style={DD}>
@@ -455,22 +467,22 @@ const CustomerCombobox = ({ onSelect, onOrderFound }: { onSelect: (c: Customer) 
               setQuery(orderResult.order_ref)
               setOpen(false)
             }}
-              style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle, #1c1c22)', background: 'rgba(124,92,255,0.06)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(124,92,255,0.12)')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(124,92,255,0.06)')}>
-              <div style={{ fontSize: 13, color: '#7C5CFF', fontWeight: 600 }}>📋 Order {orderResult.order_ref}</div>
-              <div style={{ fontSize: 11, color: 'var(--bs-text-muted, #6b6b7e)', marginTop: 2 }}>
+              style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle)', background: 'rgba(var(--bs-accent-rgb), 0.06)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(var(--bs-accent-rgb), 0.12)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'rgba(var(--bs-accent-rgb), 0.06)')}>
+              <div style={{ fontSize: 13, color: 'var(--bs-accent-on-surface)', fontWeight: 600 }}>📋 Order {orderResult.order_ref}</div>
+              <div style={{ fontSize: 11, color: 'var(--bs-text-muted)', marginTop: 2 }}>
                 {orderResult.customer_name || '—'} · {fmtAmt(orderResult.total_ngn, orderResult.currency)} · {orderResult.status}
               </div>
             </div>
           )}
           {results.map(c => (
             <div key={c.id} onClick={() => { onSelect(c); setQuery(c.name); setOpen(false) }}
-              style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle, #1c1c22)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bs-bg-muted, #18181c)')}
+              style={{ padding: '9px 13px', cursor: 'pointer', borderBottom: '1px solid var(--bs-border-subtle)' }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--bs-bg-muted)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-              <div style={{ fontSize: 13, color: 'var(--bs-text-primary, #e8e8ec)' }}>{c.name}</div>
-              <div style={{ fontSize: 11, color: 'var(--bs-text-muted, #6b6b7e)', marginTop: 2 }}>
+              <div style={{ fontSize: 13, color: 'var(--bs-text-primary)' }}>{c.name}</div>
+              <div style={{ fontSize: 11, color: 'var(--bs-text-muted)', marginTop: 2 }}>
                 {[c.phone, c.email].filter(Boolean).join('  ·  ')}
               </div>
             </div>
@@ -683,19 +695,19 @@ export default function ReceiptGenerator() {
   /* ─────────── RENDER ─────────── */
   return (
     <div style={{
-      background: 'var(--bs-bg-base, #0a0a0c)', minHeight: '100vh',
-      color: 'var(--bs-text-primary, #e8e8ec)', fontFamily: 'Inter, sans-serif',
+      background: 'var(--bs-bg-base)', minHeight: '100dvh',
+      color: 'var(--bs-text-primary)',
       padding: '0 16px 60px', paddingTop: 'calc(10vh + 16px)', boxSizing: 'border-box',
     }}>
       <style>{`
         .rg-cust-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
         @media (max-width: 640px) { .rg-cust-grid { grid-template-columns: 1fr 1fr; } .rg-cust-name { grid-column: 1 / -1; } }
-        .rg-dt-headers { display: grid; grid-template-columns: 1fr 110px 130px 72px 110px 40px; gap: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--bs-border-subtle, #1c1c22); margin-bottom: 8px; }
-        .rg-dt-row { display: grid; grid-template-columns: 1fr 110px 130px 72px 110px 40px; gap: 10px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--bs-border-subtle, #1c1c22); margin-bottom: 8px; }
+        .rg-dt-headers { display: grid; grid-template-columns: 1fr 110px 130px 72px 110px 40px; gap: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--bs-border-subtle); margin-bottom: 8px; }
+        .rg-dt-row { display: grid; grid-template-columns: 1fr 110px 130px 72px 110px 40px; gap: 10px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--bs-border-subtle); margin-bottom: 8px; }
         .rg-mob-card { display: none; }
         @media (max-width: 640px) {
           .rg-dt-headers { display: none; } .rg-dt-row { display: none; }
-          .rg-mob-card { display: block; margin-bottom: 12px; padding: 12px; background: var(--bs-bg-elevated, #18181c); border-radius: 12px; border: 1px solid var(--bs-border-subtle, #1c1c22); }
+          .rg-mob-card { display: block; margin-bottom: 12px; padding: 12px; background: var(--bs-bg-elevated); border-radius: 12px; border: 1px solid var(--bs-border-subtle); }
           .rg-mob-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
           .rg-mob-row3 { display: flex; gap: 10px; align-items: flex-end; }
         }
@@ -705,13 +717,13 @@ export default function ReceiptGenerator() {
         {/* Header */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
           <div>
-            <div style={{ fontSize: 18 }}>Receipt Generator</div>
-            <div style={{ fontSize: 11, color: 'var(--bs-text-muted, #6b6b7e)', marginTop: 4 }}>Internal · {orderRef} · Generated {fmtDate(date)}</div>
+            <div style={{ fontSize: 'var(--bs-text-lg)' }}>Receipt Generator</div>
+            <div style={{ fontSize: 11, color: 'var(--bs-text-muted)', marginTop: 4 }}>Internal · {orderRef} · Generated {fmtDate(date)}</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 11, color: 'var(--bs-text-secondary, #a0a0b0)' }}>Currency</span>
+            <span style={{ fontSize: 11, color: 'var(--bs-text-secondary)' }}>Currency</span>
             <select value={currency} onChange={e => { setCurrency(e.target.value); setDResult(null) }}
-              style={{ ...IS, width: 86, height: 36, fontSize: 13 }}>
+              style={{ ...IS, width: 86, height: 'var(--bs-control-md)', fontSize: 13 }}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
             </select>
           </div>
@@ -755,7 +767,7 @@ export default function ReceiptGenerator() {
         <Panel title={prodLoading ? 'Order Items  —  loading…' : `Order Items  ·  ${products.length} products`}>
           <div className="rg-dt-headers">
             {['Product', 'Period', `Unit price (${currency})`, 'Qty', 'Line total', ''].map((h, i) => (
-              <div key={i} style={{ fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted, #6b6b7e)' }}>{h}</div>
+              <div key={i} style={{ fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted)' }}>{h}</div>
             ))}
           </div>
           {items.map(item => {
@@ -770,12 +782,12 @@ export default function ReceiptGenerator() {
                   </select>
                   <input style={IS} placeholder={unitNGN > 0 ? fmtShort(unitNGN, currency) : '0.00'} value={item.override} onChange={e => setItem(item.id, { override: e.target.value })} />
                   <input style={{ ...IS, textAlign: 'center' }} type="number" min="1" value={item.qty} onChange={e => setItem(item.id, { qty: Math.max(1, parseInt(e.target.value) || 1) })} />
-                  <div style={{ ...IS, background: 'var(--bs-bg-elevated, #18181c)', border: '1px solid var(--bs-border-subtle, #1c1c22)', color: 'var(--bs-text-secondary, #a0a0b0)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
+                  <div style={{ ...IS, background: 'var(--bs-bg-elevated)', border: '1px solid var(--bs-border-subtle)', color: 'var(--bs-text-secondary)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
                     {lineNGN > 0 ? displayPrice(lineNGN) : '—'}
                   </div>
                   <button onClick={() => setItems(p => p.filter(i => i.id !== item.id))} disabled={items.length === 1}
-                    style={{ width: 40, height: 40, borderRadius: 8, background: 'transparent', border: '1px solid var(--bs-border-default, #27272e)', color: 'var(--bs-text-muted, #6b6b7e)', cursor: items.length === 1 ? 'not-allowed' : 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: items.length === 1 ? 0.3 : 1, flexShrink: 0 }}>
-                    ×
+                    style={{ width: 40, height: 40, borderRadius: 'var(--bs-radius-md)', background: 'transparent', border: '1px solid var(--bs-border-default)', color: 'var(--bs-text-muted)', cursor: items.length === 1 ? 'not-allowed' : 'pointer', fontSize: 'var(--bs-text-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: items.length === 1 ? 0.3 : 1, flexShrink: 0 }}>
+                    <XIcon />
                   </button>
                 </div>
                 {/* Mobile card - same structure as original */}
@@ -790,10 +802,10 @@ export default function ReceiptGenerator() {
                   </div>
                   <div className="rg-mob-row3">
                     <div style={{ width: 80 }}><Lbl>Qty</Lbl><input style={{ ...IS, textAlign: 'center' }} type="number" min="1" value={item.qty} onChange={e => setItem(item.id, { qty: Math.max(1, parseInt(e.target.value) || 1) })} /></div>
-                    <div style={{ flex: 1 }}><Lbl>Line total</Lbl><div style={{ ...IS, background: 'var(--bs-bg-input, #111114)', border: '1px solid var(--bs-border-subtle, #1c1c22)', color: 'var(--bs-text-secondary, #a0a0b0)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>{lineNGN > 0 ? displayPrice(lineNGN) : '—'}</div></div>
+                    <div style={{ flex: 1 }}><Lbl>Line total</Lbl><div style={{ ...IS, background: 'var(--bs-bg-input)', border: '1px solid var(--bs-border-subtle)', color: 'var(--bs-text-secondary)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>{lineNGN > 0 ? displayPrice(lineNGN) : '—'}</div></div>
                     <button onClick={() => setItems(p => p.filter(i => i.id !== item.id))} disabled={items.length === 1}
-                      style={{ width: 40, height: 40, borderRadius: 8, background: 'transparent', border: '1px solid var(--bs-border-default, #27272e)', color: 'var(--bs-text-muted, #6b6b7e)', cursor: items.length === 1 ? 'not-allowed' : 'pointer', fontSize: 18, display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: items.length === 1 ? 0.3 : 1, flexShrink: 0 }}>
-                      ×
+                      style={{ width: 40, height: 40, borderRadius: 'var(--bs-radius-md)', background: 'transparent', border: '1px solid var(--bs-border-default)', color: 'var(--bs-text-muted)', cursor: items.length === 1 ? 'not-allowed' : 'pointer', fontSize: 'var(--bs-text-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: items.length === 1 ? 0.3 : 1, flexShrink: 0 }}>
+                      <XIcon />
                     </button>
                   </div>
                 </div>
@@ -806,12 +818,12 @@ export default function ReceiptGenerator() {
         {/* Discount */}
         <Panel title="Discount (optional)">
           {dResult ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.2)', borderRadius: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(var(--bs-success-rgb), 0.07)', border: '1px solid rgba(var(--bs-success-rgb), 0.2)', borderRadius: 10 }}>
               <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, background: 'rgba(34,197,94,0.18)', borderRadius: 4, padding: '2px 8px', color: '#16a34a' }}>{dResult.code}</span>
-                <span style={{ fontSize: 13, color: '#16a34a' }}>{dResult.display} · saves {fmtShort(dResult.amountNGN, currency)}</span>
+                <span style={{ fontSize: 11, background: 'rgba(var(--bs-success-rgb), 0.18)', borderRadius: 'var(--bs-radius-sm)', padding: '2px 8px', color: 'color-mix(in srgb, var(--bs-success), var(--bs-on-tint-mix))' }}>{dResult.code}</span>
+                <span style={{ fontSize: 13, color: 'color-mix(in srgb, var(--bs-success), var(--bs-on-tint-mix))' }}>{dResult.display} · saves {fmtShort(dResult.amountNGN, currency)}</span>
               </div>
-              <button onClick={() => { setDResult(null); setDCode('') }} style={{ background: 'transparent', border: 'none', color: 'var(--bs-text-faint, #4a4a5e)', cursor: 'pointer', fontSize: 18, lineHeight: 1, flexShrink: 0 }}>×</button>
+              <button onClick={() => { setDResult(null); setDCode('') }} style={{ background: 'transparent', border: 'none', color: 'var(--bs-text-faint)', cursor: 'pointer', fontSize: 'var(--bs-text-lg)', lineHeight: 1, flexShrink: 0 }}><XIcon /></button>
             </div>
           ) : (
             <>
@@ -820,7 +832,7 @@ export default function ReceiptGenerator() {
                   onChange={e => { setDCode(e.target.value.toUpperCase()); setDError('') }}
                   onKeyDown={e => e.key === 'Enter' && applyDiscount()} />
                 <button onClick={applyDiscount} disabled={dLoading || !dCode.trim()}
-                  style={{ height: 40, padding: '0 20px', borderRadius: 8, background: dCode.trim() ? 'var(--bs-accent-fill)' : 'var(--bs-bg-muted, #18181c)', border: 'none', color: dCode.trim() ? '#fff' : 'var(--bs-text-faint, #4a4a5e)', cursor: dCode.trim() ? 'pointer' : 'not-allowed', fontSize: 13, flexShrink: 0 }}>
+                  style={{ height: 40, padding: '0 20px', borderRadius: 'var(--bs-radius-md)', background: dCode.trim() ? 'var(--bs-accent-fill)' : 'var(--bs-bg-muted)', border: 'none', color: dCode.trim() ? '#fff' : 'var(--bs-text-faint)', cursor: dCode.trim() ? 'pointer' : 'not-allowed', fontSize: 13, flexShrink: 0 }}>
                   {dLoading ? 'Checking…' : 'Apply'}
                 </button>
               </div>
@@ -840,9 +852,9 @@ export default function ReceiptGenerator() {
               <input type="number" min="0" max="100" step="0.5" value={taxRate} disabled={!taxEnabled}
                 onChange={e => setTaxRate(e.target.value)}
                 style={{ ...IS, width: 90, opacity: taxEnabled ? 1 : 0.4, cursor: taxEnabled ? 'text' : 'not-allowed', textAlign: 'center' }} />
-              <span style={{ fontSize: 13, color: 'var(--bs-text-secondary, #a0a0b0)' }}>%</span>
+              <span style={{ fontSize: 13, color: 'var(--bs-text-secondary)' }}>%</span>
             </div>
-            {taxEnabled && taxNGN > 0 && <span style={{ fontSize: 12, color: 'var(--bs-text-muted, #6b6b7e)' }}>= {fmtShort(taxNGN, currency)}</span>}
+            {taxEnabled && taxNGN > 0 && <span style={{ fontSize: 12, color: 'var(--bs-text-muted)' }}>= {fmtShort(taxNGN, currency)}</span>}
           </div>
         </Panel>
 
@@ -868,12 +880,12 @@ export default function ReceiptGenerator() {
         </Panel>
 
         {/* Totals */}
-        <div style={{ background: 'var(--bs-bg-card, #111114)', border: '1px solid var(--bs-border-subtle, #1c1c22)', borderRadius: 16, padding: '18px 20px', marginBottom: 14, display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-subtle)', borderRadius: 'var(--bs-radius-lg)', padding: '18px 20px', marginBottom: 14, display: 'flex', justifyContent: 'flex-end' }}>
           <div style={{ width: '100%', maxWidth: 300, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {(discountNGN > 0 || taxNGN > 0) && <TotRow label="Subtotal" value={fmtShort(subtotalNGN, currency)} />}
-            {discountNGN > 0 && dResult && <TotRow label={`Discount (${dResult.display})`} value={`−${fmtShort(discountNGN, currency)}`} color="#16a34a" />}
+            {discountNGN > 0 && dResult && <TotRow label={`Discount (${dResult.display})`} value={`−${fmtShort(discountNGN, currency)}`} color="var(--bs-success)" />}
             {taxEnabled && taxNGN > 0 && <TotRow label={`Tax (${taxRate}%)`} value={fmtShort(taxNGN, currency)} />}
-            {(discountNGN > 0 || taxNGN > 0) && <div style={{ height: 1, background: 'var(--bs-border-default, #27272e)' }} />}
+            {(discountNGN > 0 || taxNGN > 0) && <div style={{ height: 1, background: 'var(--bs-border-default)' }} />}
             <TotRow label="Total" value={fmtShort(totalNGN, currency)} bold />
           </div>
         </div>
@@ -881,23 +893,23 @@ export default function ReceiptGenerator() {
         {/* Actions */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
           <button onClick={handleDownload} disabled={generating}
-            style={{ flex: 1, minWidth: 160, height: 52, borderRadius: 12, background: 'var(--bs-accent-fill)', border: 'none', color: '#fff', cursor: generating ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: generating ? 0.7 : 1 }}>
+            style={{ flex: 1, minWidth: 160, height: 52, borderRadius: 'var(--bs-radius-lg)', background: 'var(--bs-accent-fill)', border: 'none', color: '#fff', cursor: generating ? 'not-allowed' : 'pointer', fontSize: 'var(--bs-text-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: generating ? 0.7 : 1 }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
             {generating ? 'Generating…' : generated ? 'Download Again' : 'Download PDF'}
           </button>
           <button onClick={handleWhatsApp} disabled={generating}
-            style={{ flex: 1, minWidth: 160, height: 52, borderRadius: 12, background: '#25D366', border: 'none', color: '#fff', cursor: generating ? 'not-allowed' : 'pointer', fontSize: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: generating ? 0.7 : 1 }}>
+            style={{ flex: 1, minWidth: 160, height: 52, borderRadius: 'var(--bs-radius-lg)', background: '#25D366', border: 'none', color: '#fff', cursor: generating ? 'not-allowed' : 'pointer', fontSize: 'var(--bs-text-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: generating ? 0.7 : 1 }}>
             <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.554 4.116 1.523 5.847L.057 23.57a.75.75 0 0 0 .92.92l5.723-1.466A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.93 0-3.736-.518-5.287-1.42l-.379-.225-3.932 1.007 1.007-3.932-.225-.379A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
             {waSent ? 'Send Again' : 'Send & Download Receipt'}
           </button>
         </div>
 
-        <div style={{ marginTop: 10, fontSize: 11, color: 'var(--bs-text-faint, #4a4a5e)', lineHeight: 1.6 }}>
+        <div style={{ marginTop: 10, fontSize: 11, color: 'var(--bs-text-muted)', lineHeight: 1.6 }}>
           Both buttons download the PDF. Attach it manually in WhatsApp before sending.
         </div>
 
         {(generated || waSent) && (
-          <div style={{ marginTop: 14, padding: '11px 16px', borderRadius: 10, background: 'rgba(34,197,94,0.07)', border: '1px solid rgba(34,197,94,0.18)', fontSize: 13, color: '#16a34a', display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ marginTop: 14, padding: '11px 16px', borderRadius: 10, background: 'rgba(var(--bs-success-rgb), 0.07)', border: '1px solid rgba(var(--bs-success-rgb), 0.18)', fontSize: 13, color: 'color-mix(in srgb, var(--bs-success), var(--bs-on-tint-mix))', display: 'flex', gap: 8, alignItems: 'center' }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
             {waSent ? 'Receipt downloaded · WhatsApp opened. Attach the PDF before sending.' : 'Receipt downloaded.'}
           </div>
@@ -909,8 +921,8 @@ export default function ReceiptGenerator() {
 
 /* ── Micro-components (identical to original) ── */
 const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div style={{ background: 'var(--bs-bg-card, #111114)', border: '1px solid var(--bs-border-subtle, #1c1c22)', borderRadius: 16, padding: '18px 20px', marginBottom: 14 }}>
-    <div style={{ fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted, #6b6b7e)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>{title}</div>
+  <div style={{ background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-subtle)', borderRadius: 'var(--bs-radius-lg)', padding: '18px 20px', marginBottom: 14 }}>
+    <div style={{ fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>{title}</div>
     {children}
   </div>
 )
@@ -920,25 +932,25 @@ const TwoCol = ({ children, style }: { children: React.ReactNode; style?: any })
 )
 
 const Lbl = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 11, color: 'var(--bs-text-secondary, #a0a0b0)', marginBottom: 5 }}>{children}</div>
+  <div style={{ fontSize: 11, color: 'var(--bs-text-secondary)', marginBottom: 5 }}>{children}</div>
 )
 
 const TotRow = ({ label, value, bold = false, color }: { label: string; value: string; bold?: boolean; color?: string }) => (
   <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
-    <span style={{ fontSize: 12, color: color ?? 'var(--bs-text-secondary, #a0a0b0)' }}>{label}</span>
-    <span style={{ fontSize: bold ? 17 : 13, fontWeight: bold ? 600 : 400, color: color ?? 'var(--bs-text-primary, #e8e8ec)' }}>{value}</span>
+    <span style={{ fontSize: 12, color: color ?? 'var(--bs-text-secondary)' }}>{label}</span>
+    <span style={{ fontSize: bold ? 17 : 13, fontWeight: bold ? 600 : 400, color: color ?? 'var(--bs-text-primary)' }}>{value}</span>
   </div>
 )
 
 const IS: any = {
-  height: 40, padding: '0 12px', borderRadius: 8, fontSize: 13, width: '100%',
-  background: 'var(--bs-bg-input, #111114)', border: '1px solid var(--bs-border-default, #27272e)',
-  color: 'var(--bs-text-primary, #e8e8ec)', boxSizing: 'border-box',
+  height: 40, padding: '0 12px', borderRadius: 'var(--bs-radius-md)', fontSize: 13, width: '100%',
+  background: 'var(--bs-bg-input)', border: '1px solid var(--bs-border-default)',
+  color: 'var(--bs-text-primary)', boxSizing: 'border-box',
 }
 
 const DD: any = {
   position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,
-  background: 'var(--bs-bg-elevated, #18181c)', border: '1px solid var(--bs-border-default, #27272e)',
+  background: 'var(--bs-bg-elevated)', border: '1px solid var(--bs-border-default)',
   borderRadius: 10, zIndex: 200, overflow: 'hidden',
-  boxShadow: '0 8px 28px rgba(0,0,0,0.32)', maxHeight: 280, overflowY: 'auto',
+  boxShadow: 'var(--bs-elev-2)', maxHeight: 280, overflowY: 'auto',
 }
