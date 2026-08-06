@@ -1968,11 +1968,58 @@ z-index scale is a Phase 0-shaped addition touching many files.
   is the variant, because the awkward case belongs in the default path — which
   is what this file already does for list endpoints.
 
-  **Found, reported, not fixed — out of the reported scope.** `OverviewTab`
-  overflows 59px at 360: its lower grid is `repeat(auto-fit, minmax(380px, 1fr))`
-  (`app/admin/page.tsx`), the same bare-floor bug fixed on Notifications, and
-  `ProductsTab` carries `minmax(340px, 1fr)` with the same hazard. Overview and
-  Products were not among the three surfaces whose bar was raised, so they were
-  left alone rather than widened into silently. One `min()` each when scheduled.
+  **Found, reported, not fixed in this commit — out of the reported scope.**
+  `OverviewTab` overflows 59px at 360: its lower grid is
+  `repeat(auto-fit, minmax(380px, 1fr))` (`app/admin/page.tsx`), the same
+  bare-floor bug fixed on Notifications, and `ProductsTab` carries
+  `minmax(340px, 1fr)` with the same hazard. Overview and Products were not
+  among the three surfaces whose bar was raised, so they were left alone rather
+  than widened into silently. **Both fixed in the follow-up commit below.**
 
+  tsc + build clean, no 127.0.0.1:8787 in chunks.
+- 2026-08-06 — Follow-up to the above, still pre-merge on `redesign/ui`.
+
+  **The two remaining bare floors.** `OverviewTab`'s
+  `repeat(auto-fit, minmax(380px, 1fr))` and `ProductsTab`'s
+  `repeat(auto-fill, minmax(340px, 1fr))` moved onto `min(…, 100%)`. 380 was the
+  widest floor in the file and sat on the tab an admin lands on first. Products
+  uses `auto-fill` rather than `auto-fit`, which does not collapse empty tracks —
+  irrelevant here, because the failure is the floor, not the collapsing.
+
+  **Sweep result — the rule for reading it.** A bare `minmax(Npx, 1fr)` overflows
+  exactly when N exceeds its container. Admin has 312px of content at a 360
+  viewport once Shell's `space-6` gutters are taken. Remaining bare floors in the
+  codebase, all measured clean at 360: admin 200 ×4, 220, 180; `dashboard` 220;
+  `partners/dashboard` 180; `admin/receipt` 160. None is within reach of 312, and
+  every admin tab was measured rather than reasoned about. They are deliberately
+  left bare — wrapping a floor that cannot bite is noise, and four of those sites
+  are on surfaces shipped in earlier phases.
+
+  **Two things the sweep turned up that are NOT minmax bugs.**
+
+  1. *A measurement artifact worth recording, so the next person does not chase
+     it.* Probing inside a 360px iframe reports `documentElement.clientWidth` as
+     345, because a classic scrollbar takes 15px. Six tabs then appear to
+     "overflow by exactly 15px", and the offenders are `<html>`, `<body>` and the
+     top-level wrappers, all exactly 360px wide. That is the scrollbar, not
+     layout. On a phone, where the scrollbar is an overlay, it is zero. **A
+     uniform overflow equal to the scrollbar width across unrelated tabs is the
+     tell.**
+
+  2. *`OrdersTab`'s status filter genuinely overflows 54px at 360, and it is a
+     different bug class.* Five filter buttons (All / Pending / Paid / Cancelled
+     / Refunded) in a `flex-wrap: nowrap` row measuring 374.8px against 345, each
+     child `flex-shrink: 1` with `min-width: auto` — the same shape as the top-bar
+     defect fixed above, not a grid floor. Left alone: Orders was not one of the
+     three surfaces whose bar was raised, and the fix is a judgement call between
+     wrapping the row and making it a horizontal scroller like the tab strip
+     directly above it. Needs an owner.
+
+  Verified at a true 360px in both themes against the populated fixture, all 13
+  tabs: Overview and Products now 0, and the top bar's three controls share one
+  line at y=83.8 (99.4 + 40 + 84.6). Single-column track widths at 360 —
+  Overview and Products 297px, Notifications and Settings 255px. Also killed a
+  stale `next-server` (v14.2.35, started 2026-08-05 23:22) still holding :3000
+  from an earlier session; it had been answering 200 while a fresh `next start`
+  could not bind, which is exactly how a stale server hides a change.
   tsc + build clean, no 127.0.0.1:8787 in chunks.

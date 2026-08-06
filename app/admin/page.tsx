@@ -1268,7 +1268,11 @@ function OverviewTab() {
         <KpiCard label="Customers" value={String(stats.customers_total)}/>
         <KpiCard label="Partners Pending" value={String(stats.partners_pending)} highlight={stats.partners_pending>0}/>
       </div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(380px,1fr))',gap:18}}>
+      {/* `min(380px, 100%)`, not a bare 380px. auto-fit collapses to one track
+          on a phone, but a bare floor keeps that track 380px wide against a
+          312px container, so the tab overflowed by 59px — the widest floor in
+          the file, on the tab an admin lands on first. */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(380px, 100%),1fr))',gap:18}}>
         <Card title="Top Products (by revenue)">
           {(!stats.top_products||stats.top_products.length===0)&&<EmptyState text="No sales data yet"/>}
           {stats.top_products?.map((p,i)=>(
@@ -1945,7 +1949,10 @@ function ProductsTab() {
       ) : (
         <div style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
+          // Same guard. auto-fill rather than auto-fit here, which does not
+          // collapse empty tracks — but the failure is the floor, not the
+          // collapsing, so the fix is identical.
+          gridTemplateColumns: 'repeat(auto-fill, minmax(min(340px, 100%), 1fr))',
           gap: 16,
         }}>
           {paged.map(p => {
