@@ -43,6 +43,7 @@
  *                              rejected | none. `none` returns no profile, which
  *                              is the "No partner profile" branch.
  *   FIXTURE_VERIFY=failed      /v2/pay/verify outcome: verified (default) | failed
+ *   FIXTURE_BANNER=short       AppShell's banner message: long (default) | short
  *   PORT=9001                  listen elsewhere
  *
  * The list endpoints always carry their awkward cases inline: a very long
@@ -58,12 +59,24 @@ const NAMELESS = process.env.FIXTURE_PROFILE === 'nameless'
 const ZERO_WALLET = process.env.FIXTURE_WALLET === 'zero'
 const PARTNER = process.env.FIXTURE_PARTNER || 'approved'
 const VERIFY_OK = process.env.FIXTURE_VERIFY !== 'failed'
+const SHORT_BANNER = process.env.FIXTURE_BANNER === 'short'
 
 // ── awkward values, kept in one place so they are easy to reuse ──────────
 const LONG_NAME =
   'Adobe Creative Cloud All Apps with Firefly Premium, Extra Seat and 1TB Cloud Storage (Annual, Prepaid)'
 const HUGE = 9876543   // digit grouping + layout pressure
 const TINY = 0
+
+// AppShell's banner is a single-line bar, so length is its awkward axis and
+// this is the value that applies pressure to it. Long is the DEFAULT, not a
+// variant: the short message that used to be seeded here fits inside 360px
+// uncut, so the fixture rendered the one case the bar already handled and the
+// clipping bug lived outside it. Seventh time a fixture gap has hidden a
+// screen on this refactor. Use FIXTURE_BANNER=short for the one-line case.
+const LONG_BANNER =
+  'Scheduled maintenance: checkout may be briefly unavailable on Sunday ' +
+  '02:00-04:00 WAT while we migrate the payment provider. Orders already paid ' +
+  'for are unaffected and no action is needed on your part.'
 
 // ── customer fixtures ───────────────────────────────────────────────────
 // One order per status the UI can encounter, including rejected_pending.
@@ -585,7 +598,7 @@ const SHELL_NOTIFICATIONS = [
   { id: 'sn-toast', type: 'toast', audience: 'users',
     message: 'Wallet top-ups are live. Fund your wallet and check out in one tap.' },
   { id: 'sn-banner', type: 'banner', audience: 'users',
-    message: 'Free delivery on annual plans until 31 August.' },
+    message: SHORT_BANNER ? 'Free delivery on annual plans until 31 August.' : LONG_BANNER },
   { id: 'sn-modal', type: 'modal', audience: 'users',
     title: 'What changed this month',
     message: 'A short summary lives on the first step.',
@@ -758,4 +771,5 @@ server.listen(PORT, () => {
   console.log(`  orders:  ${ORDERS.length} (one per status, incl. rejected_pending)`)
   console.log(`  partner: ${PARTNER}${PARTNER_PROFILE ? ` (${PARTNER_STATUS})` : ' — no profile'}`)
   console.log(`  verify:  ${VERIFY_OK ? 'verified' : 'failed'}`)
+  console.log(`  banner:  ${SHORT_BANNER ? 'short (one line)' : `long (${LONG_BANNER.length} chars)`}`)
 })

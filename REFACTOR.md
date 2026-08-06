@@ -246,6 +246,27 @@ literally it put the theme toggle, the Discard button and both form inputs at
 40px on a device where the brief calls for 44. Density and tap area are
 independent axes and the original row conflated them.
 
+*Amended again after Phase 13, for admin only.* The bar for **admin at narrow
+widths** is raised from "does not break" to **works on a phone — layout and
+reachability**. It is NOT raised to the 44px floor: admin keeps `sm 32 / md 40`
+at every width, and no control was resized.
+
+The Phase 4 amendment does not transfer, and the reason matters more than the
+outcome. Phase 4 amended the **Partner dashboard** column, where a phone is how
+people actually use the surface, so tap area was the binding constraint there
+and density had to come from type, gaps and radius instead. Admin mobile is an
+occasional convenience, not the primary mode. `control-md` 40px clears WCAG
+2.5.8 Target Size (Minimum, AA, 24×24), which is the target held to everywhere
+else in this refactor; 2.5.5 (Enhanced, AAA, 44×44) is not the standard being
+applied here.
+
+The table still has no admin-at-360 column and does not need one: nothing in it
+is width-dependent for admin (the one mobile/desktop split, Card radius, exists
+only in the Customer column). **If a later phase makes admin genuinely
+phone-first, that is when the breakpoint mechanism earns itself.** Not before —
+which is why the three surfaces fixed after Phase 13 use `auto-fit` grids and
+flex wrapping, and `app/admin/page.tsx` still contains zero `@media` rules.
+
 ### Colour
 Palette unchanged, byte for byte. Three additions:
 - **`*-rgb` companions** for accent / success / error / warning / text-muted.
@@ -553,13 +574,21 @@ an engineering one.
   owner, not a refactor decision.
 - Duplicated session-reading (readToken/readSession/getToken)
 - NEXT_PUBLIC_API_URL vs NEXT_PUBLIC_API_BASE split
-- **The Tawk.to chat bubble overlaps the footer wordmark.** The widget is
-  injected by the inline script in `app/layout.tsx`, mounts `position: fixed`
-  bottom-left, and sits on top of the `© BuySub` line on both `/shop` and
-  `/partners` — the two routes that render a footer. Not Phase 12's doing and not
-  styling this repo owns, but it now sits on restyled chrome, so it is the
-  footer's problem visually. Fixing it means either offsetting the widget through
-  its own API or giving the footer bottom clearance on the left.
+- **The Tawk.to chat bubble overlaps the footer wordmark.** The widget mounts
+  `position: fixed` bottom-left and sits on top of the `© BuySub` line on both
+  `/shop` and `/partners` — the two routes that render a footer. Not Phase 12's
+  doing and not styling this repo owns, but it now sits on restyled chrome, so it
+  is the footer's problem visually. Fixing it means either offsetting the widget
+  through its own API or giving the footer bottom clearance on the left.
+
+  **Still open, and deliberately not solved by route-gating.** The widget was
+  route-gated off `/admin` after Phase 13 (see below), and the obvious-looking
+  move is to gate `/shop` and `/partners` the same way. That is the wrong
+  instrument here: this entry describes a POSITIONING defect, and gating removes
+  live chat from the storefront — the highest-value place a subscription
+  marketplace has it. That is a revenue decision for the owner, not a UI fix.
+  `/admin` is different in kind: staff never need customer chat and the widget
+  overlays the back office, so there the defect really is presence.
 - ~~Navbar.tsx:21 writes bs_admin_theme on toggle but never reads it on mount.~~
   **Resolved in Phase 12**, and the entry understated it: the value was not one
   "nothing acts on" — `bs_admin_theme` *is* `THEME_STORAGE_KEY`, so the write was
@@ -1825,4 +1854,125 @@ z-index scale is a Phase 0-shaped addition touching many files.
   verified by temporarily lifting the /shop guard, then restored with an empty
   diff on lib/theme.ts. Logged the sponsored-vs-real card divergence and a
   pre-existing `{0 && …}` falsy-render bug in Marketplace against that phase.
+  tsc + build clean, no 127.0.0.1:8787 in chunks.
+- 2026-08-06 — Post-Phase-13 fixes, six issues found testing `redesign/ui`
+  before merge. Not a phase: the refactor is complete and this is pre-merge
+  repair on three files plus the fixture.
+
+  **Admin mobile, items 1-3.** The bar for admin at narrow widths was raised
+  from "does not break" to "works on a phone", for the top bar, Notifications
+  and Settings only. Recorded as a second amendment under the density table,
+  with the reasoning, because the Phase 4 amendment points the other way and a
+  later phase would otherwise re-derive it: **no control was resized**, admin
+  keeps `sm 32 / md 40`, and `app/admin/page.tsx` still has zero `@media`.
+
+  *Top bar.* Labels had been breaking two lines each ("Receipt" under "+",
+  "Out" under "Sign"). Both causes, measured at a true 360: the row has 312px
+  once Shell's gutters are taken, the control cluster is ~238px intrinsic and
+  the title's min-content is "Dashboard" at ~103px — 341 against 312, about 29px
+  short. So the labels genuinely did not fit; the stacking was the symptom of a
+  nowrap row with no shrink floor on its children, so each control shrank to its
+  own min-content and wrapped its words instead of the row wrapping. Row now
+  wraps, controls do not. Measured after: all three on one line at y=83.8, 40px
+  tall, 99.4 + 40 + 84.6 + gaps.
+
+  *Notifications and Settings.* Both were hard two-column grids. `1fr` is
+  `minmax(auto, 1fr)` and an input's auto minimum is its intrinsic ~170px+, so
+  they overflowed rather than crowded. Moved onto `auto-fit`, the pattern seven
+  other admin grids already use. **First attempt was wrong and the measurement
+  caught it:** a bare `minmax(340px, 1fr)` collapses to one track but keeps that
+  track 340px wide against a 297px container, so the tab still overflowed by
+  19px. The floor has to be `min(340px, 100%)`. Same guard applied to the other
+  three grids. Settings additionally needs a maximum of two columns, so its
+  track floor is `max(min(240px, 100%), (100% - gap) / 2)` — the half-row term
+  wins at 1440 and pins it to exactly the two columns it renders today
+  (measured `669px 669px`, unchanged), the 240px term wins at 360 and only one
+  track fits.
+
+  *The extra padding was structural, and the first hypothesis was wrong.*
+  Measured first-rendered-text inset from `.bs-admin` across all 13 tabs at
+  1440: Products and Links 0 (flush), Rejected 17, Ads and Discounts 20, Orders
+  21, Overview 21 — Notifications and Settings 25. Those two are the only tabs
+  whose entire content is wrapped in `Card`; every other tab puts its first
+  control or row straight into the container. The cause is that **`Card` and
+  `KpiCard`, the two card primitives on this page, sat on different padding
+  steps** — `space-5 space-6` vs `space-4 space-5` — and Card's was the customer
+  tier, not admin's. Card moved to `space-4 space-5`. All three card-based tabs
+  now measure 21/17. Side effect accepted deliberately: Overview's three Cards
+  tighten by 4px, toward the admin density steps rather than away. Four call
+  sites, all in this file.
+
+  **Tawk.to, item 4.** The inline script in `app/layout.tsx` loaded the widget
+  on every route including the whole back office. Now `components/TawkWidget.tsx`,
+  a client component applying a route predicate — the shape `ThemedToaster`
+  already established, and for the same reason: `layout.tsx` is the only server
+  component and cannot read the pathname. Proven in both directions at runtime:
+  on `/admin` no script tag, `Tawk_API` undefined; on `/shop` the script loads
+  and `Tawk_API` is an object. `/shop` and `/partners` were deliberately NOT
+  gated — see the rewritten Deferred entry.
+
+  **Banner, item 5.** `components/AppShell.tsx`. The bar was a fixed
+  `control-sm` height with `nowrap` + `overflow: hidden` + centred content, so a
+  long message was clipped at BOTH ends at once, with no ellipsis and nothing to
+  indicate anything was missing. Now wraps, `min-height` instead of height,
+  clamped at three lines. The whole-bar `<button>` is gone: its accessible name
+  was `Dismiss announcement: ${message}`, so the announcement reached assistive
+  tech only as part of a dismiss label, sighted users could not select or copy
+  it, and a banner arriving from the 15s poll was never announced. It is now
+  `role="status"` + `aria-live="polite"` with its own dismiss button. Measured
+  at 360 against a 200-char message: 54.2px tall, three lines, `scrollWidth ===
+  clientWidth` (no horizontal clipping), ellipsis visible on line three.
+
+  **Two premise corrections, flagged rather than quietly applied.** The case
+  against a marquee here was stated as a house rule; it is not one.
+  `grep -n marquee REFACTOR.md` returned exactly one line before this entry —
+  *"The commented-out marquee was deleted"* in Phase 11 — which records an
+  action, not a rule. And §9 of the design-taste-frontend skill, the AI-tells
+  list, has **no marquee entry at all**; the only marquee rule in that skill is
+  §4.7's *"MARQUEE MAX-ONE-PER-PAGE"*, a cap, and §4.7 and §4.9 both list a
+  marquee as a legitimate pattern. **The real basis is WCAG 2.2.2 (Pause, Stop,
+  Hide)**: content that moves automatically past five seconds needs a pause
+  control, which is more chrome than a slim announcement bar can carry. Phase 13
+  set the same precedent on the ShopAds carousel. Do not cite an AI-tells
+  marquee ban — it does not exist.
+
+  **A live marquee was found while fixing item 1.** `app/admin/page.tsx` ran
+  `.bs-notif-marquee` / `@keyframes bsNotifMarquee`, 12s linear infinite, no
+  reduced-motion guard and no pause control, in the Notifications banner
+  preview — the only live marquee left in the app, and it survived the Phase 9
+  sweep. The composer was previewing a scroll while `AppShell` rendered a static
+  bar, and the Type option read "Banner (top scrolling)". The preview, not the
+  product, was wrong: it now mirrors AppShell exactly, the keyframes are
+  deleted, and the option reads "Banner (top bar)". Verified at runtime: zero
+  elements on the tab with a non-`none` `animation-name`.
+
+  **`/partners` header, item 6.** `isNoShell` is NOT reversed and
+  `AppShell.tsx:28` is untouched; the storefront Navbar was rejected because its
+  links are Shop / Partners / Admin, so on this page the middle one points at
+  the current page and the third puts an Admin link on a public application
+  form. `/partners` builds its own header instead, as `/login` and `/dashboard`
+  do. The deciding fact was not in the issue report: **the brand panel beside
+  the form is `display: none` below 900px**, so at 360 this page had no
+  wordmark, no route back to the shop and no theme toggle at all — a bare form
+  on a bare background. It was also the only themeable surface in the app with
+  no toggle. `S.page` and `brandPanel` now subtract the 64px header from their
+  `100dvh` sums and the panel sticks at `top: 64px`. Footer unaffected; Phase 1
+  restored it here deliberately. Verified light and dark at 360 and 1440: header
+  64px, wordmark and toggle both 44px targets, one press one flip, persisted
+  across reload, zero horizontal overflow at either width.
+
+  **Seventh fixture gap, and the pattern is now explicit.** `SHELL_NOTIFICATIONS`
+  seeded a 44-character banner that fits inside 360px, so the populated fixture
+  rendered the one case the bar already handled and the clipping bug lived
+  outside it. The long message is now the **default** and `FIXTURE_BANNER=short`
+  is the variant, because the awkward case belongs in the default path — which
+  is what this file already does for list endpoints.
+
+  **Found, reported, not fixed — out of the reported scope.** `OverviewTab`
+  overflows 59px at 360: its lower grid is `repeat(auto-fit, minmax(380px, 1fr))`
+  (`app/admin/page.tsx`), the same bare-floor bug fixed on Notifications, and
+  `ProductsTab` carries `minmax(340px, 1fr)` with the same hazard. Overview and
+  Products were not among the three surfaces whose bar was raised, so they were
+  left alone rather than widened into silently. One `min()` each when scheduled.
+
   tsc + build clean, no 127.0.0.1:8787 in chunks.

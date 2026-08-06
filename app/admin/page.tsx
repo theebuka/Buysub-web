@@ -297,15 +297,33 @@ function Shell({ isDark, toggle, adminEmail, children }: { isDark: boolean; togg
         }
       `}</style>
       <div className="bs-admin" style={{ margin: '0 auto', width: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 'var(--bs-space-6)' }}>
-          <div>
+        {/* The control labels used to break onto two lines each ("Receipt" under
+            "+", "Out" under "Sign"). Measured at 360: the row has 312px of
+            content once Shell's space-6 gutters are taken, the control cluster
+            is ~238px intrinsic (98 + 40 + 84 + two space-2 gaps) and the title
+            block's min-content is its longest word, "Dashboard" at 20px/700,
+            ~103px. 341 against 312 — about 29px short.
+
+            So the labels genuinely did not fit; the stacking was the symptom.
+            This row was nowrap with no flex-shrink floor on its children, so
+            each control shrank to ITS OWN min-content and wrapped its words
+            internally instead of the row wrapping.
+
+            The row wraps now and the controls do not: below ~610px the title
+            takes one line and the cluster the next, where 238 fits in 312 with
+            room. No control changes size. Admin stays desktop-first at 1440px
+            and stays on the sm 32 / md 40 control steps — the bar for admin
+            mobile is that it lays out and is reachable, not the 44px floor.
+            See the density note in REFACTOR.md. */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 'var(--bs-space-3)', flexWrap: 'wrap', marginBottom: 'var(--bs-space-6)' }}>
+          <div style={{ minWidth: 0 }}>
             <div style={{ fontSize: 'var(--bs-text-xl)', fontWeight: 700, color: T.text }}>Admin Dashboard</div>
-            {adminEmail && <div style={{ fontSize: 'var(--bs-text-xs)', color: T.textMuted, marginTop: 2 }}>BuySub Internal · {adminEmail}</div>}
+            {adminEmail && <div style={{ fontSize: 'var(--bs-text-xs)', color: T.textMuted, marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>BuySub Internal · {adminEmail}</div>}
           </div>
-          <div style={{ display: 'flex', gap: 'var(--bs-space-2)', alignItems: 'center' }}>
-            <a href="/admin/receipt" style={{ display: 'inline-flex', alignItems: 'center', height: 'var(--bs-control-md)', padding: '0 var(--bs-space-5)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', fontWeight: 600, background: T.accentFill, color: '#fff', textDecoration: 'none' }}>+ Receipt</a>
-            <button onClick={toggle} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ width: 'var(--bs-control-md)', height: 'var(--bs-control-md)', borderRadius: 'var(--bs-radius-md)', border: `1px solid ${T.border}`, background: T.card, color: T.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{isDark ? <SunIcon /> : <MoonIcon />}</button>
-            <button onClick={signOut} style={{ height: 'var(--bs-control-md)', padding: '0 var(--bs-space-4)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', background: 'transparent', border: `1px solid ${T.border}`, color: T.textMuted, cursor: 'pointer' }}>Sign Out</button>
+          <div style={{ display: 'flex', gap: 'var(--bs-space-2)', alignItems: 'center', flexShrink: 0 }}>
+            <a href="/admin/receipt" style={{ display: 'inline-flex', alignItems: 'center', height: 'var(--bs-control-md)', padding: '0 var(--bs-space-5)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', fontWeight: 600, background: T.accentFill, color: '#fff', textDecoration: 'none', whiteSpace: 'nowrap', flexShrink: 0 }}>+ Receipt</a>
+            <button onClick={toggle} aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'} style={{ width: 'var(--bs-control-md)', height: 'var(--bs-control-md)', borderRadius: 'var(--bs-radius-md)', border: `1px solid ${T.border}`, background: T.card, color: T.text, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{isDark ? <SunIcon /> : <MoonIcon />}</button>
+            <button onClick={signOut} style={{ height: 'var(--bs-control-md)', padding: '0 var(--bs-space-4)', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', background: 'transparent', border: `1px solid ${T.border}`, color: T.textMuted, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>Sign Out</button>
           </div>
         </div>
         {children}
@@ -320,7 +338,22 @@ function Shell({ isDark, toggle, adminEmail, children }: { isDark: boolean; togg
 // not an inconsistency for a later phase to "fix". Sizes move up to the 2xs
 // floor: these were 10px, and nothing renders below 11.
 function Card({ title, children, style }: { title: string; children: React.ReactNode; style?: React.CSSProperties }) {
-  return <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: 'var(--bs-space-5) var(--bs-space-6)', boxShadow: T.shadow, ...style }}><div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--bs-space-3)', fontWeight: 600 }}>{title}</div>{children}</div>
+  // Padding was space-5 / space-6 (20/24). KpiCard, the other card primitive on
+  // this page, is space-4 / space-5 (16/20) — so the two admin cards sat on
+  // different steps, and Card's was the customer tier rather than admin's.
+  //
+  // That is where the Notifications tab's "extra padding" came from, and it is
+  // structural rather than a stray value. Measured at 1440, first rendered text
+  // inset from .bs-admin: Products and Links 0 (flush), Ads and Discounts 20,
+  // Rejected 17, Orders 21, Overview 21 — and Notifications and Settings 25.
+  // Those two are the only tabs whose whole content is wrapped in Card; every
+  // other tab puts its first control or row straight into the container.
+  //
+  // On space-4 / space-5 the two primitives agree and Notifications and Settings
+  // land on Overview's 21/17. Side effect, accepted deliberately: Overview's
+  // three Cards tighten by 4px, which moves them toward the admin density steps
+  // rather than away. Card has four call sites, all in this file.
+  return <div style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: 'var(--bs-space-4) var(--bs-space-5)', boxShadow: T.shadow, ...style }}><div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 'var(--bs-space-3)', fontWeight: 600 }}>{title}</div>{children}</div>
 }
 function KpiCard({ label, value, highlight }: { label: string; value: string; highlight?: boolean }) {
   return <div style={{ background: T.card, border: `1px solid ${highlight ? 'rgba(var(--bs-warning-rgb), 0.4)' : T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', padding: 'var(--bs-space-4) var(--bs-space-5)', boxShadow: T.shadow }}><div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, marginBottom: 'var(--bs-space-2)', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div><div style={{ fontSize: 'var(--bs-text-2xl)', fontWeight: 700, color: highlight ? T.warning : T.text }}>{value}</div></div>
@@ -4912,7 +4945,24 @@ function NotificationsTab() {
   }
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: 24, alignItems: 'start' }}>
+    // Was a hard two-column grid, so the composer and the preview/history
+    // column each got half of a 360px screen. auto-fit collapses it to one
+    // column below ~760px. This is the pattern seven other admin grids already
+    // use (OverviewTab :1246 and :1256, ProductsTab, CustomersTab :2564,
+    // PartnersTab :3006, AdsTab :4566, DiscountsTab :4676) — no media query and
+    // no new mechanism; admin still has zero @media rules.
+    //
+    // The gap drops from 24 (space-6, the CUSTOMER section step) to space-4,
+    // which is the admin section gap in the density table. That, plus the Card
+    // wrappers below, is what made this tab read as more padded than its
+    // siblings: every other tab returns a bare <div> and sits flush against
+    // .bs-admin, while this one nests everything in Card's space-5/space-6.
+    // `min(340px, 100%)` rather than a bare 340px: auto-fit collapses to one
+    // track below ~760px, but a bare floor keeps that single track 340px wide,
+    // and the container here is 297px at a 360 viewport — so the column stopped
+    // wrapping and started overflowing instead. Measured: 19px of document
+    // overflow. The min() lets the last track shrink to the container.
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(340px, 100%), 1fr))', gap: 'var(--bs-space-4)', alignItems: 'start' }}>
       <style>{`
         .bs-notif-input:focus,
         .bs-notif-input:focus-visible {
@@ -4933,16 +4983,6 @@ function NotificationsTab() {
              would be wrong here too, since the background stays translucent. */
           color: color-mix(in srgb, var(--bs-accent), var(--bs-on-tint-mix)) !important;
           background: rgba(var(--bs-accent-rgb), 0.08) !important;
-        }
-        .bs-notif-marquee {
-          display: inline-block;
-          white-space: nowrap;
-          animation: bsNotifMarquee 12s linear infinite;
-          padding-left: 100%;
-        }
-        @keyframes bsNotifMarquee {
-          0% { transform: translateX(0); }
-          100% { transform: translateX(-100%); }
         }
       `}</style>
 
@@ -4994,7 +5034,11 @@ function NotificationsTab() {
           {/* ——— BASICS ——— */}
           <div style={sectionLabel}>Basics</div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+          {/* `1fr` is `minmax(auto, 1fr)`, and a <select>'s auto minimum is its
+              widest option, so this did not merely crowd at 360 — it pushed the
+              grid wider than the card. Exactly two children, so auto-fit tops
+              out at two tracks and collapses to one below ~452px. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 12, marginBottom: 12 }}>
             <FieldLabel label="Type">
               <select
                 className="bs-notif-input"
@@ -5004,7 +5048,11 @@ function NotificationsTab() {
               >
                 <option value="toast">Toast (small popup)</option>
                 <option value="modal">Modal (blocking)</option>
-                <option value="banner">Banner (top scrolling)</option>
+                {/* Was "Banner (top scrolling)". The banner has never
+                    scrolled — components/AppShell.tsx renders it as a static
+                    bar — so this option described a behaviour the product does
+                    not have, and admins were composing against it. */}
+                <option value="banner">Banner (top bar)</option>
               </select>
             </FieldLabel>
 
@@ -5229,7 +5277,9 @@ function NotificationsTab() {
 
           <div style={sectionLabel}>Scheduling</div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 4 }}>
+          {/* Same fix. A datetime-local input carries the widest intrinsic
+              minimum of any control on this tab, so this row overflowed first. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(220px, 100%), 1fr))', gap: 12, marginBottom: 4 }}>
             <FieldLabel label="Schedule (optional)">
               <input
                 className="bs-notif-input"
@@ -5385,23 +5435,49 @@ function NotificationsTab() {
               </div>
             )}
 
+            {/* This preview ran a 12s infinite marquee — the only live one left
+                in the app — while components/AppShell.tsx rendered the banner
+                as a static bar. The composer was showing admins a behaviour the
+                product does not have, so the preview, not the product, was
+                wrong. It now mirrors AppShell exactly: wraps, clamps at three
+                lines, dismiss control on the right.
+
+                The marquee is gone rather than given a pause control because
+                WCAG 2.2.2 (Pause, Stop, Hide) would require one for content
+                that moves automatically past five seconds, and that is more
+                chrome than a slim announcement bar can carry. Phase 13 set the
+                same precedent on the ShopAds carousel. */}
             {form.type === 'banner' && (
               <div style={{
                 width: '100%',
-                height: 'var(--bs-control-md)',
+                minHeight: 'var(--bs-control-md)',
                 background: `rgba(var(--bs-accent-rgb), 0.12)`,
                 border: `1px solid rgba(var(--bs-accent-rgb), 0.25)`,
                 borderRadius: 'var(--bs-radius-md)',
-                overflow: 'hidden',
                 display: 'flex',
                 alignItems: 'center',
+                gap: 'var(--bs-space-2)',
+                padding: 'var(--bs-space-1) var(--bs-space-2) var(--bs-space-1) var(--bs-space-3)',
                 fontSize: 12,
                 color: T.text,
                 fontWeight: 500,
               }}>
-                <div className="bs-notif-marquee">
-                  {form.message || 'Scrolling banner message will appear here · ' }
-                </div>
+                <span style={{
+                  flex: 1,
+                  minWidth: 0,
+                  textAlign: 'center',
+                  lineHeight: 'var(--bs-leading-snug)',
+                  display: '-webkit-box',
+                  WebkitBoxOrient: 'vertical',
+                  WebkitLineClamp: 3,
+                  overflow: 'hidden',
+                  overflowWrap: 'anywhere',
+                }}>
+                  {form.message || 'Banner message will appear here'}
+                </span>
+                <span aria-hidden="true" style={{ flexShrink: 0, alignSelf: 'flex-start', color: T.textMuted, display: 'flex', alignItems: 'center', height: 'var(--bs-control-sm)' }}>
+                  <XIcon />
+                </span>
               </div>
             )}
           </div>
@@ -5634,7 +5710,18 @@ function SettingsTab() {
 
   return (
     <Card title="General Settings">
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      {/* Was a hard `1fr 1fr`. `1fr` is `minmax(auto, 1fr)` and an <input>'s
+          auto minimum is its intrinsic ~170px+, so at 360 — where this card has
+          about 262px of content once Shell's gutters and Card's padding are
+          taken — the two tracks overflowed the card rather than just crowding.
+
+          This grid has seven children, so a plain auto-fit would keep adding
+          tracks and turn the desktop layout into five columns. The track
+          minimum is therefore the LARGER of 240px and half the row: at 1440 the
+          half-row term wins and pins it to exactly two columns, which is what
+          desktop renders today, unchanged; at 360 the 240px term wins and only
+          one track fits. Mobile is the only width whose layout moves. */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(min(240px, 100%), (100% - var(--bs-space-3)) / 2), 1fr))', gap: 'var(--bs-space-3)' }}>
         <FieldLabel label="Phone">
           <input
             style={inputStyle()}

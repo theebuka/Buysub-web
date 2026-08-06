@@ -1,6 +1,7 @@
 import { CSS_VARS } from '@/lib/constants';
 import AppShell from '../components/AppShell'
 import ThemedToaster from '../components/ThemedToaster'
+import TawkWidget from '../components/TawkWidget'
 
 export const metadata = {
   title: 'BuySub — Digital Subscription Marketplace',
@@ -73,22 +74,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </AppShell>
 
         <ThemedToaster />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              var Tawk_API=Tawk_API||{}, Tawk_LoadStart=new Date();
-              (function(){
-                var s1=document.createElement("script"),
-                s0=document.getElementsByTagName("script")[0];
-                s1.async=true;
-                s1.src='https://embed.tawk.to/69fef29b952ab91c389cfc77/1jo5u7clb';
-                s1.charset='UTF-8';
-                s1.setAttribute('crossorigin','*');
-                s0.parentNode.insertBefore(s1,s0);
-              })();
-            `,
-          }}
-        />
+        {/*
+          Was an inline script here, which loaded the chat widget on every route
+          including the whole back office. This file is a server component and
+          cannot read the pathname, so the route gate lives in the client
+          component — the same reason ThemedToaster exists.
+        */}
+        <TawkWidget />
       </body>
     </html>
   );

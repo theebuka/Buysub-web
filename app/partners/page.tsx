@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { T } from '@/lib/constants'
+import { useTheme } from '@/lib/theme'
 
 /* ===============================================================
    CONFIG
@@ -687,11 +688,71 @@ export default function PartnerSignupForm() {
 }
 
 /* ================================================================
+   PAGE HEADER
+================================================================ */
+// Inline SVG, 24x24 viewBox, currentColor, strokeWidth 2, round caps — the
+// house pattern, as in Navbar, login, dashboard and admin.
+function SunIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4" />
+    </svg>
+  )
+}
+function MoonIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z" />
+    </svg>
+  )
+}
+
+// /partners stays in AppShell's isNoShell list: it is not getting the
+// storefront Navbar, whose links are Shop / Partners / Admin — on this page the
+// middle one points at the page you are already on and the third puts an Admin
+// link on a public application form. It builds its own header instead, the way
+// /login and /dashboard do.
+//
+// What it was missing is not decoration. The brand panel beside the form is
+// `display: none` below 900px (see the media query in SplitLayout), so at 360
+// this page had no wordmark, no route back to the shop and no theme toggle at
+// all — a bare form on a bare background. It was also the only themeable
+// surface in the app with no toggle: /login, /dashboard, /partners/dashboard
+// and /admin each build their own, and only /shop is excluded from theming.
+//
+// The footer is unaffected. Phase 1 restored it here deliberately and it stays.
+const HEADER_H = 64  // matches Navbar and the /dashboard nav
+
+function PartnersHeader() {
+  const { isDark, toggle, mounted } = useTheme()
+
+  return (
+    <header style={S.header}>
+      <a href="/shop" className="bs-quiet-link" style={S.headerBrand}>BuySub</a>
+      <button
+        type="button"
+        className="bs-icon-btn"
+        onClick={toggle}
+        aria-label={isDark ? 'Switch to light theme' : 'Switch to dark theme'}
+        style={S.iconBtn}
+      >
+        {/* Dark is the render-time default until the stored preference is read
+            in an effect; localStorage must never be read during render. */}
+        {mounted && !isDark ? <MoonIcon /> : <SunIcon />}
+      </button>
+    </header>
+  )
+}
+
+/* ================================================================
    SPLIT LAYOUT — brand panel (left) + form panel (right)
 ================================================================ */
 function SplitLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div style={S.page}>
+    <div style={S.shell}>
+      <PartnersHeader />
+      <div style={S.page}>
       <style>{`
         .bs-input:focus, .bs-input:focus-visible,
         .bs-select:focus, .bs-select:focus-visible {
@@ -706,6 +767,12 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
         }
         .bs-cta:hover:not(:disabled) { background: var(--bs-accent-hover) !important; }
         .bs-back:hover { color: var(--bs-accent-hover) !important; }
+
+        /* Header wordmark, same treatment it gets on /login and /dashboard. */
+        .bs-quiet-link { transition: color var(--bs-dur-1) var(--bs-ease-out); }
+        .bs-quiet-link:hover { color: var(--bs-accent-on-surface); }
+        .bs-quiet-link:focus-visible { outline: none; box-shadow: var(--bs-ring); }
+        .bs-icon-btn:hover { border-color: var(--bs-border-strong); color: var(--bs-text-primary); }
 
         .bs-terms-link:focus-visible,
         .bs-cta:focus-visible,
@@ -785,6 +852,7 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
         <div style={{ maxWidth: 560, margin: '0 auto', width: '100%' }}>
           {children}
         </div>
+      </div>
       </div>
     </div>
   )
@@ -1027,8 +1095,45 @@ const baseFieldStyle: React.CSSProperties = {
 }
 
 const S: Record<string, React.CSSProperties> = {
-  page: {
+  // Wraps the header above the split. The split itself keeps its own row
+  // layout untouched; only the viewport-height sums below had to account for
+  // the header.
+  shell: {
     minHeight: '100dvh',
+    display: 'flex',
+    flexDirection: 'column',
+    background: T.color.bgBase,
+    color: T.color.textPrimary,
+    fontFamily: 'inherit',
+  },
+  header: {
+    height: HEADER_H,
+    flexShrink: 0,
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    gap: T.space[3],
+    padding: `0 ${T.space[6]}`,
+    borderBottom: `1px solid ${T.color.borderDefault}`,
+    background: T.color.bgBase,
+    position: 'sticky',
+    top: 0,
+    zIndex: 50,
+  },
+  headerBrand: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minHeight: 'var(--bs-control-lg)',
+    fontSize: T.text.lg,
+    fontWeight: T.weight.bold as any,
+    color: T.color.textPrimary,
+    textDecoration: 'none',
+    borderRadius: T.radius.md,
+  },
+  page: {
+    // Was 100dvh. With the header above it, that summed to 100dvh + 64 and put
+    // a scrollbar on every render regardless of content length.
+    minHeight: `calc(100dvh - ${HEADER_H}px)`,
     display: 'flex',
     background: T.color.bgBase,
     color: T.color.textPrimary,
@@ -1038,9 +1143,11 @@ const S: Record<string, React.CSSProperties> = {
   // lib/constants.ts. Nothing here may resolve from a token that flips.
   brandPanel: {
     width: '42%',
-    minHeight: '100dvh',
+    // Both values follow the header: the panel is one viewport minus the bar,
+    // and it sticks below the bar rather than under it.
+    minHeight: `calc(100dvh - ${HEADER_H}px)`,
     position: 'sticky',
-    top: 0,
+    top: HEADER_H,
     padding: `${T.space[8]} ${T.space[12]}`,
     background: T.brandSlab.bg,
     borderRight: `1px solid ${T.brandSlab.border}`,

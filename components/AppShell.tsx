@@ -103,40 +103,97 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <>
       {banner && !isAdmin && (
-        // Was a click-to-dismiss <div>: not focusable, no role, no accessible
-        // name. Promoted to a button, same treatment the dashboard rows got in
-        // Phase 2. The gradient was #0ea5e9 -> #6366f1, off-palette and
-        // labelled "brand feel" in a comment; white measured 2.77 at the left
-        // end and 4.47 at the right, so it failed across the whole span. It is
-        // now accent-fill -> accent-hover (the Phase 2 wallet-gradient pattern),
-        // where white measures 4.61 and 5.44.
-        <button
-          type="button"
-          aria-label={`Dismiss announcement: ${banner.message}`}
-          onClick={() => {
-            localStorage.setItem(`notif_${banner.id}`, "1")
-            setBanner(null)
-          }}
+        // Phase 11 made the whole bar one <button> (it had been a
+        // click-to-dismiss <div> with no role and no accessible name) and moved
+        // the off-palette #0ea5e9 -> #6366f1 gradient onto
+        // accent-fill -> accent-hover, where white measures 4.61 and 5.44.
+        // Both of those stand. What did not survive a 360px viewport was the
+        // shape:
+        //
+        //   height: var(--bs-control-sm) + white-space: nowrap +
+        //   overflow: hidden + justify-content: center
+        //
+        // A message longer than the bar was clipped at BOTH ends at once — the
+        // start and the end were lost together, with no ellipsis and nothing to
+        // indicate anything was missing. The fixture seeded a 44-character
+        // message that fitted inside 360, so this never appeared in
+        // verification until FIXTURE_BANNER seeded a long one.
+        //
+        // Wrapping is the fix, not scrolling. A marquee hands reading speed to
+        // the animation instead of the reader, and WCAG 2.2.2 (Pause, Stop,
+        // Hide) applies to any automatically-moving content running past five
+        // seconds — so a conformant marquee has to carry a pause control, which
+        // is more chrome than the bar itself. See REFACTOR.md.
+        //
+        // The bar is also no longer a single button. Its accessible name was
+        // `Dismiss announcement: ${message}`, so the announcement existed to
+        // assistive tech only as part of a dismiss label, sighted users could
+        // not select or copy it, and a banner arriving from the 15s poll was
+        // never announced. It is now a role="status" region with its own
+        // dismiss control.
+        <div
+          role="status"
+          aria-live="polite"
           style={{
             width: "100%",
-            height: "var(--bs-control-sm)",
+            minHeight: "var(--bs-control-sm)",
             background: "linear-gradient(90deg, var(--bs-accent-fill), var(--bs-accent-hover))",
             color: "#fff",
-            border: "none",
             display: "flex",
             alignItems: "center",
-            justifyContent: "center",
-            overflow: "hidden",
+            gap: "var(--bs-space-2)",
+            padding: "var(--bs-space-1) var(--bs-space-2) var(--bs-space-1) var(--bs-space-4)",
             fontSize: "var(--bs-text-2xs)",
             fontWeight: 500,
             letterSpacing: "0.2px",
-            cursor: "pointer",
           }}
         >
-          <span style={{ whiteSpace: "nowrap", textAlign: "center" }}>
+          <span
+            style={{
+              flex: 1,
+              minWidth: 0,
+              textAlign: "center",
+              lineHeight: "var(--bs-leading-snug)",
+              // Wraps, but capped: an announcement is a bar, not a panel, and
+              // nothing should let an over-long message push the page content
+              // off the first screen. Three lines at 11px is ~50px.
+              display: "-webkit-box",
+              WebkitBoxOrient: "vertical",
+              WebkitLineClamp: 3,
+              overflow: "hidden",
+              overflowWrap: "anywhere",
+            }}
+          >
             {banner.message}
           </span>
-        </button>
+          <button
+            type="button"
+            aria-label="Dismiss announcement"
+            onClick={() => {
+              localStorage.setItem(`notif_${banner.id}`, "1")
+              setBanner(null)
+            }}
+            style={{
+              flexShrink: 0,
+              alignSelf: "flex-start",
+              width: "var(--bs-control-sm)",
+              height: "var(--bs-control-sm)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              background: "transparent",
+              border: "none",
+              borderRadius: "var(--bs-radius-md)",
+              color: "#fff",
+              cursor: "pointer",
+            }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <path d="M18 6 6 18M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
       )}
       {!isNoShell && <Navbar />}
 
