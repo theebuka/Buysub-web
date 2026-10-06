@@ -255,7 +255,19 @@ const PRODUCTS = [
     price_1m: 6500, price_3m: 18500, price_6m: 35000, price_1y: 66000,
     billing_type: 'subscription', billing_period: 'monthly',
     tags: 'popular', domain: 'netflix.com',
-    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 1 },
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 1,
+    // Product-page content (migration 07): one fully-populated product so the
+    // features, steps, FAQ, delivery and badge blocks all render.
+    featured: true, badge: 'Best seller',
+    delivery_time: 'Within 1 hour', delivery_method: 'Profile on a shared account, by WhatsApp',
+    region: 'Nigeria',
+    features: ['4 screens at once', 'Ultra HD and HDR', 'Downloads on 6 devices', 'Your own profile and PIN'],
+    how_it_works: ['Pick a plan and pay.', 'We add your profile within the hour.', 'Log in with the details we send on WhatsApp.'],
+    faqs: [
+      { q: 'Can I change my profile name?', a: 'Yes. Your profile is yours to rename and lock with a PIN.' },
+      { q: 'What happens when my plan ends?', a: 'Access stops at the end of the period. Renew from your account to keep watching.' },
+    ],
+    seo_title: 'Netflix Premium in Naira · BuySub', seo_description: 'Netflix Premium 4K, paid in Naira.' },
   { id: 'p-spotify', name: 'Spotify Duo', slug: 'spotify-duo',
     category: 'music streaming', description: 'Two premium accounts.',
     short_description: 'Two premium accounts', category_tagline: 'Music',

@@ -54,6 +54,18 @@ export interface Product {
   status: string;
   image_url: string | null;
   sort_order: number;
+  // Product-page content (supabase-migrations/07). Optional: older API
+  // builds and cached cart lines don't carry them.
+  featured?: boolean | null;
+  badge?: string | null;
+  delivery_time?: string | null;
+  delivery_method?: string | null;
+  region?: string | null;
+  features?: string[] | null;
+  how_it_works?: string[] | null;
+  faqs?: { q: string; a: string }[] | null;
+  seo_title?: string | null;
+  seo_description?: string | null;
 }
 
 export interface CartItem {
@@ -175,13 +187,8 @@ export const calcDiscountAmount = (
 // data-theme="light" on <html>, set before first paint by the script in
 // app/layout.tsx and maintained by useTheme() in lib/theme.ts.
 //
-// NOTE: /shop is not themed yet, and the exclusion is temporary — it ends when
-// components/Marketplace.tsx is refactored. components/Marketplace.tsx is
-// dark-only by construction (fixed #1C1C1F borders, unconditional #fff on the
-// mobile segmented controls, dark-only logo swatches, theme=dark in the
-// logo.dev URL), so applying the light block there renders it half-light.
-// Both the layout script and lib/theme.ts guard on the pathname. See
-// REFACTOR.md before removing that guard.
+// Every route is themed, the storefront included, since components/shop/*
+// replaced the dark-only components/Marketplace.tsx (IA refactor Phase 2).
 export const CSS_VARS = `
   :root {
     /* ── Colour ─────────────────────────────────────────────── */
@@ -228,9 +235,8 @@ export const CSS_VARS = `
     --bs-error-rgb: 239, 68, 68;
     --bs-warning-rgb: 245, 158, 11;
     --bs-text-muted-rgb: 131, 131, 146;
-    /* Legacy alias. components/Marketplace.tsx:1389 spells it this way and
-       that file is off-limits. Prefer --bs-text-muted-rgb in new code; this
-       can be deleted once Marketplace is next edited. */
+    /* Legacy alias, still read by app/admin/page.tsx. Prefer
+       --bs-text-muted-rgb in new code. */
     --bs-muted-rgb: var(--bs-text-muted-rgb);
 
     /* Accent as TEXT, on a page or card background only.

@@ -6,14 +6,13 @@
 // Replaces components/Navbar.tsx. 64px tall (--bs-header-h) and sticky, so the
 // shop's own sticky control bar still docks directly under it at top: 64.
 //
-//   desktop  Logo · Browse ▾ · [ Search … ⌘K ] · Earn · theme · cart · account
+//   desktop  Logo · Browse ▾ · [ Search … ⌘K ] · Earn · theme · NGN ▾ · cart · account
 //   mobile   ☰ · Logo ·                      search · cart · account
 //
-// Phase 1b scope: the shop keeps its own currency control and cart drawer, so
-// the header's cart opens that drawer (lib/shopBus.ts) rather than its own,
-// and there is no currency menu here yet. Both move into the header in
-// Phase 2 when the shop is rebuilt. No notification bell until there is a
-// per-user notifications endpoint; messages are in the account menu.
+// The cart drawer is mounted here, once, for the whole site. The currency
+// menu sets the display currency everywhere (lib/currency.ts). No
+// notification bell until there is a per-user notifications endpoint;
+// messages are in the account menu.
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -23,7 +22,10 @@ import {
   Popover, ProductLogo, Skeleton, type IconName,
 } from '@/components/ui'
 import { CommandPalette } from './CommandPalette'
-import { useCart, cartCount } from '@/lib/cart'
+import { useCart, cartCount, setCartDrawer } from '@/lib/cart'
+import { useCurrency, setCurrency, CURRENCIES, CURRENCY_LABELS } from '@/lib/currency'
+import { productHref } from '@/lib/catalog'
+import CartDrawer from '@/components/shop/CartDrawer'
 import { useSession, loadPartner, loadWallet, signOut, type SessionState } from '@/lib/useSession'
 import { useProducts } from '@/lib/useProducts'
 import { useTheme, isThemeableRoute } from '@/lib/theme'
@@ -125,8 +127,7 @@ function BrowsePanel({ close }: { close: () => void }) {
               const fp = fromPrice(p)
               const stock = isInStock(p.stock_status)
               return (
-                <button key={p.id} type="button" data-menu-item className={css.megaProduct}
-                  onClick={() => { close(); shop.search(p.name) }}>
+                <Link key={p.id} href={productHref(p)} data-menu-item className={css.megaProduct} onClick={close}>
                   <ProductLogo product={p} size={40} radius="var(--bs-radius-md)" />
                   <span className={css.megaProductText}>
                     <span className={css.megaProductName}>{p.name}</span>
@@ -134,7 +135,7 @@ function BrowsePanel({ close }: { close: () => void }) {
                       {!stock ? 'Out of stock' : fp ? <>From <b>{format(fp.price, 'NGN')}</b></> : 'Currently unavailable'}
                     </span>
                   </span>
-                </button>
+                </Link>
               )
             })}
           </div>
@@ -255,6 +256,19 @@ function AccountMenu({ session }: { session: SessionState }) {
 }
 
 // ── Mobile drawer ────────────────────────────────────────────
+function DrawerCurrency() {
+  const { currency } = useCurrency()
+  return (
+    <div style={{ display: 'flex', gap: 'var(--bs-space-2)', flexWrap: 'wrap', padding: '0 var(--bs-space-2)' }}>
+      {CURRENCIES.map(c => (
+        <button key={c} type="button" className={css.navBtn} aria-pressed={c === currency}
+          style={c === currency ? { background: 'var(--bs-accent-fill)', color: '#fff' } : { border: '1px solid var(--bs-border-default)' }}
+          onClick={() => setCurrency(c)}>{c}</button>
+      ))}
+    </div>
+  )
+}
+
 function MobileNav({ open, onClose, session, onSearch }: {
   open: boolean; onClose: () => void; session: SessionState; onSearch: () => void
 }) {
@@ -306,6 +320,10 @@ function MobileNav({ open, onClose, session, onSearch }: {
           <MenuItem href={ROUTES.loginAs('partner')} icon="users" onClick={onClose}>Partner sign in</MenuItem>
         </div>
         <div className={css.drawerSection}>
+          <MenuLabel>Currency</MenuLabel>
+          <DrawerCurrency />
+        </div>
+        <div className={css.drawerSection}>
           <MenuLabel>Support</MenuLabel>
           <MenuItem href={ROUTES.help} icon="help" onClick={onClose}>Help centre</MenuItem>
           <MenuItem href={EXTERNAL.contact} icon="message" external>Contact us</MenuItem>
@@ -325,6 +343,40 @@ function MobileNav({ open, onClose, session, onSearch }: {
         </div>
       </DrawerBody>
     </Drawer>
+  )
+}
+
+// ── Currency ─────────────────────────────────────────────────
+// Display only: everything is charged in Naira (see lib/currency.ts).
+function CurrencyMenu() {
+  const { currency } = useCurrency()
+  return (
+    <Popover
+      align="end"
+      width={220}
+      panelLabel="Currency"
+      trigger={({ toggle, props }) => (
+        <button type="button" className={css.navBtn} onClick={toggle} aria-label={`Currency: ${currency}`} {...props}>
+          {currency}<Icon name="chevronDown" size={14} />
+        </button>
+      )}
+    >
+      {close => (
+        <>
+          <MenuLabel>Show prices in</MenuLabel>
+          {CURRENCIES.map(c => (
+            <MenuItem key={c} onClick={() => { setCurrency(c); close() }}
+              trailing={c === currency ? <Icon name="check" size={14} /> : undefined}>
+              {CURRENCY_LABELS[c] || c}
+            </MenuItem>
+          ))}
+          <MenuSeparator />
+          <p style={{ padding: '0 var(--bs-space-3) var(--bs-space-2)', fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted)', lineHeight: 1.4 }}>
+            You’re always charged in Naira. Other currencies are estimates.
+          </p>
+        </>
+      )}
+    </Popover>
   )
 }
 
@@ -380,11 +432,13 @@ export default function SiteHeader() {
             <IconButton icon="search" label="Search" onClick={() => setPaletteOpen(true)} />
           </span>
           <span className="bs-desktop-only"><ThemeToggle /></span>
-          <IconButton icon="cart" label="Cart" count={count} onClick={() => shop.openCart()} />
+          <span className="bs-desktop-only"><CurrencyMenu /></span>
+          <IconButton icon="cart" label="Cart" count={count} onClick={() => setCartDrawer(true)} />
           <AccountMenu session={session} />
         </div>
       </div>
 
+      <CartDrawer />
       <CommandPalette open={paletteOpen} onClose={() => setPaletteOpen(false)} />
       <MobileNav open={navOpen} onClose={() => setNavOpen(false)} session={session} onSearch={() => setPaletteOpen(true)} />
     </header>

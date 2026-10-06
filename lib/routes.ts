@@ -9,9 +9,10 @@
 export const ROUTES = {
   home: '/shop',
   shop: '/shop',
-  shopCategory: (c: string) => `/shop?category=${encodeURIComponent(c)}`,
+  shopCategory: (c: string) => `/shop/c/${encodeURIComponent(c)}`,
   shopSearch: (q: string) => `/shop?q=${encodeURIComponent(q)}`,
-  cart: '/shop#cart',
+  cart: '/cart',
+  checkout: '/checkout',
   help: '/help',
 
   login: '/login',

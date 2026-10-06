@@ -21,13 +21,13 @@ export type ThemeName = 'dark' | 'light'
 // same way. Do not change the shape while those files still exist.
 export const THEME_STORAGE_KEY = 'bs_admin_theme'
 
-// components/Marketplace.tsx is dark-only by construction: fixed #1C1C1F
-// borders, unconditional color:#fff on the mobile segmented controls,
-// dark-only ProductLogo swatches, theme=dark in the logo.dev URL. Theming
-// /shop renders it half-light, and that file is off-limits for edits.
-// Removing this guard requires editing Marketplace first. See REFACTOR.md.
-export function isThemeableRoute(pathname: string): boolean {
-  return pathname !== '/shop' && !pathname.startsWith('/shop/')
+// Routes the theme may not reach. Empty since Phase 2 of the IA refactor:
+// /shop used to be excluded because components/Marketplace.tsx was dark-only
+// by construction; it was replaced by token-only components/shop/* and
+// deleted. Kept as the one gate (layout script, applyTheme, ThemedToaster,
+// header toggle) in case a fixed-theme route is ever needed again.
+export function isThemeableRoute(_pathname: string): boolean {
+  return true
 }
 
 // Anything that is not exactly 'light' means dark: absent key, garbage value,

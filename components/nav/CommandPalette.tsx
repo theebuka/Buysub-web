@@ -5,9 +5,8 @@
 // live product and category matches from the shared product cache, plus
 // "search everything for …". Arrow keys move, Enter picks, Escape closes.
 //
-// Until Phase 2 adds product pages, picking a product runs a shop search for
-// its name; lib/shopBus.ts decides whether that is an in-page event (on /shop)
-// or a navigation.
+// Picking a product opens its page. Searches and categories go through
+// lib/shopBus.ts: an in-page update on the catalog, a navigation elsewhere.
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -17,6 +16,7 @@ import { useProducts } from '@/lib/useProducts'
 import { getCategoryList, isInStock, TAB_ORDER, format, type Product } from '@/lib/constants'
 import { fromPrice } from '@/lib/pricing'
 import { shop } from '@/lib/shopBus'
+import { productHref } from '@/lib/catalog'
 import { ROUTES } from '@/lib/routes'
 import { categoryLabel } from '@/lib/format'
 import { useSession } from '@/lib/useSession'
@@ -108,7 +108,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       out.push({
         id: `p-${p.id}`, group: 'Products', label: p.name, product: p,
         sub: !isInStock(p.stock_status) ? 'Out of stock' : fp ? `From ${format(fp.price, 'NGN')}` : 'Currently unavailable',
-        run: () => searchAll(p.name),
+        run: () => { pushRecent(q.trim()); go(productHref(p)) },
       })
     })
     categories.filter(c => c.includes(term)).slice(0, 3).forEach(c => out.push({

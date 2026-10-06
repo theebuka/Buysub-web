@@ -20,6 +20,7 @@ export interface SessionUser {
   id?: string
   email: string
   full_name: string
+  phone: string
   role: string
   avatar_url: string | null
 }
@@ -83,6 +84,7 @@ async function doLoad() {
       id: d.id,
       email: d.email || '',
       full_name: d.full_name || '',
+      phone: d.phone || '',
       role: d.role || 'customer',
       avatar_url: d.avatar_url || null,
     },

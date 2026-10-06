@@ -67,8 +67,10 @@ shape, and this file renders several counts and amounts.
 
 ## Rules
 - UI only. No logic, no perf, no data flow changes.
-- Off-limits: components/Marketplace.tsx. Hand-written, includes the cart
-  drawer. Read it for reference, never write to it.
+- ~~Off-limits: components/Marketplace.tsx.~~ **Lifted 2026-10-06** by the IA
+  refactor (plan `starry-forging-valiant`, Phase 2): Marketplace.tsx was split
+  into `components/shop/*` and deleted, its checkout logic ported verbatim to
+  `lib/checkout.ts`, and the `/shop` dark-only theme guard removed.
 - **Off-limits: the generated PDF receipt itself.** The jsPDF drawing code in
   `app/admin/receipt/page.tsx`, its 7.5pt–22pt print scale, its layout, and the
   `buildReceiptPdf` output in the API repo. Do not restyle, retokenise or

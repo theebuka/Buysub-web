@@ -12,7 +12,6 @@ import Link from 'next/link'
 import { Icon } from '@/components/ui'
 import { Logo } from './SiteHeader'
 import { ROUTES, EXTERNAL } from '@/lib/routes'
-import { shop } from '@/lib/shopBus'
 import css from './nav.module.css'
 
 type L = { label: string; href?: string; onClick?: () => void; external?: boolean }
@@ -22,10 +21,10 @@ const COLUMNS: { title: string; links: L[] }[] = [
     title: 'Shop',
     links: [
       { label: 'All products', href: ROUTES.shop },
-      { label: 'Video streaming', onClick: () => shop.category('video streaming') },
-      { label: 'Music streaming', onClick: () => shop.category('music streaming') },
-      { label: 'AI tools', onClick: () => shop.category('ai') },
-      { label: 'Productivity', onClick: () => shop.category('productivity') },
+      { label: 'Video streaming', href: ROUTES.shopCategory('video streaming') },
+      { label: 'Music streaming', href: ROUTES.shopCategory('music streaming') },
+      { label: 'AI tools', href: ROUTES.shopCategory('ai') },
+      { label: 'Productivity', href: ROUTES.shopCategory('productivity') },
     ],
   },
   {

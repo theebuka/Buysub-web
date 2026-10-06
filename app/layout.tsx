@@ -25,20 +25,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dark flash. Everything is inside try/catch: localStorage throws in
           Safari private mode, and an uncaught throw in a head script blocks
           render. The attribute is only ever set, never cleared, so an absent
-          key, a garbage value, a throw, or a /shop pathname all fall through
-          to :root, which is dark. System preference is deliberately ignored.
-
-          /shop is excluded because components/Marketplace.tsx is dark-only by
-          construction and off-limits for edits. See lib/theme.ts and
-          REFACTOR.md before changing this.
+          key, a garbage value or a throw all fall through to :root, which is
+          dark. System preference is deliberately ignored. Every route is
+          themeable since the storefront rebuild; see isThemeableRoute in
+          lib/theme.ts.
         */}
         <script
           dangerouslySetInnerHTML={{
             __html:
               "(function(){try{" +
-              "var p=location.pathname;" +
-              "if(p==='/shop'||p.indexOf('/shop/')===0)return;" +
-              "if(localStorage.getItem('bs_admin_theme')==='light')" +
+                            "if(localStorage.getItem('bs_admin_theme')==='light')" +
               "document.documentElement.setAttribute('data-theme','light');" +
               "}catch(e){}})();",
           }}

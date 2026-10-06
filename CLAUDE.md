@@ -27,7 +27,7 @@ Two things `next build` alone won't catch:
 - **Any dynamic route needs `export const runtime = 'edge'`**, or the Pages build fails with "routes were not configured to run with the Edge Runtime". `app/page.tsx` is dynamic because it reads `searchParams`.
 - **`.npmrc` sets `legacy-peer-deps=true`.** Without it the build's `npx` install fails on peer ranges. Every build from 2026-08-02 to 2026-10-06 failed that way, so production sat on the 2026-05-08 build.
 
-To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `npx wrangler pages dev .vercel/output/static --compatibility-flags nodejs_compat`. next-on-pages is deprecated in favour of OpenNext (`@opennextjs/cloudflare`); migrating is a separate job.
+To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `npx wrangler pages dev .vercel/output/static --compatibility-flags nodejs_compat`. **Edge routes (`/`, `/shop/[slug]`, `/shop/c/[category]`) don't work under plain `next start`**: they render the 404 page and log `TypeError: e[o] is not a function`. Check them with next-on-pages + wrangler instead. Under local wrangler a server-side fetch can't reach the fixture API on 127.0.0.1, so the product page falls back to loading the product in the browser there. next-on-pages is deprecated in favour of OpenNext (`@opennextjs/cloudflare`); migrating is a separate job.
 
 ## Architecture
 
@@ -35,8 +35,11 @@ To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `np
 
 | Route | File | Audience |
 |---|---|---|
-| `/` | `app/page.tsx` | redirects to `/shop` |
-| `/shop` | `components/Marketplace.tsx` (~2.1k lines) | public storefront + cart + checkout |
+| `/` | `app/page.tsx` | redirects to `/shop`, keeping the query string |
+| `/shop`, `/shop/c/[category]` | `components/shop/ShopPage.tsx` | catalog: filters in the URL, quick view on card click |
+| `/shop/[slug]` | `app/shop/[slug]/page.tsx` (edge, fetches the product for metadata) → `components/shop/ProductPage.tsx` | product page; the quick view `pushState`s this URL |
+| `/cart`, `/checkout` | `components/shop/CartPage.tsx`, `CheckoutPage.tsx` | cart, then details + Paystack / WhatsApp |
+| `/help` | `app/help/page.tsx` | help centre |
 | `/login` | `app/login/page.tsx` | three tabs: customer / partner / admin |
 | `/dashboard` | `app/dashboard/page.tsx` | customer: orders, messages, wallet, profile |
 | `/admin` | `app/admin/page.tsx` (~5.5k lines) | 13 tabs, the whole back office |
@@ -52,13 +55,13 @@ The big files are structured internally by section-comment banners and module-le
 
 `app/layout.tsx` is the only server component. It imports `app/globals.css` (reset, keyframes, utilities), injects `CSS_VARS` from `lib/constants.ts` via `dangerouslySetInnerHTML`, loads Inter from Google Fonts, mounts `<Toaster>` (sonner), and injects the Tawk.to live-chat script.
 
-`components/AppShell.tsx` wraps all children and decides chrome by pathname: `/admin`, `/partners`, `/dashboard`, `/login`, `/reset-password` and `/order/verify` render **without** the site header or footer (`isNoShell`). The header and footer are `components/nav/SiteHeader.tsx` and `SiteFooter.tsx` (they replaced `Navbar.tsx` / `Footer.tsx`, which are now unused and go in Phase 2). The header has the Browse mega menu, the search palette (`/`, ⌘K), the cart count and the account menu; on `/shop` it drives Marketplace's own cart drawer, search and category through window events (`lib/shopBus.ts`), and elsewhere it navigates to `/shop?q=`, `/shop?category=` or `/shop#cart`. Every in-app link target lives in `lib/routes.ts`. Both are gated on the same flag — the Footer used to be gated on `!isAdmin`, which let it render on `/partners` and `/dashboard` despite those being no-shell routes. It also syncs `data-theme` to the route on every pathname change (see Styling below). It additionally polls `GET /v2/notifications` every 15s and renders toast / banner / multi-step modal notifications, filtered by `audience` (`users` vs `admins`) and de-duplicated via `localStorage` keys `notif_<id>`.
+`components/AppShell.tsx` wraps all children and decides chrome by pathname: `/admin`, `/partners`, `/dashboard`, `/login`, `/reset-password` and `/order/verify` render **without** the site header or footer (`isNoShell`). The header and footer are `components/nav/SiteHeader.tsx` and `SiteFooter.tsx` (they replaced `Navbar.tsx` / `Footer.tsx`). The header has the Browse mega menu, the search palette (`/`, ⌘K), the currency menu, the cart count and the account menu, and mounts the site-wide cart drawer (`components/shop/CartDrawer.tsx`, opened with `setCartDrawer`). On a catalog page its search and category picks update the catalog in place through window events (`lib/shopBus.ts`); elsewhere they navigate to `/shop?q=` or `/shop/c/<category>`. Every in-app link target lives in `lib/routes.ts`. Both are gated on the same flag — the Footer used to be gated on `!isAdmin`, which let it render on `/partners` and `/dashboard` despite those being no-shell routes. It also syncs `data-theme` to the route on every pathname change (see Styling below). It additionally polls `GET /v2/notifications` every 15s and renders toast / banner / multi-step modal notifications, filtered by `audience` (`users` vs `admins`) and de-duplicated via `localStorage` keys `notif_<id>`.
 
 ### Auth
 
 Supabase Auth, browser-only. The Supabase client is instantiated per-page (`createClient(SUPABASE_URL, SUPABASE_ANON)` in `login`, `dashboard`, `partners/dashboard`, `reset-password`). `lib/session.ts` holds a lazy shared client used only for `getAccessToken()`.
 
-Tokens for API calls come from `supabase.auth.getSession()`, which refreshes an expired access token: the page's own client in login, dashboard and partner dashboard, and `getAccessToken()` in `lib/session.ts` for admin and receipt. **Never delete the `sb-*-auth-token` key when `expires_at` has passed** — it holds the refresh token. The old hand-rolled readers did that and signed everyone out hourly. `readToken` in `app/admin/page.tsx` survives only as a presence check for render gating. `components/Marketplace.tsx` still scans localStorage, but only to prefill checkout, and it ignores expired tokens rather than deleting them.
+Tokens for API calls come from `supabase.auth.getSession()`, which refreshes an expired access token: the page's own client in login, dashboard and partner dashboard, and `getAccessToken()` in `lib/session.ts` for admin and receipt. **Never delete the `sb-*-auth-token` key when `expires_at` has passed** — it holds the refresh token. The old hand-rolled readers did that and signed everyone out hourly. `readToken` in `app/admin/page.tsx` survives only as a presence check for render gating. Checkout prefills from `lib/useSession.tsx`.
 
 Every authenticated request sends `Authorization: Bearer <access_token>`. Each surface has its own local `apiFetch` that redirects to `/login` on 401/403. There is no middleware and no route protection — pages guard themselves client-side after mount.
 
@@ -66,13 +69,13 @@ Post-login routing lives in `redirectByRole()` in `app/login/page.tsx`: admin �
 
 ### Data flow
 
-`lib/api.ts` is a thin typed wrapper (`getProducts`, `createOrder`, `createWhatsAppOrder`, `initPaystackPayment`, `verifyPayment`, `validateDiscount`, …) returning `{ ok, data?, error?, meta? }`. **Only `Marketplace.tsx` and the verify page use it** — the admin, dashboard, partner, and ads surfaces each define their own local `apiFetch` because they need the auth header. Admin list endpoints paginate via `meta.pagination`.
+`lib/api.ts` is a thin typed wrapper (`getProducts`, `createOrder`, `createWhatsAppOrder`, `initPaystackPayment`, `verifyPayment`, `validateDiscount`, …) returning `{ ok, data?, error?, meta? }`. **Only the storefront (`lib/checkout.ts`, `lib/useProducts.ts`) and the verify page use it** — the admin, dashboard, partner, and ads surfaces each define their own local `apiFetch` because they need the auth header. Admin list endpoints paginate via `meta.pagination`.
 
-Checkout has two paths, both in `Marketplace.tsx`:
-- **WhatsApp**: `POST /v2/orders/whatsapp` → open the returned `whatsapp_url` in a new tab, clear cart.
+Checkout has two paths, both in `lib/checkout.ts` (ported verbatim from the old `Marketplace.tsx`, same payloads):
+- **WhatsApp**: `POST /v2/orders/whatsapp` → open the returned `whatsapp_url` in a new tab, clear cart, show the order reference with a fallback WhatsApp button.
 - **Paystack**: `POST /v2/orders` → `POST /v2/pay/init` with `callback_url = ${origin}/order/verify` → redirect to `authorization_url`. `/order/verify` then calls `GET /v2/pay/verify?reference=`.
 
-Cart lives in `localStorage` under `CART_STORAGE_KEY` (`buysub_cart_v2`), keyed by `cartKey(productId, period)`.
+Cart lives in `localStorage` under `CART_STORAGE_KEY` (`buysub_cart_v2`), keyed by `cartKey(productId, period)`, behind the `lib/cart.ts` store (`useCart`, `addToCart`, `reconcileCart` re-prices it against the live catalog on each catalog/cart/checkout load). The applied promo code is a small store in `lib/checkout.ts` (sessionStorage), shared by the drawer and `/checkout`. The display currency is site-wide (`lib/currency.ts`, `bs_currency`); orders are charged in NGN with `fx_rate`. Product-page content (features, FAQs, delivery, badge, SEO) comes from the columns added in `supabase-migrations/07`; `lib/catalog.ts` holds the fallbacks and the single-seller `toOffers()`.
 
 Referrals: `lib/useReferral.ts` reads `?ref=` (URL wins over cookie), validates it against `/v2/affiliates/resolve`, stores it in the `bs_ref` cookie for 30 days, fires `/v2/affiliates/click`, then strips `?ref=` from the URL. The resulting code is passed as `referral_code` on order payloads. Partner share links are `${NEXT_PUBLIC_SITE_URL}/shop?ref=CODE` (so that var must be the app origin in production), and `app/page.tsx` forwards the query string when it redirects to `/shop`.
 
@@ -90,12 +93,12 @@ New code (from the 2026-10 IA refactor) uses **CSS Modules**: `components/ui/` (
 
 The older surfaces are 100% inline `style` objects. Two systems coexist there and both are in use:
 
-1. **CSS variables** (`--bs-bg-base`, `--bs-text-primary`, `--bs-accent`, …) defined once in `CSS_VARS` and consumed by `AppShell`, `Navbar`, `Footer`, and the verify page.
-2. **Per-file `dark` / `light` theme token objects** duplicated in `app/admin/page.tsx`, `app/login/page.tsx`, `components/Navbar.tsx`, and elsewhere, selected by a local `useTheme()` / `isDark` state.
+1. **CSS variables** (`--bs-bg-base`, `--bs-text-primary`, `--bs-accent`, …) defined once in `CSS_VARS` and consumed by `AppShell` and the verify page.
+2. **Per-file `dark` / `light` theme token objects** duplicated in `app/admin/page.tsx`, `app/login/page.tsx` and elsewhere, selected by a local `useTheme()` / `isDark` state. These are being removed surface by surface; see `REFACTOR.md`.
 
-The theme preference is persisted under the single localStorage key `bs_admin_theme` as a bare `'dark'` / `'light'` string (the marketplace navbar writes it too, despite the name — but `Navbar.tsx` only ever *writes* it and never reads it back on mount, so that toggle resets to dark on every load). `components/Marketplace.tsx` does not touch this key at all.
+The theme preference is persisted under the single localStorage key `bs_admin_theme` as a bare `'dark'` / `'light'` string.
 
-`CSS_VARS` is the single source of truth for tokens: colour, type, spacing, radius, control heights, elevation and motion, plus a `[data-theme="light"]` block. `lib/constants.ts` also exports `T`, a set of `var()` references for use inside inline style objects. `lib/theme.ts` owns the theme; an inline script in `app/layout.tsx` sets `data-theme` on `<html>` before first paint. **`/shop` is not themed yet, and the exclusion is temporary** — `Marketplace.tsx` mixes `var()` surfaces with fixed dark literals, so a light theme renders it half-light. Both the script and the hook guard on the pathname. The guard ends when `Marketplace.tsx` is refactored, which is the last planned surface; `components/Navbar.tsx` already gates its theme toggle on `isThemeableRoute()`, so that control starts appearing on `/shop` the day the guard lifts, with no edit. The per-file `dark`/`light` objects listed below are being removed surface by surface; see `REFACTOR.md`.
+`CSS_VARS` is the single source of truth for tokens: colour, type, spacing, radius, control heights, elevation and motion, plus a `[data-theme="light"]` block. `lib/constants.ts` also exports `T`, a set of `var()` references for use inside inline style objects. `lib/theme.ts` owns the theme; an inline script in `app/layout.tsx` sets `data-theme` on `<html>` before first paint. Every route is themeable: the old `/shop` exclusion ended when `Marketplace.tsx` was replaced by `components/shop/*`. `isThemeableRoute()` remains as the one gate (it returns true) in case a fixed-theme route is ever needed.
 
 Images use raw `<img>`. The older surfaces use raw `<a>`; new code (`components/ui`, `components/nav`, new pages) uses `next/link`. `next/image` is not used, though `next.config.js` still whitelists `img.logo.dev`, `*.airtableusercontent.com`, and `*.supabase.co` remote patterns. Brand logos are fetched from `https://img.logo.dev/<domain>?token=...&size=N`.
 

@@ -339,7 +339,18 @@ async function completeProfile(token: string, fields: Record<string, string | nu
 
 // Already signed in on arrival: route by the account's actual role, not by
 // whichever tab the page happens to open on.
+// ?next= from authFetch / checkout: a same-origin path to return to after
+// sign-in. Anything else (absolute URLs, //host) is ignored.
+function nextPath(): string | null {
+  try {
+    const n = new URLSearchParams(window.location.search).get('next') || ''
+    return n.startsWith('/') && !n.startsWith('//') && !n.startsWith('/login') ? n : null
+  } catch { return null }
+}
+
 async function redirectExistingSession(token: string) {
+  const next = nextPath()
+  if (next) { window.location.href = next; return }
   try {
     const me = await fetch(`${API}/v2/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
     if (['admin', 'super_admin', 'support_agent'].includes(me?.data?.role)) { window.location.href = '/admin'; return }
@@ -351,6 +362,8 @@ async function redirectExistingSession(token: string) {
 
 // ── post-login routing ────────────────────────────────────────────
 async function redirectByRole(token: string, loginType: LoginType) {
+  const next = nextPath()
+  if (next) { window.location.href = next; return }
   if (loginType === 'admin') { window.location.href = '/admin'; return }
   if (loginType === 'partner') {
     try {

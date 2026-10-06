@@ -1,7 +1,5 @@
-'use client';
+import ShopPage from '@/components/shop/ShopPage'
 
-import Marketplace from '@/components/Marketplace';
-
-export default function ShopPage() {
-  return <Marketplace />;
+export default function Page() {
+  return <ShopPage />
 }

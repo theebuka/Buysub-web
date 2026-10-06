@@ -313,7 +313,7 @@ export function ShopSidebar({ ads }: { ads: Ad[] }) {
       display: 'flex',
       flexDirection: 'column',
       gap: 'var(--bs-space-3)',
-      // Never reaches mobile: Marketplace.tsx:1151 gates this on !isMobile.
+      // Never reaches mobile: the catalog sidebar it sits in is hidden below 1024px.
       width: 200,
       flexShrink: 0,
     }}>
