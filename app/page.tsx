@@ -1,5 +1,9 @@
 import { redirect } from 'next/navigation';
 
+// Reading searchParams makes this route dynamic, and Cloudflare Pages
+// (next-on-pages) requires every dynamic route to run on the edge runtime.
+export const runtime = 'edge';
+
 // Keep the query string: referral links (?ref=CODE) land here, and
 // useReferral on /shop reads ?ref= from the URL.
 export default function Home({ searchParams }: { searchParams: Record<string, string | string[] | undefined> }) {

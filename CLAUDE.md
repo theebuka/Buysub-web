@@ -19,6 +19,16 @@ There is no linter, no test suite, and no test runner configured. `npm run build
 
 Dependencies are deliberately minimal: `next`, `react`, `@supabase/supabase-js`, `sonner`. No UI library, no CSS framework, no state manager, no form library, no data-fetching library.
 
+### Hosting
+
+Cloudflare Pages project `buysub-web` (account `e6fedf8d3c96d8e4d22e27d618f60ada`, the same one as both workers), Git-connected to this repo. Pushing `main` deploys production (`app.buysub.ng`); every other branch gets a preview at `<hash>.buysub-web.pages.dev`. Build command `npx @cloudflare/next-on-pages@1`, output `.vercel/output/static`; the `NEXT_PUBLIC_*` values live in the Pages project settings, not in the repo.
+
+Two things `next build` alone won't catch:
+- **Any dynamic route needs `export const runtime = 'edge'`**, or the Pages build fails with "routes were not configured to run with the Edge Runtime". `app/page.tsx` is dynamic because it reads `searchParams`.
+- **`.npmrc` sets `legacy-peer-deps=true`.** Without it the build's `npx` install fails on peer ranges. Every build from 2026-08-02 to 2026-10-06 failed that way, so production sat on the 2026-05-08 build.
+
+To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `npx wrangler pages dev .vercel/output/static --compatibility-flags nodejs_compat`. next-on-pages is deprecated in favour of OpenNext (`@opennextjs/cloudflare`); migrating is a separate job.
+
 ## Architecture
 
 ### Surfaces (one page = one large self-contained file)
