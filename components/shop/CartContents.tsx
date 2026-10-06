@@ -11,7 +11,7 @@ import { useCurrency } from '@/lib/currency'
 import { usePromo, computeTotals, applyPromoCode, clearManualPromo, usePromoMinimumGuard, clearPromoNotice } from '@/lib/checkout'
 import { PERIODS, format } from '@/lib/constants'
 import { priceFor } from '@/lib/pricing'
-import { productHref } from '@/lib/catalog'
+import { isOneTime, productHref } from '@/lib/catalog'
 import { fetchProducts } from '@/lib/useProducts'
 import s from './shop.module.css'
 
@@ -113,7 +113,7 @@ export function CartLines({ compact, onNavigate }: { compact?: boolean; onNaviga
             <ProductLogo product={item.product} size={compact ? 40 : 48} radius="var(--bs-radius-md)" />
             <div className={s.lineMain}>
               <Link href={productHref(item.product)} className={s.lineName} onClick={onNavigate}>{item.product.name}</Link>
-              <span className={s.lineMeta}>{PERIODS[item.itemPeriod]?.name} · {format(unit * rate, currency)} each</span>
+              <span className={s.lineMeta}>{isOneTime(item.product) ? 'One-time' : PERIODS[item.itemPeriod]?.name} · {format(unit * rate, currency)} each</span>
               {!compact && (
                 <div className={s.lineActions}>
                   <div className={s.stepper} role="group" aria-label={`Quantity of ${item.product.name}`}>

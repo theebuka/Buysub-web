@@ -394,6 +394,55 @@ function FieldLabel({ label, children }: { label: string; children: React.ReactN
   return <div><div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 4 }}>{label}</div>{children}</div>
 }
 
+// ── Product page content (supabase-migrations/07) ──
+// What the storefront's product page and quick view show beyond the name and
+// prices. Every field is optional: blank ones are simply not rendered, and the
+// page falls back to generic "How it works" steps. Lists are one item per
+// line; the API drops blank lines and empty FAQ rows.
+function ProductPageFields({ form, setForm, IS }: { form: any; setForm: (f: any) => void; IS: React.CSSProperties }) {
+  const set = (key: string, value: any) => setForm((prev: any) => ({ ...prev, [key]: value }))
+  const lines = (key: string) => (Array.isArray(form[key]) ? form[key] : []).join('\n')
+  const setLines = (key: string, v: string) => set(key, v.split('\n'))
+  const faqs: { q: string; a: string }[] = Array.isArray(form.faqs) ? form.faqs : []
+  const setFaq = (i: number, k: 'q' | 'a', v: string) => set('faqs', faqs.map((f, j) => j === i ? { ...f, [k]: v } : f))
+  const TA: React.CSSProperties = { ...IS, height: 88, padding: '10px 14px', resize: 'vertical', lineHeight: 1.5, fontFamily: 'inherit' }
+  return (
+    <div style={{ marginTop: 12, marginBottom: 12, padding: '16px 18px', background: T.elevated, border: `1px solid ${T.border}`, borderRadius: 'var(--bs-radius-lg)' }}>
+      <div style={{ fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 600, marginBottom: 4 }}>
+        Product page
+      </div>
+      <div style={{ fontSize: 11, color: T.textMuted, marginBottom: 12 }}>
+        Optional. Shown on /shop/{form.slug || 'slug'} and in the quick view. Leave a field blank to hide it.
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="Badge"><input style={IS} value={form.badge || ''} onChange={e => set('badge', e.target.value)} placeholder="e.g. Best seller" /></FieldLabel>
+        <FieldLabel label="Delivery time"><input style={IS} value={form.delivery_time || ''} onChange={e => set('delivery_time', e.target.value)} placeholder="e.g. Within 1 hour" /></FieldLabel>
+        <FieldLabel label="Delivery method"><input style={IS} value={form.delivery_method || ''} onChange={e => set('delivery_method', e.target.value)} placeholder="e.g. Login details by WhatsApp" /></FieldLabel>
+        <FieldLabel label="Region"><input style={IS} value={form.region || ''} onChange={e => set('region', e.target.value)} placeholder="e.g. Global" /></FieldLabel>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 12, marginBottom: 12 }}>
+        <FieldLabel label="What you get (one per line)"><textarea style={TA as any} value={lines('features')} onChange={e => setLines('features', e.target.value)} placeholder={'4 screens at once\nUltra HD'} /></FieldLabel>
+        <FieldLabel label="How it works (one step per line)"><textarea style={TA as any} value={lines('how_it_works')} onChange={e => setLines('how_it_works', e.target.value)} placeholder="Blank uses the standard steps" /></FieldLabel>
+      </div>
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ fontSize: 11, color: T.textSecondary, marginBottom: 4 }}>FAQs</div>
+        {faqs.map((f, i) => (
+          <div key={i} style={{ display: 'grid', gridTemplateColumns: '1fr 2fr auto', gap: 8, marginBottom: 8 }}>
+            <input style={IS} value={f.q} onChange={e => setFaq(i, 'q', e.target.value)} placeholder="Question" aria-label={`Question ${i + 1}`} />
+            <input style={IS} value={f.a} onChange={e => setFaq(i, 'a', e.target.value)} placeholder="Answer" aria-label={`Answer ${i + 1}`} />
+            <SmallBtn color={T.error} onClick={() => set('faqs', faqs.filter((_, j) => j !== i))}>Remove</SmallBtn>
+          </div>
+        ))}
+        <SmallBtn color={T.accent} onClick={() => set('faqs', [...faqs, { q: '', a: '' }])}>+ Add question</SmallBtn>
+      </div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 12 }}>
+        <FieldLabel label="SEO title"><input style={IS} value={form.seo_title || ''} onChange={e => set('seo_title', e.target.value)} placeholder={`${form.name || 'Product'} · BuySub`} /></FieldLabel>
+        <FieldLabel label="SEO description"><input style={IS} value={form.seo_description || ''} onChange={e => set('seo_description', e.target.value)} placeholder="Defaults to the short description" /></FieldLabel>
+      </div>
+    </div>
+  )
+}
+
 // ── Product form (module-level, stable — fixes focus loss) ──
 function ProductFormPanel({ form, setForm, onSave, onCancel, saving, title }: { form: any; setForm: (f: any) => void; onSave: () => void; onCancel: () => void; saving?: boolean; title: string }) {
   const IS: React.CSSProperties = {
@@ -457,7 +506,7 @@ function ProductFormPanel({ form, setForm, onSave, onCancel, saving, title }: { 
             />
           </FieldLabel>
           <div style={{ fontSize: 11, color: T.textMuted, marginTop: 4 }}>
-            Shown in the order confirmation email and the admin WA approval message.
+            Sent to the customer in the order confirmation email, after payment only. Never shown on the shop.
           </div>
         </div>
  
@@ -482,6 +531,7 @@ function ProductFormPanel({ form, setForm, onSave, onCancel, saving, title }: { 
           </FieldLabel>
         </div> */}
       </div>
+      <ProductPageFields form={form} setForm={setForm} IS={IS} />
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
         <FieldLabel label="Billing Type"><select style={IS} value={form.billing_type || 'subscription'} onChange={e => updateField('billing_type', e.target.value)}><option value="subscription">Subscription</option><option value="one_time">One-time</option></select></FieldLabel>
         <FieldLabel label="Stock Status"><select style={IS} value={form.stock_status || 'in_stock'} onChange={e => updateField('stock_status', e.target.value)}><option value="in_stock">In Stock</option><option value="out_of_stock">Out of Stock</option><option value="preorder">Preorder</option></select></FieldLabel>
@@ -1577,6 +1627,9 @@ const EMPTY_PRODUCT = (): Partial<Product> & { [k: string]: any } => ({
   image_url: '',
   whatsapp_group_url: '',
   social_links: { telegram: '', instagram: '', twitter: '', tiktok: '', discord: '', website: '' },
+  badge: '', delivery_time: '', delivery_method: '', region: '',
+  features: [], how_it_works: [], faqs: [],
+  seo_title: '', seo_description: '',
 })
 
 function ProductsTab() {
@@ -1709,6 +1762,17 @@ function ProductsTab() {
       featured: !!p.featured,
       sort_order: p.sort_order || 100,
       image_url: p.image_url || '',
+      // Product page content. Admin lists select '*', so these arrive with the
+      // row once migration 07 is applied; before that they're simply absent.
+      badge: (p as any).badge || '',
+      delivery_time: (p as any).delivery_time || '',
+      delivery_method: (p as any).delivery_method || '',
+      region: (p as any).region || '',
+      features: (p as any).features || [],
+      how_it_works: (p as any).how_it_works || [],
+      faqs: (p as any).faqs || [],
+      seo_title: (p as any).seo_title || '',
+      seo_description: (p as any).seo_description || '',
     })
   }
 

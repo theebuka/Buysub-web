@@ -9,7 +9,7 @@ import type { MouseEvent } from 'react'
 import { Badge, ProductLogo, Skeleton } from '@/components/ui'
 import { format, getCategoryList, isInStock, PERIODS, type Product } from '@/lib/constants'
 import { fromPrice } from '@/lib/pricing'
-import { productHref } from '@/lib/catalog'
+import { isOneTime, productHref } from '@/lib/catalog'
 import { categoryLabel } from '@/lib/format'
 import { useCurrency } from '@/lib/currency'
 import s from './shop.module.css'
@@ -42,12 +42,12 @@ export function ProductCard({ product: p, onOpen }: { product: Product; onOpen?:
       <div className={s.cardFoot}>
         {fp ? (
           <div>
-            <div className={s.muted}>From</div>
+            <div className={s.muted}>{isOneTime(p) ? 'One-time' : 'From'}</div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
               <span style={{ fontSize: 'var(--bs-text-lg)', fontWeight: 'var(--bs-weight-bold)' as any, fontVariantNumeric: 'tabular-nums' }}>
                 {format(fp.price * rate, currency)}
               </span>
-              <span className={s.muted}>{PERIODS[fp.period]?.label}</span>
+              {!isOneTime(p) && <span className={s.muted}>{PERIODS[fp.period]?.label}</span>}
             </div>
           </div>
         ) : <span className={s.muted}>Currently unavailable</span>}

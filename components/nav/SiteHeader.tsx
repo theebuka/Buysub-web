@@ -33,7 +33,7 @@ import { getCategoryList, isInStock, TAB_ORDER, format, type Product } from '@/l
 import { fromPrice } from '@/lib/pricing'
 import { fmtNGN, initials, categoryLabel } from '@/lib/format'
 import { ROUTES, EXTERNAL, isStaff } from '@/lib/routes'
-import { shop } from '@/lib/shopBus'
+import { shop, SHOP_EVENTS } from '@/lib/shopBus'
 import css from './nav.module.css'
 
 // ── Logo ─────────────────────────────────────────────────────
@@ -402,8 +402,10 @@ export default function SiteHeader() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); setPaletteOpen(o => !o); return }
       if (e.key === '/' && !e.metaKey && !e.ctrlKey && !e.altKey && !isTypingTarget(e.target)) { e.preventDefault(); setPaletteOpen(true) }
     }
+    const onOpen = () => setPaletteOpen(true)
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    window.addEventListener(SHOP_EVENTS.openSearch, onOpen)
+    return () => { document.removeEventListener('keydown', onKey); window.removeEventListener(SHOP_EVENTS.openSearch, onOpen) }
   }, [])
 
   return (

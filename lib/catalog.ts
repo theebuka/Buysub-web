@@ -30,6 +30,14 @@ export function deliveryMethod(p: Product): string | null {
   return p.delivery_method?.trim() || null
 }
 
+/**
+ * One-time products (top-ups, gift cards) have no billing period. The API
+ * stores the same price in every period column, and orders still carry a
+ * period, as with the old storefront. So they're sold through their default
+ * period and labelled "One-time" everywhere instead of showing period choices.
+ */
+export const isOneTime = (p: Pick<Product, 'billing_type'>) => p.billing_type === 'one_time'
+
 export function toOffers(p: Product): Offer[] {
   return [{
     sellerId: 'buysub',
@@ -38,7 +46,8 @@ export function toOffers(p: Product): Offer[] {
     deliveryTime: deliveryTime(p),
     deliveryMethod: deliveryMethod(p),
     inStock: isInStock(p.stock_status),
-    periods: availablePeriods(p).map(period => ({ period, price: priceFor(p, period)! })),
+    periods: (isOneTime(p) ? [defaultPeriod(p)].filter((x): x is string => !!x) : availablePeriods(p))
+      .map(period => ({ period, price: priceFor(p, period)! })),
   }]
 }
 

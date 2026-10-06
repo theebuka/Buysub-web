@@ -7,7 +7,7 @@
 // link follows.
 
 export const ROUTES = {
-  home: '/shop',
+  home: '/',
   shop: '/shop',
   shopCategory: (c: string) => `/shop/c/${encodeURIComponent(c)}`,
   shopSearch: (q: string) => `/shop?q=${encodeURIComponent(q)}`,

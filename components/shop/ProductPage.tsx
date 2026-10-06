@@ -26,7 +26,7 @@ function MobileBuyBar({ product }: { product: Product }) {
   return (
     <div className={s.buyBar}>
       <div className={s.buyBarPrice}>
-        <div className={s.muted}>From</div>
+        <div className={s.muted}>{product.billing_type === 'one_time' ? 'Price' : 'From'}</div>
         <div style={{ fontWeight: 700, fontSize: 'var(--bs-text-lg)' }}>{format(fp.price * rate, currency)}</div>
       </div>
       <ButtonLink href="#buy" size="lg">Choose a plan</ButtonLink>

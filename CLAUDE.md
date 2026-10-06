@@ -35,7 +35,7 @@ To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `np
 
 | Route | File | Audience |
 |---|---|---|
-| `/` | `app/page.tsx` | redirects to `/shop`, keeping the query string |
+| `/` | `app/page.tsx` (edge) → `components/home/HomePage.tsx` | home: hero search, categories, popular, partner promo. Old `/?category=…` style links redirect to `/shop` with their query; `?ref=` is recorded here |
 | `/shop`, `/shop/c/[category]` | `components/shop/ShopPage.tsx` | catalog: filters in the URL, quick view on card click |
 | `/shop/[slug]` | `app/shop/[slug]/page.tsx` (edge, fetches the product for metadata) → `components/shop/ProductPage.tsx` | product page; the quick view `pushState`s this URL |
 | `/cart`, `/checkout` | `components/shop/CartPage.tsx`, `CheckoutPage.tsx` | cart, then details + Paystack / WhatsApp |
@@ -77,7 +77,7 @@ Checkout has two paths, both in `lib/checkout.ts` (ported verbatim from the old 
 
 Cart lives in `localStorage` under `CART_STORAGE_KEY` (`buysub_cart_v2`), keyed by `cartKey(productId, period)`, behind the `lib/cart.ts` store (`useCart`, `addToCart`, `reconcileCart` re-prices it against the live catalog on each catalog/cart/checkout load). The applied promo code is a small store in `lib/checkout.ts` (sessionStorage), shared by the drawer and `/checkout`. The display currency is site-wide (`lib/currency.ts`, `bs_currency`); orders are charged in NGN with `fx_rate`. Product-page content (features, FAQs, delivery, badge, SEO) comes from the columns added in `supabase-migrations/07`; `lib/catalog.ts` holds the fallbacks and the single-seller `toOffers()`.
 
-Referrals: `lib/useReferral.ts` reads `?ref=` (URL wins over cookie), validates it against `/v2/affiliates/resolve`, stores it in the `bs_ref` cookie for 30 days, fires `/v2/affiliates/click`, then strips `?ref=` from the URL. The resulting code is passed as `referral_code` on order payloads. Partner share links are `${NEXT_PUBLIC_SITE_URL}/shop?ref=CODE` (so that var must be the app origin in production), and `app/page.tsx` forwards the query string when it redirects to `/shop`.
+Referrals: `lib/useReferral.ts` reads `?ref=` (URL wins over cookie), validates it against `/v2/affiliates/resolve`, stores it in the `bs_ref` cookie for 30 days, fires `/v2/affiliates/click`, then strips `?ref=` from the URL. The resulting code is passed as `referral_code` on order payloads. Partner share links are `${NEXT_PUBLIC_SITE_URL}/shop?ref=CODE` (so that var must be the app origin in production), and the home page records `?ref=` itself (`app/page.tsx` only forwards shop-filter params to `/shop`).
 
 ### Pricing and discounts
 

@@ -11,7 +11,7 @@ import { addToCart, setCartDrawer, MAX_LINE_QTY } from '@/lib/cart'
 import { useCurrency } from '@/lib/currency'
 import { PERIODS, format, isInStock, type Product } from '@/lib/constants'
 import { priceFor, savingsVs } from '@/lib/pricing'
-import { defaultPeriod, toOffers } from '@/lib/catalog'
+import { defaultPeriod, isOneTime, toOffers } from '@/lib/catalog'
 import s from './shop.module.css'
 
 // A per-month estimate. Whole Naira: "₦5,833.5" reads like an error.
@@ -53,10 +53,19 @@ export function BuyBox({ product: p, onAdded }: { product: Product; onAdded?: ()
 
   return (
     <div className={s.buy}>
-      <div role="radiogroup" aria-label="Billing period" className={s.periods}>
+      <div role="radiogroup" aria-label={isOneTime(p) ? 'Purchase' : 'Billing period'} className={s.periods}>
         {offer.periods.map(o => {
           const save = savingsVs(p, o.period)
           const months = PERIODS[o.period]?.months || 1
+          if (isOneTime(p)) {
+            return (
+              <button key={o.period} type="button" role="radio" aria-checked className={s.periodOpt}>
+                <span className={s.radioDot} aria-hidden="true" />
+                <span><span className={s.periodName}>One-time purchase</span><span className={s.periodSub} style={{ display: 'block' }}>No renewal</span></span>
+                <span className={s.periodPrice}>{format(o.price * rate, currency)}</span>
+              </button>
+            )
+          }
           return (
             <button key={o.period} type="button" role="radio" aria-checked={period === o.period}
               className={s.periodOpt} onClick={() => setPeriod(o.period)}>

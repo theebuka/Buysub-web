@@ -7,6 +7,7 @@
 // URL. The cart has its own store (setCartDrawer in lib/cart.ts).
 
 export const SHOP_EVENTS = {
+  openSearch: 'bs:open-search',   // opens the header's search palette
   search: 'bs:shop-search',       // detail: { q: string }
   category: 'bs:shop-category',   // detail: { category: string }
 } as const
@@ -27,6 +28,7 @@ function send(name: string, detail: any, fallbackUrl: string) {
 }
 
 export const shop = {
+  openSearch: () => window.dispatchEvent(new Event(SHOP_EVENTS.openSearch)),
   search: (q: string) => send(SHOP_EVENTS.search, { q }, `/shop?q=${encodeURIComponent(q)}`),
   category: (category: string) => send(SHOP_EVENTS.category, { category }, `/shop/c/${encodeURIComponent(category)}`),
 }
