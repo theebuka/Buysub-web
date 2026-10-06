@@ -50,9 +50,9 @@ The big files are structured internally by section-comment banners and module-le
 
 ### Shell and chrome
 
-`app/layout.tsx` is the only server component. It injects `CSS_VARS` from `lib/constants.ts` plus a global reset via `dangerouslySetInnerHTML`, loads Inter from Google Fonts, mounts `<Toaster>` (sonner), and injects the Tawk.to live-chat script.
+`app/layout.tsx` is the only server component. It imports `app/globals.css` (reset, keyframes, utilities), injects `CSS_VARS` from `lib/constants.ts` via `dangerouslySetInnerHTML`, loads Inter from Google Fonts, mounts `<Toaster>` (sonner), and injects the Tawk.to live-chat script.
 
-`components/AppShell.tsx` wraps all children and decides chrome by pathname: `/admin`, `/partners`, `/dashboard`, `/login`, `/reset-password` and `/order/verify` render **without** Navbar or Footer (`isNoShell`). Both are gated on the same flag — the Footer used to be gated on `!isAdmin`, which let it render on `/partners` and `/dashboard` despite those being no-shell routes. It also syncs `data-theme` to the route on every pathname change (see Styling below). It additionally polls `GET /v2/notifications` every 15s and renders toast / banner / multi-step modal notifications, filtered by `audience` (`users` vs `admins`) and de-duplicated via `localStorage` keys `notif_<id>`.
+`components/AppShell.tsx` wraps all children and decides chrome by pathname: `/admin`, `/partners`, `/dashboard`, `/login`, `/reset-password` and `/order/verify` render **without** the site header or footer (`isNoShell`). The header and footer are `components/nav/SiteHeader.tsx` and `SiteFooter.tsx` (they replaced `Navbar.tsx` / `Footer.tsx`, which are now unused and go in Phase 2). The header has the Browse mega menu, the search palette (`/`, ⌘K), the cart count and the account menu; on `/shop` it drives Marketplace's own cart drawer, search and category through window events (`lib/shopBus.ts`), and elsewhere it navigates to `/shop?q=`, `/shop?category=` or `/shop#cart`. Every in-app link target lives in `lib/routes.ts`. Both are gated on the same flag — the Footer used to be gated on `!isAdmin`, which let it render on `/partners` and `/dashboard` despite those being no-shell routes. It also syncs `data-theme` to the route on every pathname change (see Styling below). It additionally polls `GET /v2/notifications` every 15s and renders toast / banner / multi-step modal notifications, filtered by `audience` (`users` vs `admins`) and de-duplicated via `localStorage` keys `notif_<id>`.
 
 ### Auth
 
@@ -86,7 +86,9 @@ Referrals: `lib/useReferral.ts` reads `?ref=` (URL wins over cookie), validates 
 
 ### Styling
 
-100% inline `style` objects — there are no `.css` files, no CSS modules, no Tailwind. Two systems coexist and both are in use:
+New code (from the 2026-10 IA refactor) uses **CSS Modules**: `components/ui/` (Button, IconButton, Input/Select/Field, Badge/StatusBadge, Card/StatCard, Tabs, SegmentedControl, Modal/Drawer with a shared focus trap, Popover/MenuItem, Table that becomes cards under 768px, Pagination, EmptyState/Skeleton/Spinner, PageHeader/Breadcrumbs, CopyField, Price, ProductLogo, Icon), `components/nav/` and per-page `*.module.css`. They consume the same tokens. `app/globals.css` holds the reset and keyframes, and deliberately sets no global button/img/focus rules, because the older surfaces were tuned against UA defaults. Shared helpers: `lib/format.ts` (fmtNGN, fmtDate, …), `lib/status.ts` (label, tone and bucket for every status; `rejected_pending` is tone `pending`), `lib/apiAuth.ts` (`authFetch`), `lib/useSession.tsx` (one shared `/v2/me` store, `RequireRole`), `lib/cart.ts` (`useCart` over the same `buysub_cart_v2` key), `lib/useProducts.ts`, `lib/pricing.ts`, `lib/flags.ts` (`NEXT_PUBLIC_FF_*`).
+
+The older surfaces are 100% inline `style` objects. Two systems coexist there and both are in use:
 
 1. **CSS variables** (`--bs-bg-base`, `--bs-text-primary`, `--bs-accent`, …) defined once in `CSS_VARS` and consumed by `AppShell`, `Navbar`, `Footer`, and the verify page.
 2. **Per-file `dark` / `light` theme token objects** duplicated in `app/admin/page.tsx`, `app/login/page.tsx`, `components/Navbar.tsx`, and elsewhere, selected by a local `useTheme()` / `isDark` state.
@@ -95,7 +97,7 @@ The theme preference is persisted under the single localStorage key `bs_admin_th
 
 `CSS_VARS` is the single source of truth for tokens: colour, type, spacing, radius, control heights, elevation and motion, plus a `[data-theme="light"]` block. `lib/constants.ts` also exports `T`, a set of `var()` references for use inside inline style objects. `lib/theme.ts` owns the theme; an inline script in `app/layout.tsx` sets `data-theme` on `<html>` before first paint. **`/shop` is not themed yet, and the exclusion is temporary** — `Marketplace.tsx` mixes `var()` surfaces with fixed dark literals, so a light theme renders it half-light. Both the script and the hook guard on the pathname. The guard ends when `Marketplace.tsx` is refactored, which is the last planned surface; `components/Navbar.tsx` already gates its theme toggle on `isThemeableRoute()`, so that control starts appearing on `/shop` the day the guard lifts, with no edit. The per-file `dark`/`light` objects listed below are being removed surface by surface; see `REFACTOR.md`.
 
-Images use raw `<img>`; links use raw `<a>`. `next/image` and `next/link` are not used anywhere, though `next.config.js` still whitelists `img.logo.dev`, `*.airtableusercontent.com`, and `*.supabase.co` remote patterns. Brand logos are fetched from `https://img.logo.dev/<domain>?token=...&size=N`.
+Images use raw `<img>`. The older surfaces use raw `<a>`; new code (`components/ui`, `components/nav`, new pages) uses `next/link`. `next/image` is not used, though `next.config.js` still whitelists `img.logo.dev`, `*.airtableusercontent.com`, and `*.supabase.co` remote patterns. Brand logos are fetched from `https://img.logo.dev/<domain>?token=...&size=N`.
 
 ### Hydration
 

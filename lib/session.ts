@@ -31,3 +31,13 @@ export async function getAccessToken(): Promise<string> {
     return ''
   }
 }
+
+/** The shared client, for auth calls that need more than a token. */
+export function getSupabase(): SupabaseClient {
+  return getClient()
+}
+
+/** Signs out locally and on Supabase. Never throws. */
+export async function signOut(): Promise<void> {
+  try { await getClient().auth.signOut() } catch { /* already signed out */ }
+}

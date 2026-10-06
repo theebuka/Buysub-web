@@ -4,7 +4,9 @@ import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { getProducts, getAutoApplyDiscounts as fetchAutoApplyAPI, validateDiscount as validateDiscountAPI, createWhatsAppOrder, createOrder, initPaystackPayment } from "@/lib/api";
 import { PERIODS, TAB_ORDER, FX, CART_STORAGE_KEY, LOGO_DEV_TOKEN, WHATSAPP_NUMBER, Product, CartItem, AppliedDiscount, DiscountRecord, format, isInStock, hasCategory, getCategoryList, cartKey, isValidEmail, norm, isItemEligible, getEligibleSubtotal, calcDiscountAmount } from "@/lib/constants";
-import { priceFor, availablePeriods, savingsVs } from "@/lib/pricing";
+import { priceFor, availablePeriods, savingsVs } from "@/lib/pricing"
+import { notifyCartChanged } from "@/lib/cart"
+import { SHOP_EVENTS } from "@/lib/shopBus";
 import { useReferral } from '@/lib/useReferral'
 import { useShopAds, ShopBanner, ShopSidebar, SponsoredProductCard, ReferralBanner, interleaveAds } from '@/components/ShopAds'
 
@@ -15,8 +17,14 @@ import { useShopAds, ShopBanner, ShopSidebar, SponsoredProductCard, ReferralBann
 const useWindowWidth = () => {
     const [width, setWidth] = useState(1280) // SSR-safe default
     useEffect(() => {
-        setWidth(window.innerWidth)
-        const h = () => setWidth(window.innerWidth)
+        // clientWidth, not innerWidth. On a phone, innerWidth is the layout
+        // viewport, which widens to fit any overflowing content. The grid then
+        // picked 5 columns, which overflowed further, so production rendered
+        // /shop on a 375px phone as a zoomed-out 1185px desktop page.
+        // clientWidth stays at the device width.
+        const read = () => document.documentElement.clientWidth || window.innerWidth
+        setWidth(read())
+        const h = () => setWidth(read())
         window.addEventListener("resize", h)
         return () => window.removeEventListener("resize", h)
     }, [])
@@ -242,6 +250,7 @@ export default function Marketplace() {
         } catch {
             /* storage full */
         }
+        notifyCartChanged() // keeps the site header's cart count in step
     }, [cartItems, mounted])
 
     useEffect(() => {
@@ -509,6 +518,33 @@ export default function Marketplace() {
         setCartOpen(false)
         setTimeout(() => setDrawerStep("cart"), 300)
     }
+
+    // The site header drives this page's own cart drawer, search and category
+    // until Phase 2 moves them into shared components. See lib/shopBus.ts.
+    // #cart is how the header asks for the drawer from another page. It is
+    // read on the first commit, before mounted flips: the URL-sync effect
+    // further down rewrites the URL with replaceState on that same commit and
+    // drops the hash.
+    const wantsCartOnLoad = useRef(false)
+    useEffect(() => { wantsCartOnLoad.current = window.location.hash === "#cart" }, [])
+    useEffect(() => {
+        if (!mounted) return
+        const onOpenCart = () => openDrawer()
+        const onSearch = (e: Event) => setQuery(String((e as CustomEvent).detail?.q ?? ""))
+        const onCategory = (e: Event) => {
+            setCategory(String((e as CustomEvent).detail?.category ?? "all"))
+            setQuery("")
+        }
+        window.addEventListener(SHOP_EVENTS.openCart, onOpenCart)
+        window.addEventListener(SHOP_EVENTS.search, onSearch)
+        window.addEventListener(SHOP_EVENTS.category, onCategory)
+        if (wantsCartOnLoad.current) { wantsCartOnLoad.current = false; openDrawer() }
+        return () => {
+            window.removeEventListener(SHOP_EVENTS.openCart, onOpenCart)
+            window.removeEventListener(SHOP_EVENTS.search, onSearch)
+            window.removeEventListener(SHOP_EVENTS.category, onCategory)
+        }
+    }, [mounted])
 
     const PRODUCT_CACHE_KEY = "bs_products_v2"
     const PRODUCT_CACHE_TTL = 0

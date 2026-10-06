@@ -169,7 +169,10 @@ const TXNS = [
   { id: 't-zero',   type: 'credit', amount_ngn: TINY, source: 'compensation', reference: 'compensation', note: 'Goodwill adjustment, no value', created_at: '2026-07-03T08:00:00Z' },
 ]
 
+// role drives the site header's account menu (Admin console link for staff).
+// FIXTURE_ROLE=admin to see it.
 const PROFILE = {
+  role: process.env.FIXTURE_ROLE || 'customer',
   full_name: NAMELESS ? '' : 'Ada Okonkwo',
   phone: '08031229041',
   email: 'ada.okonkwo@example.com',

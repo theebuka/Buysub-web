@@ -1,0 +1,64 @@
+/* ============================================================
+   BUYSUB — Global stylesheet
+   ============================================================
+   Tokens are NOT defined here. They stay in CSS_VARS (lib/constants.ts),
+   injected by app/layout.tsx, so there is still one source of truth for
+   colour, type, spacing and motion. This file holds only what every page
+   needs and that can't live in a component: the reset, keyframes, the
+   default focus ring and a few layout utilities.
+
+   Breakpoints, used by components/ui and components/nav (CSS custom
+   properties can't be used inside @media, so these are the literals):
+     sm 640 · md 768 · lg 1024 · xl 1280
+*/
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--bs-bg-base);
+  color: var(--bs-text-primary);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a { color: inherit; text-decoration: none; }
+
+/* Deliberately no global img/svg/button/focus rules: the older surfaces were
+   tuned against UA defaults, and this phase must not move them. New
+   components set font-family, display and focus rings in their own modules. */
+
+@keyframes pulse   { 0%,100% { opacity: 1 } 50% { opacity: .5 } }
+@keyframes slideIn { from { transform: translateX(100%) } to { transform: translateX(0) } }
+@keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
+@keyframes scroll  { from { transform: translateX(100%) } to { transform: translateX(-100%) } }
+@keyframes bs-pop  { from { opacity: 0; transform: translateY(-4px) scale(.98) } to { opacity: 1; transform: none } }
+@keyframes bs-rise { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes bs-slide-left  { from { transform: translateX(-100%) } to { transform: none } }
+@keyframes bs-slide-right { from { transform: translateX(100%) } to { transform: none } }
+@keyframes bs-spin { to { transform: rotate(360deg) } }
+@keyframes bs-shimmer { 0% { background-position: -400px 0 } 100% { background-position: 400px 0 } }
+
+.hide-scrollbar::-webkit-scrollbar { display: none }
+.hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none }
+
+/* Visually hidden, still read by assistive tech. */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+
+/* Page-width wrapper for new surfaces. */
+.bs-container {
+  width: 100%;
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 var(--bs-space-4);
+}
+@media (min-width: 768px) { .bs-container { padding: 0 var(--bs-space-6); } }
+
+/* Show/hide by width. md (768) is the phone/desktop split for chrome. */
+@media (max-width: 767.98px) { .bs-desktop-only { display: none !important; } }
+@media (min-width: 768px)    { .bs-mobile-only  { display: none !important; } }

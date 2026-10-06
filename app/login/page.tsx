@@ -396,6 +396,17 @@ export default function LoginPage() {
     return () => mq.removeEventListener('change', handler)
   }, [])
 
+  // Deep links from the site header: ?as=partner|admin preselects the role
+  // tab, ?mode=signup opens sign-up. Read after mount, never during render.
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search)
+      const as = q.get('as')
+      if (as === 'partner' || as === 'admin') setLoginType(as)
+      if (q.get('mode') === 'signup') setMode('signup')
+    } catch { /* no location */ }
+  }, [])
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {

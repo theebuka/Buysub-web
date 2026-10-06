@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react"
 import { usePathname } from "next/navigation"
-import Navbar from "./Navbar"
-import Footer from "./Footer"
+// SiteHeader / SiteFooter replaced Navbar / Footer in Phase 1b of the IA
+// refactor. They render on exactly the routes the old pair did.
+import SiteHeader from "./nav/SiteHeader"
+import SiteFooter from "./nav/SiteFooter"
 import { toast } from "sonner"
 import { syncThemeToRoute } from "@/lib/theme"
 import { API_BASE } from "@/lib/config"
@@ -189,9 +191,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </button>
         </div>
       )}
-      {!isNoShell && <Navbar />}
+      {!isNoShell && <SiteHeader />}
 
       <div
+        id="main"
         style={
           isNoShell
             ? {
@@ -389,7 +392,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           them being no-shell routes. /partners is the one exception — a public
           application form whose only navigation IS the footer. /partners/dashboard
           is authenticated and keeps no chrome, so this cannot be a startsWith. */}
-      {(!isNoShell || pathname === '/partners' || pathname === '/partners/') && <Footer />}
+      {(!isNoShell || pathname === '/partners' || pathname === '/partners/') && <SiteFooter />}
     </>
   )
 }

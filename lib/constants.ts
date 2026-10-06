@@ -373,6 +373,10 @@ export const CSS_VARS = `
     --bs-radius-2xl: 28px;  /* desktop card scale */
     --bs-radius-full: 999px;
 
+    /* ── Chrome ─────────────────────────────────────────────── */
+    /* Site header height. Anything sticky under the header docks at this. */
+    --bs-header-h: 64px;
+
     /* ── Elevation ──────────────────────────────────────────── */
     /* Dark separates by surface + border, not shadow. Reach for elev-2 and
        above only when something genuinely floats over the page. */
