@@ -102,6 +102,8 @@ export default function PartnerSignupForm() {
   const [submitResult, setSubmitResult] = useState<'idle' | 'success' | 'error'>('idle')
   const [submitError, setSubmitError] = useState('')
   const [submittedName, setSubmittedName] = useState('')
+  const [submittedEmail, setSubmittedEmail] = useState('')
+  const [verificationSent, setVerificationSent] = useState(true)
 
   const [form, setForm] = useState<any>({ ...INITIAL_FORM })
 
@@ -273,6 +275,8 @@ export default function PartnerSignupForm() {
       if (!res.ok || !json.ok) throw new Error(json.error || 'Submission failed')
 
       setSubmittedName(form.fullName || form.legalName)
+      setSubmittedEmail(form.contactEmail)
+      setVerificationSent(json.data?.verification_email_sent !== false)
       try { localStorage.removeItem(STORAGE_KEY) } catch { /* */ }
       setSubmitResult('success')
     } catch (error: any) {
@@ -311,8 +315,11 @@ export default function PartnerSignupForm() {
             Application submitted
           </div>
           <div style={{ fontSize: T.text.base, color: T.color.textSecondary, lineHeight: T.leading.relaxed }}>
-            Thanks, {submittedName}. Your partner application is under review.
-            We'll reach out within 3–5 business days.
+            Thanks, {submittedName}.{' '}
+            {verificationSent
+              ? <>We&apos;ve sent a verification link to <strong style={{ color: T.color.textPrimary }}>{submittedEmail}</strong>. Verify your email so we can review your application.</>
+              : <>We couldn&apos;t send your verification email. Go to the <a href="/login" style={{ color: T.color.accentOnSurface }}>login page</a>, try to sign in, and choose &ldquo;Resend verification email&rdquo;.</>}
+            {' '}We&apos;ll reach out within 3–5 business days of verification.
             Once approved, you can log in at <a href="/login" style={{ color: T.color.accentOnSurface }}>app.buysub.ng/login</a>.
           </div>
           <div style={{ marginTop: T.space[8], display: 'flex', gap: T.space[3], justifyContent: 'center', flexWrap: 'wrap' }}>

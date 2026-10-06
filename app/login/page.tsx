@@ -383,6 +383,9 @@ export default function LoginPage() {
   const [error,           setError]           = useState('')
   const [success,         setSuccess]         = useState('')
   const [forgotSent,      setForgotSent]      = useState(false)
+  // Set when sign-in fails because the email isn't verified yet (partner
+  // applicants and customers who haven't clicked their confirmation link).
+  const [unconfirmedEmail, setUnconfirmedEmail] = useState('')
 
   useEffect(() => {
     const mq = window.matchMedia('(max-width: 767px)')
@@ -403,7 +406,7 @@ export default function LoginPage() {
   }, [])
 
   useEffect(() => {
-    setError(''); setSuccess('')
+    setError(''); setSuccess(''); setUnconfirmedEmail('')
     setFirstName(''); setLastName(''); setPhone(''); setGender('')
     setForgotSent(false)
   }, [loginType, mode])
@@ -425,12 +428,38 @@ export default function LoginPage() {
   const handleLogin = async () => {
     if (!email || !password) { setError('Email and password are required'); return }
     setLoading(true); setError('')
+    setUnconfirmedEmail('')
     const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password })
-    if (authErr) { setError(authErr.message); setLoading(false); return }
+    if (authErr) {
+      if (/not confirmed/i.test(authErr.message)) {
+        setError('Verify your email before signing in. Use the link we emailed you, or resend it below.')
+        setUnconfirmedEmail(email.trim())
+      } else {
+        setError(authErr.message)
+      }
+      setLoading(false)
+      return
+    }
     if (data.session?.access_token) {
       if (loginType === 'customer') await completeProfile(data.session.access_token)
       await redirectByRole(data.session.access_token, loginType)
     }
+  }
+
+  // ── resend verification email ─────────────────────────────────
+  const handleResendVerification = async () => {
+    if (!unconfirmedEmail) return
+    setLoading(true); setError('')
+    const next = loginType === 'partner' ? '/partners/dashboard' : '/dashboard'
+    const { error: err } = await supabase.auth.resend({
+      type: 'signup',
+      email: unconfirmedEmail,
+      options: { emailRedirectTo: `${window.location.origin}${next}` },
+    })
+    setLoading(false)
+    if (err) { setError(err.message); return }
+    setSuccess(`Verification email sent to ${unconfirmedEmail}. Check your inbox.`)
+    setUnconfirmedEmail('')
   }
 
   // ── signup (customer only) ────────────────────────────────────
@@ -755,6 +784,11 @@ export default function LoginPage() {
                     {(error || success) && (
                       <div style={{ display: 'flex', flexDirection: 'column', gap: T.space[2], marginBottom: T.space[4] }}>
                         {error && <AuthAlert kind="error">{error}</AuthAlert>}
+                        {unconfirmedEmail && (
+                          <button type="button" onClick={handleResendVerification} disabled={loading} style={secondaryBtnStyle}>
+                            Resend verification email
+                          </button>
+                        )}
                         {success && <AuthAlert kind="success">{success}</AuthAlert>}
                       </div>
                     )}
