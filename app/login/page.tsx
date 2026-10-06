@@ -321,6 +321,33 @@ function LoadingGate({ message }: { message: string }) {
   )
 }
 
+// ── profile completion ────────────────────────────────────────────
+// Idempotent. Identity comes from the token; name/phone/gender come from the
+// body, else from the sign-up metadata. Called after sign-up when there's a
+// session, and at every login so sign-ups that needed email confirmation
+// still get their profile filled in.
+async function completeProfile(token: string, fields: Record<string, string | null> = {}) {
+  try {
+    await fetch(`${API}/v2/auth/signup`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(fields),
+    })
+  } catch { /* non-blocking */ }
+}
+
+// Already signed in on arrival: route by the account's actual role, not by
+// whichever tab the page happens to open on.
+async function redirectExistingSession(token: string) {
+  try {
+    const me = await fetch(`${API}/v2/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
+    if (['admin', 'super_admin', 'support_agent'].includes(me?.data?.role)) { window.location.href = '/admin'; return }
+    const partner = await fetch(`${API}/v2/partners/me`, { headers: { Authorization: `Bearer ${token}` } })
+    if (partner.ok) { window.location.href = '/partners/dashboard'; return }
+  } catch {}
+  window.location.href = '/dashboard'
+}
+
 // ── post-login routing ────────────────────────────────────────────
 async function redirectByRole(token: string, loginType: LoginType) {
   if (loginType === 'admin') { window.location.href = '/admin'; return }
@@ -368,7 +395,7 @@ export default function LoginPage() {
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.access_token) {
-        redirectByRole(session.access_token, loginType)
+        redirectExistingSession(session.access_token)
       } else {
         setCheckingSession(false)
       }
@@ -400,7 +427,10 @@ export default function LoginPage() {
     setLoading(true); setError('')
     const { data, error: authErr } = await supabase.auth.signInWithPassword({ email, password })
     if (authErr) { setError(authErr.message); setLoading(false); return }
-    if (data.session?.access_token) await redirectByRole(data.session.access_token, loginType)
+    if (data.session?.access_token) {
+      if (loginType === 'customer') await completeProfile(data.session.access_token)
+      await redirectByRole(data.session.access_token, loginType)
+    }
   }
 
   // ── signup (customer only) ────────────────────────────────────
@@ -412,27 +442,21 @@ export default function LoginPage() {
     if (password.length < 8) { setError('Password must be at least 8 characters'); return }
     setLoading(true); setError('')
 
-    const { data, error: authErr } = await supabase.auth.signUp({ email, password })
+    const profileFields = {
+      full_name: `${firstName.trim()} ${lastName.trim()}`,
+      phone:     phone.trim(),
+      gender:    gender || null,
+    }
+    // The metadata travels with the auth user, so the profile can be completed
+    // at first login even when sign-up returns no session (email confirmation).
+    const { data, error: authErr } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: profileFields },
+    })
     if (authErr) { setError(authErr.message); setLoading(false); return }
 
-    const userId    = data.user?.id
-    const userToken = data.session?.access_token
-
-    if (userId) {
-      try {
-        await fetch(`${API}/v2/auth/signup`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(userToken ? { Authorization: `Bearer ${userToken}` } : {}) },
-          body: JSON.stringify({
-            user_id:   userId,
-            full_name: `${firstName.trim()} ${lastName.trim()}`,
-            email:     email.trim(),
-            phone:     phone.trim(),
-            gender:    gender || null,
-          }),
-        })
-      } catch {}
-    }
+    if (data.session?.access_token) await completeProfile(data.session.access_token, profileFields)
 
     setLoading(false)
     if (data.session) {

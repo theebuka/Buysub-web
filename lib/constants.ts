@@ -156,11 +156,14 @@ export const calcDiscountAmount = (
   } else {
     amount = discount.value * fxRate;
   }
-  if (discount.max_discount_ngn != null) {
+  // Same rules as calcDiscountNGN in buysub-api-deploy/src/shared/discount.ts:
+  // a cap of 0 means "no cap", and the discount never exceeds what it applies to.
+  if (discount.max_discount_ngn != null && discount.max_discount_ngn > 0) {
     const cap = discount.max_discount_ngn * fxRate;
     amount = Math.min(amount, cap);
   }
-  return amount;
+  amount = Math.min(amount, eligibleSubtotal);
+  return Math.max(0, amount);
 };
 
 // ── CSS Variables (injected globally) ──

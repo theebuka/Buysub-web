@@ -33,7 +33,8 @@ Dependencies are deliberately minimal: `next`, `react`, `@supabase/supabase-js`,
 | `/admin/receipt` | `app/admin/receipt/page.tsx` | PDF receipt generator (ported from Airtable) |
 | `/partners` | `app/partners/page.tsx` | partner application form (draft persisted to localStorage) |
 | `/partners/dashboard` | `app/partners/dashboard/page.tsx` | partner earnings |
-| `/order/verify` | `app/order/verify/VerifyContent.tsx` | Paystack callback landing page |
+| `/order/verify` | `app/order/verify/VerifyContent.tsx` | Paystack callback landing page (clears the cart on success) |
+| `/reset-password` | `app/reset-password/page.tsx` | target of the forgot-password email; must be on the Supabase Auth redirect allow-list |
 
 The big files are structured internally by section-comment banners and module-level sub-components (e.g. `OrdersTab`, `ProductsTab`, `NewOrderDrawer` in `app/admin/page.tsx`). Sub-components are declared at module level on purpose — defining them inside the parent would remount them on every render and drop input focus. Keep that pattern.
 
@@ -41,19 +42,17 @@ The big files are structured internally by section-comment banners and module-le
 
 `app/layout.tsx` is the only server component. It injects `CSS_VARS` from `lib/constants.ts` plus a global reset via `dangerouslySetInnerHTML`, loads Inter from Google Fonts, mounts `<Toaster>` (sonner), and injects the Tawk.to live-chat script.
 
-`components/AppShell.tsx` wraps all children and decides chrome by pathname: `/admin`, `/partners`, `/dashboard`, and `/login` render **without** Navbar or Footer (`isNoShell`). Both are gated on the same flag — the Footer used to be gated on `!isAdmin`, which let it render on `/partners` and `/dashboard` despite those being no-shell routes. It also syncs `data-theme` to the route on every pathname change (see Styling below). It additionally polls `GET /v2/notifications` every 15s and renders toast / banner / multi-step modal notifications, filtered by `audience` (`users` vs `admins`) and de-duplicated via `localStorage` keys `notif_<id>`.
+`components/AppShell.tsx` wraps all children and decides chrome by pathname: `/admin`, `/partners`, `/dashboard`, `/login`, `/reset-password` and `/order/verify` render **without** Navbar or Footer (`isNoShell`). Both are gated on the same flag — the Footer used to be gated on `!isAdmin`, which let it render on `/partners` and `/dashboard` despite those being no-shell routes. It also syncs `data-theme` to the route on every pathname change (see Styling below). It additionally polls `GET /v2/notifications` every 15s and renders toast / banner / multi-step modal notifications, filtered by `audience` (`users` vs `admins`) and de-duplicated via `localStorage` keys `notif_<id>`.
 
 ### Auth
 
-Supabase Auth, browser-only. The Supabase client is instantiated per-page (`createClient(SUPABASE_URL, SUPABASE_ANON)` in `login`, `dashboard`, `partners/dashboard`); there is no shared client module.
+Supabase Auth, browser-only. The Supabase client is instantiated per-page (`createClient(SUPABASE_URL, SUPABASE_ANON)` in `login`, `dashboard`, `partners/dashboard`, `reset-password`). `lib/session.ts` holds a lazy shared client used only for `getAccessToken()`.
 
-Two different ways of reading the session coexist:
-- `supabase.auth.getSession()` — login page, partner dashboard.
-- Scanning `localStorage` for a key matching `sb-*-auth-token` and parsing `access_token` / `expires_at` / `user.email` out of it — `app/admin/page.tsx` (`readToken`), `app/dashboard/page.tsx` (`readSession`), `app/admin/receipt/page.tsx` (`getToken`), `components/Marketplace.tsx`. Each file has its own copy of this function.
+Tokens for API calls come from `supabase.auth.getSession()`, which refreshes an expired access token: the page's own client in login, dashboard and partner dashboard, and `getAccessToken()` in `lib/session.ts` for admin and receipt. **Never delete the `sb-*-auth-token` key when `expires_at` has passed** — it holds the refresh token. The old hand-rolled readers did that and signed everyone out hourly. `readToken` in `app/admin/page.tsx` survives only as a presence check for render gating. `components/Marketplace.tsx` still scans localStorage, but only to prefill checkout, and it ignores expired tokens rather than deleting them.
 
 Every authenticated request sends `Authorization: Bearer <access_token>`. Each surface has its own local `apiFetch` that redirects to `/login` on 401/403. There is no middleware and no route protection — pages guard themselves client-side after mount.
 
-Post-login routing lives in `redirectByRole()` in `app/login/page.tsx`: admin → `/admin`, partner → `/partners/dashboard`, customer → `/dashboard`.
+Post-login routing lives in `redirectByRole()` in `app/login/page.tsx`: admin → `/admin`, partner → `/partners/dashboard`, customer → `/dashboard`. Arriving with an existing session uses `redirectExistingSession()`, which routes by the account's real role (`/v2/me`). Customer sign-up passes name/phone/gender as auth metadata, and `completeProfile()` (`POST /v2/auth/signup`, token-identified, idempotent) runs after sign-up and at each customer login.
 
 ### Data flow
 
@@ -65,7 +64,7 @@ Checkout has two paths, both in `Marketplace.tsx`:
 
 Cart lives in `localStorage` under `CART_STORAGE_KEY` (`buysub_cart_v2`), keyed by `cartKey(productId, period)`.
 
-Referrals: `lib/useReferral.ts` reads `?ref=` (URL wins over cookie), validates it against `/v2/affiliates/resolve`, stores it in the `bs_ref` cookie for 30 days, fires `/v2/affiliates/click`, then strips `?ref=` from the URL. The resulting code is passed as `referral_code` on order payloads.
+Referrals: `lib/useReferral.ts` reads `?ref=` (URL wins over cookie), validates it against `/v2/affiliates/resolve`, stores it in the `bs_ref` cookie for 30 days, fires `/v2/affiliates/click`, then strips `?ref=` from the URL. The resulting code is passed as `referral_code` on order payloads. Partner share links are `${NEXT_PUBLIC_SITE_URL}/shop?ref=CODE` (so that var must be the app origin in production), and `app/page.tsx` forwards the query string when it redirects to `/shop`.
 
 ### Pricing and discounts
 

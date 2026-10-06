@@ -17,6 +17,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { toast } from 'sonner'
+import { getAccessToken } from '@/lib/session'
 
 /* ================================================================
    CONFIG
@@ -41,21 +42,10 @@ const PERIOD_TO_COL: Record<string, string> = {
 }
 
 /* ── Auth ── */
-const getToken = (): string => {
-  try {
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-        const session = JSON.parse(localStorage.getItem(key) || '{}')
-        return session?.access_token || ''
-      }
-    }
-  } catch { /* */ }
-  return ''
-}
-
-const authHeaders = () => ({
+// Refreshes an expired access token rather than sending it and getting a 401.
+const authHeaders = async () => ({
   'Content-Type': 'application/json',
-  'Authorization': `Bearer ${getToken()}`,
+  'Authorization': `Bearer ${await getAccessToken()}`,
 })
 
 /* ── Types ── */
@@ -95,6 +85,12 @@ const genRef = (): string => {
   const rand = Array.from({ length: 2 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
   return `BS-${new Date().getFullYear()}-${(seed + rand).slice(0, 5)}`
 }
+
+// The override field is labelled and typed in the receipt's currency, so
+// convert it back to NGN. It used to be read as NGN directly: 62.5 typed with
+// USD selected became ₦62.50, about $0.04.
+const unitPriceNGN = (item: { override: string; unitPriceNGN: number }, currency: string): number =>
+  item.override ? parse(item.override) / (FX[currency] || 1) : item.unitPriceNGN
 
 const fmtAmt = (ngn: number, currency: string): string => {
   const v = Math.round(ngn * FX[currency] * 100) / 100
@@ -148,7 +144,7 @@ const loadProducts = async (): Promise<Product[]> => {
 
 const fetchCustomers = async (q: string): Promise<Customer[]> => {
   const res = await fetch(`${API}/v2/admin/customers/search?q=${encodeURIComponent(q)}`, {
-    headers: authHeaders(),
+    headers: await authHeaders(),
   })
   const data = await res.json()
   if (!data.ok) return []
@@ -165,7 +161,7 @@ const checkDiscount = async (
 ): Promise<{ ok: true; result: DiscountResult } | { ok: false; error: string }> => {
   const res = await fetch(
     `${API}/v2/discounts/validate?code=${encodeURIComponent(code)}&subtotal=${subtotalNGN}`,
-    { headers: authHeaders() }
+    { headers: await authHeaders() }
   )
   const data = await res.json()
   if (data.ok && data.data?.ok && data.data?.result) return { ok: true, result: data.data.result }
@@ -257,7 +253,7 @@ const buildPDF = async (p: {
   y += 14
 
   for (const item of p.items) {
-    const unitNGN = item.override ? parse(item.override) : item.unitPriceNGN
+    const unitNGN = unitPriceNGN(item, p.currency)
     const lineNGN = unitNGN * item.qty
     const nameParts = doc.splitTextToSize(item.name, 82)
 
@@ -437,7 +433,7 @@ const CustomerCombobox = ({ onSelect, onOrderFound }: { onSelect: (c: Customer) 
       // If it looks like an order ref, search orders too
       if (query.toUpperCase().startsWith('BS-') && onOrderFound) {
         try {
-          const r = await fetch(`${API}/v2/admin/orders/${query.toUpperCase()}`, { headers: authHeaders() })
+          const r = await fetch(`${API}/v2/admin/orders/${query.toUpperCase()}`, { headers: await authHeaders() })
           const data = await r.json()
           if (data.ok && data.data) setOrderResult(data.data)
         } catch { /* ignore */ }
@@ -503,7 +499,7 @@ const DEFAULT_PAYMENT_INSTRUCTIONS =
 
 /* Fetch order by ref for auto-populate */
 const fetchOrderByRef = async (orderRef: string) => {
-  const res = await fetch(`${API}/v2/admin/orders/${orderRef}`, { headers: authHeaders() })
+  const res = await fetch(`${API}/v2/admin/orders/${orderRef}`, { headers: await authHeaders() })
   const data = await res.json()
   if (data.ok && data.data) return data.data
   return null
@@ -634,7 +630,7 @@ export default function ReceiptGenerator() {
   const [paymentInstructions, setPaymentInstructions] = useState('')
 
   /* Totals */
-  const subtotalNGN = items.reduce((s, i) => s + (i.override ? parse(i.override) : i.unitPriceNGN) * i.qty, 0)
+  const subtotalNGN = items.reduce((s, i) => s + unitPriceNGN(i, currency) * i.qty, 0)
   const discountNGN = dResult?.amountNGN ?? 0
   const afterDiscount = Math.max(0, subtotalNGN - discountNGN)
   const taxNGN = taxEnabled ? (afterDiscount * (parseFloat(taxRate) || 0)) / 100 : 0
@@ -771,7 +767,7 @@ export default function ReceiptGenerator() {
             ))}
           </div>
           {items.map(item => {
-            const unitNGN = item.override ? parse(item.override) : item.unitPriceNGN
+            const unitNGN = unitPriceNGN(item, currency)
             const lineNGN = unitNGN * item.qty
             return (
               <div key={item.id}>

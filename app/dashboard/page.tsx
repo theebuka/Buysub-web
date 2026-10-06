@@ -37,31 +37,31 @@ const initials = (name: string) =>
 const statusColor = (s: string) => {
   if (s === 'paid' || s === 'approved') return { bg: 'rgba(var(--bs-success-rgb), 0.12)', color: T.color.success }
   if (s === 'pending_manual' || s === 'pending') return { bg: 'rgba(var(--bs-warning-rgb), 0.12)', color: T.color.warning }
+  // Stage one of a two-stage rejection: reversible and awaiting a decision, so
+  // a warning, not an error — and never the neutral "unknown" grey below.
+  if (s === 'rejected_pending') return { bg: 'var(--bs-badge-pending-bg)', color: 'var(--bs-badge-pending-fg)' }
   if (s === 'cancelled' || s === 'rejected') return { bg: 'rgba(var(--bs-error-rgb), 0.12)', color: T.color.error }
   return { bg: 'rgba(var(--bs-text-muted-rgb), 0.12)', color: T.color.textMuted }
 }
 
-// ── read Supabase token from localStorage ────────────────────────
-function readSession(): { token: string; userId: string; email: string } | null {
+// ── session ──────────────────────────────────────────────────────
+// getSession() refreshes an expired access token. The old localStorage reader
+// deleted the session once the hour-long access token expired, which threw
+// away the refresh token and signed customers out every hour.
+async function readSession(): Promise<{ token: string; userId: string; email: string } | null> {
   try {
-    for (const key of Object.keys(localStorage)) {
-      if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
-        const s = JSON.parse(localStorage.getItem(key) || '{}')
-        if (s?.access_token && s?.user) {
-          if (s.expires_at && s.expires_at * 1000 < Date.now()) {
-            localStorage.removeItem(key)
-            return null
-          }
-          return { token: s.access_token, userId: s.user.id, email: s.user.email || '' }
-        }
-      }
-    }
-  } catch {}
-  return null
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) return null
+    return { token: session.access_token, userId: session.user.id, email: session.user.email || '' }
+  } catch {
+    return null
+  }
 }
 
-async function apiFetch(path: string, token: string, opts: RequestInit = {}) {
+async function apiFetch(path: string, fallbackToken: string, opts: RequestInit = {}) {
   try {
+    // Fresh token per request; the one captured at mount expires after an hour.
+    const token = (await readSession())?.token || fallbackToken
     const res = await fetch(`${API}${path}`, {
       ...opts,
       headers: {
@@ -330,7 +330,7 @@ function FieldGroup({ id, label, children }: { id: string; label: string; childr
 // ================================================================
 export default function CustomerDashboard() {
   const { isDark, toggle: toggleTheme } = useTheme()
-  const [session, setSession]   = useState<ReturnType<typeof readSession>>(null)
+  const [session, setSession]   = useState<Awaited<ReturnType<typeof readSession>>>(null)
   const [mounted, setMounted]   = useState(false)
   const [isMobile, setIsMobile] = useState(false)
   const [tab, setTab]           = useState<Tab>('orders')
@@ -359,9 +359,10 @@ export default function CustomerDashboard() {
   // ── mount: read session ────────────────────────────────────────
   useEffect(() => {
     setMounted(true)
-    const s = readSession()
-    if (!s) { window.location.href = '/login'; return }
-    setSession(s)
+    readSession().then(s => {
+      if (!s) { window.location.href = '/login'; return }
+      setSession(s)
+    })
   }, [])
 
   useEffect(() => {

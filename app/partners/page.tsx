@@ -126,13 +126,18 @@ export default function PartnerSignupForm() {
     try {
       const saved = localStorage.getItem(STORAGE_KEY)
       if (saved) {
-        setForm((f: any) => ({ ...f, ...JSON.parse(saved) }))
+        // Older drafts did store the passwords; drop them on load.
+        const { password: _pw, passwordConfirm: _pwc, ...draft } = JSON.parse(saved)
+        setForm((f: any) => ({ ...f, ...draft }))
       }
     } catch {}
   }, [])
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(form)) } catch { /* */ }
+    // Never persist the passwords: the draft is plain localStorage and outlives
+    // a failed submission.
+    const { password: _pw, passwordConfirm: _pwc, ...draft } = form
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(draft)) } catch { /* */ }
   }, [form])
 
   const update = (k: string, v: any) => {

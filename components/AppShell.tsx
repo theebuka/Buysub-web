@@ -25,7 +25,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // /login and /order/verify are standalone full-height pages that carry their
   // own navigation, so the navbar and footer would double up on both. Phase 11
   // must not remove either from this list — see REFACTOR.md.
-  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard") || pathname.startsWith("/login") || pathname.startsWith("/order/verify")
+  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard") || pathname.startsWith("/login") || pathname.startsWith("/reset-password") || pathname.startsWith("/order/verify")
   const [stepIndex, setStepIndex] = useState(0)
   const dialogRef = useRef<HTMLDivElement>(null)
 

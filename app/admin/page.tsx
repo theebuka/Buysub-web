@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { toast } from "sonner"
 import { useTheme as useThemeController } from '@/lib/theme'
+import { getAccessToken } from '@/lib/session'
 
 const API = process.env.NEXT_PUBLIC_API_URL!
 const LOGO_DEV_TOKEN = 'pk_S77F38yQR6WQWErhPEEp1w'
@@ -141,10 +142,10 @@ function readToken(): string {
     for (const key of Object.keys(localStorage)) {
       if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
         const s = JSON.parse(localStorage.getItem(key) || '{}')
-        if (s?.access_token) {
-          if (s.expires_at && s.expires_at * 1000 < Date.now()) { localStorage.removeItem(key); return '' }
-          return s.access_token
-        }
+        // Presence check only. An expired access token is fine: apiFetch gets
+        // a refreshed one from getAccessToken(). Deleting the key here threw
+        // away the refresh token and signed staff out every hour.
+        if (s?.access_token && s?.refresh_token) return s.access_token
       }
     }
   } catch {}
@@ -165,8 +166,7 @@ function signOut() {
   window.location.href = '/login'
 }
 async function apiFetch(path: string, opts: RequestInit = {}) {
-  let token = ''
-  try { token = readToken() } catch {}
+  const token = await getAccessToken()
   if (!token) { signOut(); return { ok: false, error: 'Session expired' } }
   try {
     const res = await fetch(`${API}${path}`, {
@@ -712,7 +712,8 @@ function NewOrderDrawer({
   const [discountCode,  setDiscountCode]  = useState('')
   const [discountType,  setDiscountType]  = useState<'percentage' | 'fixed'>('percentage')
   const [discountValue, setDiscountValue] = useState('')
-  const [discountValid, setDiscountValid] = useState<{ display: string; ngn: number } | null>(null)
+  // The code's rule, not a fixed amount, so the discount follows item changes.
+  const [discountValid, setDiscountValid] = useState<{ display: string; type: string; value: number; max: number; min: number } | null>(null)
   const [discountError, setDiscountError] = useState('')
   const [discountChecking, setDiscountChecking] = useState(false)
 
@@ -737,8 +738,15 @@ function NewOrderDrawer({
   }, 0)
   
   // Compute discount NGN from whichever mode is active
+  const codeDiscountNGN = (() => {
+    if (!discountValid || subtotal < discountValid.min) return 0
+    let ngn = discountValid.type === 'percentage' ? Math.round(subtotal * discountValid.value / 100) : discountValid.value
+    if (discountValid.max > 0) ngn = Math.min(ngn, discountValid.max)
+    return Math.max(0, Math.min(ngn, subtotal))
+  })()
+
   const discNGN = (() => {
-    if (discountMode === 'code') return discountValid?.ngn ?? 0
+    if (discountMode === 'code') return codeDiscountNGN
     if (!discountValue) return 0
     const v = parseFloat(discountValue) || 0
     if (discountType === 'percentage') return Math.round(subtotal * v / 100)
@@ -759,8 +767,12 @@ function NewOrderDrawer({
       setDiscountChecking(false)
       return
     }
-    const d = r.data[0]
+    // ?code= filters server-side; the exact-match check guards against an API
+    // that ignores it (it used to, so this applied the newest code instead).
+    const d = r.data.find((x: any) => String(x.code).toUpperCase() === code)
+    if (!d) { setDiscountError('Code not found or inactive.'); setDiscountChecking(false); return }
     if (!d.active) { setDiscountError('Code is inactive.'); setDiscountChecking(false); return }
+    if (d.active_from && new Date(d.active_from) > new Date()) { setDiscountError('Code is not active yet.'); setDiscountChecking(false); return }
     if (d.expires_at && new Date(d.expires_at) < new Date()) { setDiscountError('Code has expired.'); setDiscountChecking(false); return }
     if (d.max_uses != null && d.times_used >= d.max_uses) { setDiscountError('Usage limit reached.'); setDiscountChecking(false); return }
     const minNGN = Number(d.min_order_ngn) || 0
@@ -770,12 +782,10 @@ function NewOrderDrawer({
       return
     }
     const v = Number(d.value) || 0
-    let ngn = d.type === 'percentage' ? Math.round(subtotal * v / 100) : v
-    if (d.max_discount_ngn) ngn = Math.min(ngn, Number(d.max_discount_ngn))
     const display = d.type === 'percentage'
       ? `${v}% off${d.max_discount_ngn ? ` (max ${fmt(d.max_discount_ngn)})` : ''}`
       : `${fmt(v)} off`
-    setDiscountValid({ display, ngn })
+    setDiscountValid({ display, type: d.type, value: v, max: Number(d.max_discount_ngn) || 0, min: minNGN })
     setDiscountChecking(false)
   }
   
@@ -1051,7 +1061,7 @@ function NewOrderDrawer({
                           fontSize:11, background:'rgba(22,163,74,0.18)', borderRadius:4,
                           padding:'2px 8px', color:T.success, fontWeight:700, letterSpacing:'0.05em',
                         }}>{discountCode.toUpperCase()}</span>
-                        <span style={{ fontSize:13, color:T.success }}>{discountValid.display} · saves {fmt(discountValid.ngn)}</span>
+                        <span style={{ fontSize:13, color:T.success }}>{discountValid.display} · saves {fmt(codeDiscountNGN)}</span>
                       </div>
                       <button onClick={() => { setDiscountValid(null); setDiscountCode('') }}
                         style={{ background:'transparent', border:'none', color:T.textFaint, cursor:'pointer', fontSize:18, lineHeight:1 }}><XIcon /></button>
@@ -1353,7 +1363,7 @@ useEffect(() => {
       setOrders(prev =>
         prev.map(o =>
           o.order_ref === ref
-            ? { ...o, status: 'approved' } // ✅ update UI instantly
+            ? { ...o, status: r.data?.status || 'paid' } // what the server set
             : o
         )
       )
@@ -1372,7 +1382,8 @@ useEffect(() => {
       setOrders(prev =>
         prev.map(o =>
           o.order_ref === ref
-            ? { ...o, status: 'rejected' }
+            // Stage one only: rejected_pending (warning, undoable), not terminal.
+            ? { ...o, status: r.data?.status || 'rejected_pending' }
             : o
         )
       )
@@ -3059,10 +3070,33 @@ function PartnersTab() {
 
 // ════════════════════ WALLETS TAB ════════════════════
 function WalletsTab() {
+  // Recent wallet transactions across all customers. This used to fetch the
+  // list, discard it, and always render the empty state.
+  const [txns,setTxns]=useState<any[]>([]); const [pagination,setPagination]=useState<Pagination>(emptyPagination)
   const [loading,setLoading]=useState(true)
-  useEffect(()=>{apiFetch('/v2/admin/wallets?page=1&limit=20').finally(()=>setLoading(false))},[])
+  const load=useCallback(async(page=1)=>{setLoading(true);const r=await apiFetch(`/v2/admin/wallets?page=${page}&limit=20`);if(r.ok){setTxns(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[])
+  useEffect(()=>{load()},[])
   if(loading) return <Loading/>
-  return <EmptyState text="Wallet transactions will appear here once customers start using wallets."/>
+  if(txns.length===0) return <EmptyState text="Wallet transactions will appear here once customers start using wallets."/>
+  return (
+    <div>
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {txns.map((t:any)=>{
+          const credit=t.type==='credit'
+          return (
+            <div key={t.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'16px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
+              <div style={{minWidth:0}}>
+                <div style={{fontSize:'var(--bs-text-sm)',fontWeight:500,color:T.text,overflowWrap:'anywhere'}}>{t.reference||'—'}</div>
+                <div style={{fontSize:12,color:T.textMuted,marginTop:3}}>{fmtDate(t.created_at)} · {String(t.source||'').replace(/_/g,' ')} · balance after {fmt(t.balance_after)}</div>
+              </div>
+              <div style={{fontSize:'var(--bs-text-sm)',fontWeight:600,color:credit?T.success:T.error,whiteSpace:'nowrap'}}>{credit?'+':'−'}{fmt(t.amount_ngn)}</div>
+            </div>
+          )
+        })}
+      </div>
+      {pagination?.pages>1&&<PaginationBar pagination={pagination} onPage={p=>load(p)}/>}
+    </div>
+  )
 }
 
 // ════════════════════ AFFILIATES TAB ════════════════════
@@ -3071,7 +3105,7 @@ function AffiliatesTab() {
   const [loading,setLoading]=useState(true); const [statusFilter,setStatusFilter]=useState(''); const [actionLoading,setActionLoading]=useState<string|null>(null)
   const load=useCallback(async(page=1,status=statusFilter)=>{setLoading(true);const params=new URLSearchParams({page:String(page),limit:'20'});if(status)params.set('status',status);const r=await apiFetch(`/v2/admin/affiliates?${params}`);if(r.ok){setAffiliates(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[statusFilter])
   useEffect(()=>{load()},[])
-  const approve=async(id:string)=>{const rate=prompt('Commission rate (%):','5');if(rate===null)return;setActionLoading(id);await apiFetch(`/v2/admin/affiliates/${id}/approve`,{method:'POST',body:JSON.stringify({commission_rate:parseFloat(rate)||5})});await load(pagination.page);setActionLoading(null)}
+  const approve=async(id:string)=>{const rate=prompt('Commission rate (%):','5');if(rate===null)return;setActionLoading(id);await apiFetch(`/v2/admin/affiliates/${id}/approve`,{method:'POST',body:JSON.stringify(rate.trim()===''?{}:{commission_rate:Number(rate)})});await load(pagination.page);setActionLoading(null)}
   const suspend=async(id:string)=>{setActionLoading(id);await apiFetch(`/v2/admin/affiliates/${id}/suspend`,{method:'POST',body:JSON.stringify({reason:'Admin action'})});await load(pagination.page);setActionLoading(null)}
   return (
     <div>

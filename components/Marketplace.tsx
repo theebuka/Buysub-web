@@ -38,10 +38,9 @@ function readSessionForShop(): { name: string; email: string; phone: string } | 
         if (key.startsWith('sb-') && key.endsWith('-auth-token')) {
           const s = JSON.parse(localStorage.getItem(key) || '{}')
           if (s?.access_token && s?.user) {
-            if (s.expires_at && s.expires_at * 1000 < Date.now()) {
-              localStorage.removeItem(key)
-              return null
-            }
+            // Expired access token: just don't prefill. Leave the stored session
+            // alone — it holds the refresh token Supabase uses to renew it.
+            if (s.expires_at && s.expires_at * 1000 < Date.now()) return null
             return {
               email: s.user.email || '',
               name:  '',   // will be fetched from /v2/me
@@ -101,8 +100,10 @@ export default function Marketplace() {
     // Hydrate from URL params and localStorage after mount (SSR-safe)
     const [mounted, setMounted] = useState(false)
     useEffect(() => {
-        setPeriod(getParam("period", "quarterly"))
-        setCurrency(getParam("currency", "NGN"))
+        const urlPeriod = getParam("period", "quarterly")
+        setPeriod(PERIODS[urlPeriod] ? urlPeriod : "quarterly")
+        const urlCurrency = getParam("currency", "NGN")
+        setCurrency(FX[urlCurrency] ? urlCurrency : "NGN")
         setCategory(getParam("category", "all"))
         setSort(getParam("sort", "alpha"))
         setQuery(getParam("q", ""))
@@ -111,7 +112,12 @@ export default function Marketplace() {
         setActiveTag(getParam("tag", null))
         try {
             const saved = localStorage.getItem(CART_STORAGE_KEY)
-            if (saved) setCartItems(JSON.parse(saved))
+            if (saved) {
+                // Drop lines a newer build can't price (unknown period, bad qty).
+                const parsed = JSON.parse(saved) as Record<string, CartItem>
+                setCartItems(Object.fromEntries(Object.entries(parsed).filter(([, i]) =>
+                    i?.product?.id && PERIODS[i.itemPeriod] && Number.isInteger(i.qty) && i.qty > 0)))
+            }
         } catch {}
         setMounted(true)
     }, [])
@@ -236,8 +242,9 @@ export default function Marketplace() {
     }, [cartItems, mounted])
 
     useEffect(() => {
-        const subtotalNGN = cartSubtotal / fxRate
+        // The API checks the minimum against the eligible subtotal, not the whole cart.
         if (appliedDiscount) {
+            const subtotalNGN = getEligibleSubtotal(cartItems, appliedDiscount, fxRate) / fxRate
             const minOrder = (appliedDiscount as any).min_order_ngn || (appliedDiscount as any).minOrderNGN || 0
             if (minOrder > 0 && subtotalNGN < minOrder) {
                 setAppliedDiscount(null)
@@ -249,6 +256,7 @@ export default function Marketplace() {
             }
         }
         if (autoDiscount) {
+            const subtotalNGN = getEligibleSubtotal(cartItems, autoDiscount, fxRate) / fxRate
             const minOrder = (autoDiscount as any).min_order_ngn || (autoDiscount as any).minOrderNGN || 0
             if (minOrder > 0 && subtotalNGN < minOrder) {
                 setAutoDiscount(null)
@@ -259,7 +267,7 @@ export default function Marketplace() {
             }
         }
         if (discountInvalidatedMsg) setDiscountInvalidatedMsg("")
-    }, [cartSubtotal, fxRate])
+    }, [cartSubtotal, fxRate, appliedDiscount, autoDiscount])
 
     useEffect(() => {
         if (!products.length) return
@@ -313,19 +321,22 @@ export default function Marketplace() {
                 setDiscountError("Code not found or inactive.")
                 return
             }
+            // Keep the code's real restrictions. These used to be blanked out,
+            // so the cart ignored caps, exclusions and the minimum order and
+            // showed a bigger discount than the API then charged.
             setAppliedDiscount({
                 code: d.code,
                 type: d.type,
                 value: d.value,
                 display: d.display,
-                max_discount_ngn: null,
-                min_order_ngn: 0,
-                included_products: null,
-                excluded_products: null,
-                included_categories: null,
-                excluded_categories: null,
+                max_discount_ngn: d.max_discount_ngn ?? null,
+                min_order_ngn: d.min_order_ngn ?? 0,
+                included_products: d.included_products ?? null,
+                excluded_products: d.excluded_products ?? null,
+                included_categories: d.included_categories ?? null,
+                excluded_categories: d.excluded_categories ?? null,
                 is_auto_apply: d.is_auto_apply,
-                scope: 'site_wide',
+                scope: d.scope ?? 'site_wide',
                 is_exclusive: d.is_exclusive,
                 isAutoApplied: false,
             })
@@ -521,8 +532,13 @@ export default function Marketplace() {
             }
 
             // Fetch from API
-            const res = await getProducts({ limit: 500 })
-            if (cancelled || !res.ok || !res.data) return
+            const res = await getProducts({ limit: 500 }).catch(() => null)
+            if (cancelled) return
+            if (!res?.ok || !res.data) {
+                setLoading(false)
+                toast.error("Couldn't load products. Check your connection and refresh the page.")
+                return
+            }
 
             const all = res.data
 

@@ -57,6 +57,11 @@ type PartnerProfile = Record<string, any>
 type Affiliate = { id: string; referral_code: string; status: string; display_name: string } | null
 type Stats = { affiliate_id: string | null; clicks: number; conversions: number; earnings_ngn: number; pending_ngn: number }
 
+// The storefront (and useReferral, which reads ?ref=) lives on the app domain
+// at /shop. The old buysub.ng/?ref= link never reached it.
+const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://app.buysub.ng').replace(/\/+$/, '')
+const referralUrl = (code: string) => `${SITE_URL}/shop?ref=${encodeURIComponent(code)}`
+
 export default function PartnerDashboard() {
   const { isDark, toggle: toggleTheme } = useTheme()
   const [copyState, setCopyState] = useState<'idle'|'done'|'failed'>('idle')
@@ -259,7 +264,7 @@ export default function PartnerDashboard() {
                     <span style={{
                       color: T.color.textPrimary, userSelect: 'all',
                       wordBreak: 'break-all',
-                    }}>buysub.ng/?ref={affiliate.referral_code}</span>
+                    }}>{referralUrl(affiliate.referral_code).replace(/^https?:\/\//, '')}</span>
                     {copyState === 'failed' && (
                       <span style={{ display: 'block', color: T.color.warning, marginTop: T.space[1] }}>
                         Could not reach the clipboard. Select the URL above to copy it.
@@ -279,7 +284,7 @@ export default function PartnerDashboard() {
                   type="button"
                   className="bs-pd-btn"
                   onClick={() => {
-                    const url = `https://buysub.ng/?ref=${affiliate.referral_code}`
+                    const url = referralUrl(affiliate.referral_code)
                     const settle = (r: 'done' | 'failed') => {
                       setCopyState(r)
                       setTimeout(() => setCopyState('idle'), 2600)
