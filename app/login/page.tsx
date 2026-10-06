@@ -357,7 +357,7 @@ async function redirectExistingSession(token: string) {
     const partner = await fetch(`${API}/v2/partners/me`, { headers: { Authorization: `Bearer ${token}` } })
     if (partner.ok) { window.location.href = '/partners/dashboard'; return }
   } catch {}
-  window.location.href = '/dashboard'
+  window.location.href = '/account'
 }
 
 // ── post-login routing ────────────────────────────────────────────
@@ -372,7 +372,7 @@ async function redirectByRole(token: string, loginType: LoginType) {
     } catch {}
     window.location.href = '/partners/dashboard'; return
   }
-  window.location.href = '/dashboard'
+  window.location.href = '/account'
 }
 
 // ================================================================
@@ -475,6 +475,8 @@ export default function LoginPage() {
   const handleResendVerification = async () => {
     if (!unconfirmedEmail) return
     setLoading(true); setError('')
+    // /dashboard, not /account: it is the URL on the Supabase Auth redirect
+    // allow-list, and it forwards to /account keeping the #access_token.
     const next = loginType === 'partner' ? '/partners/dashboard' : '/dashboard'
     const { error: err } = await supabase.auth.resend({
       type: 'signup',
@@ -514,7 +516,7 @@ export default function LoginPage() {
 
     setLoading(false)
     if (data.session) {
-      window.location.href = '/dashboard'
+      window.location.href = '/account'
     } else {
       setMode('login')
       setSuccess('Account created! Check your email to confirm, then sign in.')

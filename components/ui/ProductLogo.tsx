@@ -31,14 +31,20 @@ export function ProductLogo({ product, size = 48, radius = 'var(--bs-radius-lg)'
   const domain = cleanDomain(product.domain)
   const [list, setList] = useState(() => sources(domain, product.image_url, size))
   const [idx, setIdx] = useState(0)
+  // White only once the logo has loaded: a white tile while loading (or on a
+  // slow network) flashes hard in dark mode.
+  // Keyed to the URL rather than reset in an effect: a cached image can fire
+  // load before effects run, and a reset would then leave it grey.
+  const [loadedSrc, setLoadedSrc] = useState('')
 
   useEffect(() => { setList(sources(domain, product.image_url, size)); setIdx(0) }, [domain, product.image_url, size])
 
   const src = list[idx]
+  const loaded = !!src && loadedSrc === src
   if (src) {
     return (
-      <span style={{ width: size, height: size, borderRadius: radius, flexShrink: 0, overflow: 'hidden', display: 'block', background: '#fff', border: '1px solid var(--bs-border-default)' }}>
-        <img key={src} src={src} alt="" loading="lazy" onError={() => setIdx(i => i + 1)}
+      <span style={{ width: size, height: size, borderRadius: radius, flexShrink: 0, overflow: 'hidden', display: 'block', background: loaded ? '#fff' : 'var(--bs-bg-elevated)', border: '1px solid var(--bs-border-default)', transition: 'background var(--bs-dur-2) var(--bs-ease-out)' }}>
+        <img key={src} src={src} alt="" loading="lazy" onLoad={() => setLoadedSrc(src)} onError={() => setIdx(i => i + 1)}
           style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
       </span>
     )

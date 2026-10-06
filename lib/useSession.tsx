@@ -119,6 +119,11 @@ export function useSession(): SessionState {
   return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
 
+/** Re-reads /v2/me, e.g. after the profile is edited. */
+export function reloadSession(): Promise<void> {
+  return load()
+}
+
 /** Fetches partner status once. `false` means not a partner. */
 export async function loadPartner(): Promise<void> {
   if (state.status !== 'signed_in' || state.partner !== null) return

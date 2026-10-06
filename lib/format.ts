@@ -7,7 +7,8 @@
 // Storefront prices with currency conversion keep using `format` from
 // lib/constants.ts (it rounds to the half unit the checkout charges).
 
-const DASH = '—'
+// A plain hyphen for missing values; no em dashes in visible UI copy.
+const DASH = '-'
 
 /** ₦12,500. Strings are accepted because some endpoints send amounts as text. */
 export function fmtNGN(n: number | string | null | undefined): string {

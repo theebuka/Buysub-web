@@ -20,11 +20,13 @@ export const ROUTES = {
   signup: '/login?mode=signup',
 
   account: {
-    home: '/dashboard',
-    orders: '/dashboard?tab=orders',
-    wallet: '/dashboard?tab=wallet',
-    messages: '/dashboard?tab=messages',
-    settings: '/dashboard?tab=profile',
+    home: '/account',
+    orders: '/account/orders',
+    order: (ref: string) => `/account/orders/${encodeURIComponent(ref)}`,
+    subscriptions: '/account/subscriptions',
+    wallet: '/account/wallet',
+    messages: '/account/messages',
+    settings: '/account/settings',
   },
   partner: {
     apply: '/partners',

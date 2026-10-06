@@ -41,7 +41,8 @@ To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `np
 | `/cart`, `/checkout` | `components/shop/CartPage.tsx`, `CheckoutPage.tsx` | cart, then details + Paystack / WhatsApp |
 | `/help` | `app/help/page.tsx` | help centre |
 | `/login` | `app/login/page.tsx` | three tabs: customer / partner / admin |
-| `/dashboard` | `app/dashboard/page.tsx` | customer: orders, messages, wallet, profile |
+| `/account/*` | `app/account/*` → `components/account/*` | customer area: overview, orders (`?status=` processing/completed/cancelled, `?q=`), `orders/[ref]` (edge), subscriptions, wallet, messages (`?m=<id>`), settings. `AccountShell` gates on `RequireRole` |
+| `/dashboard` | `app/dashboard/page.tsx` | redirect stub to `/account/*` (maps `?tab=`, keeps the hash). Still the sign-up `emailRedirectTo`, because it is on the Supabase Auth allow-list |
 | `/admin` | `app/admin/page.tsx` (~5.5k lines) | 13 tabs, the whole back office |
 | `/admin/receipt` | `app/admin/receipt/page.tsx` | PDF receipt generator (ported from Airtable) |
 | `/partners` | `app/partners/page.tsx` | partner application form (draft persisted to localStorage) |
@@ -65,7 +66,7 @@ Tokens for API calls come from `supabase.auth.getSession()`, which refreshes an 
 
 Every authenticated request sends `Authorization: Bearer <access_token>`. Each surface has its own local `apiFetch` that redirects to `/login` on 401/403. There is no middleware and no route protection — pages guard themselves client-side after mount.
 
-Post-login routing lives in `redirectByRole()` in `app/login/page.tsx`: admin → `/admin`, partner → `/partners/dashboard`, customer → `/dashboard`. Arriving with an existing session uses `redirectExistingSession()`, which routes by the account's real role (`/v2/me`). Customer sign-up passes name/phone/gender as auth metadata, and `completeProfile()` (`POST /v2/auth/signup`, token-identified, idempotent) runs after sign-up and at each customer login.
+Post-login routing lives in `redirectByRole()` in `app/login/page.tsx`: a same-origin `?next=` wins, else admin → `/admin`, partner → `/partners/dashboard`, customer → `/account`. Arriving with an existing session uses `redirectExistingSession()`, which routes by the account's real role (`/v2/me`). Customer sign-up passes name/phone/gender as auth metadata, and `completeProfile()` (`POST /v2/auth/signup`, token-identified, idempotent) runs after sign-up and at each customer login.
 
 ### Data flow
 
@@ -75,7 +76,7 @@ Checkout has two paths, both in `lib/checkout.ts` (ported verbatim from the old 
 - **WhatsApp**: `POST /v2/orders/whatsapp` → open the returned `whatsapp_url` in a new tab, clear cart, show the order reference with a fallback WhatsApp button.
 - **Paystack**: `POST /v2/orders` → `POST /v2/pay/init` with `callback_url = ${origin}/order/verify` → redirect to `authorization_url`. `/order/verify` then calls `GET /v2/pay/verify?reference=`.
 
-Cart lives in `localStorage` under `CART_STORAGE_KEY` (`buysub_cart_v2`), keyed by `cartKey(productId, period)`, behind the `lib/cart.ts` store (`useCart`, `addToCart`, `reconcileCart` re-prices it against the live catalog on each catalog/cart/checkout load). The applied promo code is a small store in `lib/checkout.ts` (sessionStorage), shared by the drawer and `/checkout`. The display currency is site-wide (`lib/currency.ts`, `bs_currency`); orders are charged in NGN with `fx_rate`. Product-page content (features, FAQs, delivery, badge, SEO) comes from the columns added in `supabase-migrations/07`; `lib/catalog.ts` holds the fallbacks and the single-seller `toOffers()`.
+Cart lives in `localStorage` under `CART_STORAGE_KEY` (`buysub_cart_v2`), keyed by `cartKey(productId, period)`, behind the `lib/cart.ts` store (`useCart`, `addToCart`, `reconcileCart` re-prices it against the live catalog on each catalog/cart/checkout load). The applied promo code is a small store in `lib/checkout.ts` (sessionStorage), shared by the drawer and `/checkout`. The display currency is site-wide (`lib/currency.ts`, `bs_currency`); orders are charged in NGN with `fx_rate`. Account pages read through `lib/useApi.ts` (per-path cache, refreshed in place by `invalidate(prefix)`). There is no subscriptions table: `lib/subscriptions.ts` derives plans from paid order lines (`paid_at` + `duration_months`), and Renew/Buy again re-adds them to the cart at today's price. Product-page content (features, FAQs, delivery, badge, SEO) comes from the columns added in `supabase-migrations/07`; `lib/catalog.ts` holds the fallbacks and the single-seller `toOffers()`.
 
 Referrals: `lib/useReferral.ts` reads `?ref=` (URL wins over cookie), validates it against `/v2/affiliates/resolve`, stores it in the `bs_ref` cookie for 30 days, fires `/v2/affiliates/click`, then strips `?ref=` from the URL. The resulting code is passed as `referral_code` on order payloads. Partner share links are `${NEXT_PUBLIC_SITE_URL}/shop?ref=CODE` (so that var must be the app origin in production), and the home page records `?ref=` itself (`app/page.tsx` only forwards shop-filter params to `/shop`).
 

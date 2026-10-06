@@ -80,34 +80,55 @@ const LONG_BANNER =
 
 // ── customer fixtures ───────────────────────────────────────────────────
 // One order per status the UI can encounter, including rejected_pending.
+// Shaped like GET /v2/me/orders since the account rebuild: items carry
+// product_id, duration_months, billing_type and the joined product (slug,
+// domain), and paid orders carry paid_at, so /account can derive
+// subscription end dates. Dates are relative to 2026-10-06 so that one plan
+// is active, one ends within 7 days and one has ended.
+const item = (product_name, billing_period, months, quantity, unit, slug, domain, extra = {}) => ({
+  id: `oi-${slug}-${billing_period}`, product_id: `p-${slug}`, product_name, category: null,
+  billing_period, billing_type: months ? 'subscription' : 'one_time', duration_months: months,
+  quantity, unit_price_ngn: unit, total_price_ngn: unit * quantity,
+  products: { slug, domain, image_url: null }, ...extra,
+})
 const ORDERS = [
   {
+    id: 'o-recent', order_ref: 'BS-24301', status: 'paid',
+    total_ngn: 18500, subtotal_ngn: 18500, discount_ngn: 0, wallet_ngn: 0,
+    payment_method: 'paystack', currency: 'NGN', fx_rate: 1, discount_code: null,
+    created_at: '2026-09-21T09:40:00Z', paid_at: '2026-09-21T09:42:00Z',
+    order_items: [item('Netflix Premium', 'Quarterly', 3, 1, 18500, 'netflix-premium', 'netflix.com')],
+  },
+  {
     id: 'o-paid', order_ref: 'BS-24118', status: 'paid',
-    total_ngn: 62700, subtotal_ngn: 68000, discount_ngn: 5300,
-    payment_method: 'paystack', currency: 'NGN',
-    created_at: '2026-07-28T10:14:00Z',
+    total_ngn: 62700, subtotal_ngn: 68000, discount_ngn: 5300, wallet_ngn: 0,
+    payment_method: 'paystack', currency: 'NGN', fx_rate: 1, discount_code: 'AUGUST10',
+    created_at: '2026-07-28T10:14:00Z', paid_at: '2026-07-28T10:16:00Z',
     order_items: [
-      { product_name: LONG_NAME, billing_period: 'Annual', quantity: 1, total_price_ngn: 45000 },
-      { product_name: 'Apple Music', billing_period: 'Quarterly', quantity: 2, total_price_ngn: 23000 },
+      item(LONG_NAME, 'Annual', 12, 1, 45000, 'adobe-cc', 'adobe.com'),
+      item('Apple Music', 'Quarterly', 3, 2, 11500, 'apple-music', 'apple.com'),
     ],
+  },
+  {
+    id: 'o-ending', order_ref: 'BS-24002', status: 'paid',
+    total_ngn: 6900, subtotal_ngn: 6900, discount_ngn: 0, wallet_ngn: 0,
+    payment_method: 'paystack', currency: 'NGN', fx_rate: 1, discount_code: null,
+    created_at: '2026-07-10T18:05:00Z', paid_at: '2026-07-10T18:06:00Z',
+    order_items: [item('Spotify Duo', 'Quarterly', 3, 1, 6900, 'spotify-duo', 'spotify.com')],
   },
   {
     id: 'o-approved', order_ref: 'BS-24090', status: 'approved',
     total_ngn: HUGE, subtotal_ngn: HUGE, discount_ngn: 0,
     payment_method: 'bank_transfer', currency: 'NGN',
     created_at: '2026-07-25T14:03:00Z',
-    order_items: [
-      { product_name: 'Enterprise bundle, 40 seats', billing_period: 'Annual', quantity: 40, total_price_ngn: HUGE },
-    ],
+    order_items: [item('Enterprise bundle, 40 seats', 'Annual', 12, 40, HUGE / 40, 'enterprise', null)],
   },
   {
     id: 'o-pending-manual', order_ref: 'BS-23904', status: 'pending_manual',
     total_ngn: 100500, subtotal_ngn: 100500, discount_ngn: 0,
     payment_method: 'whatsapp', currency: 'NGN',
     created_at: '2026-07-19T08:02:00Z',
-    order_items: [
-      { product_name: 'Netflix Premium', billing_period: 'Annual', quantity: 1, total_price_ngn: 100500 },
-    ],
+    order_items: [item('Netflix Premium', 'Annual', 12, 1, 100500, 'netflix-premium', 'netflix.com')],
   },
   {
     id: 'o-pending', order_ref: 'BS-23880', status: 'pending',
@@ -116,13 +137,21 @@ const ORDERS = [
     created_at: '2026-07-17T19:47:00Z', order_items: [],
   },
   {
+    id: 'o-expired', order_ref: 'BS-22650', status: 'paid',
+    total_ngn: 15000, subtotal_ngn: 15000, discount_ngn: 0,
+    payment_method: 'paystack', currency: 'NGN',
+    created_at: '2026-03-02T12:00:00Z', paid_at: '2026-03-02T12:01:00Z',
+    order_items: [
+      item('YouTube Premium Family', 'Quarterly', 3, 1, 15000, 'youtube-premium', 'youtube.com'),
+      item('Steam Wallet Top-up', 'Quarterly', null, 1, 0, 'steam-wallet', 'steampowered.com'),
+    ],
+  },
+  {
     id: 'o-rejected-pending', order_ref: 'BS-23812', status: 'rejected_pending',
     total_ngn: 7500, subtotal_ngn: 7500, discount_ngn: 0,
     payment_method: 'whatsapp', currency: 'NGN',
     created_at: '2026-07-08T11:26:00Z',
-    order_items: [
-      { product_name: 'Spotify Duo', billing_period: 'Quarterly', quantity: 1, total_price_ngn: 7500 },
-    ],
+    order_items: [item('Spotify Duo', 'Quarterly', 3, 1, 7500, 'spotify-duo', 'spotify.com')],
   },
   {
     id: 'o-rejected', order_ref: 'BS-23790', status: 'rejected',
@@ -137,6 +166,12 @@ const ORDERS = [
     created_at: '2026-06-30T16:41:00Z', order_items: [],
   },
 ]
+
+const MY_BUCKETS = {
+  processing: ['pending', 'pending_manual', 'rejected_pending'],
+  completed: ['paid'],
+  cancelled: ['failed', 'refunded', 'cancelled', 'rejected'],
+}
 
 const MESSAGES = [
   {
@@ -641,7 +676,22 @@ const SHELL_NOTIFICATIONS = [
 // ── routing ─────────────────────────────────────────────────────────────
 const ROUTES = [
   [/^\/v2\/me$/,                        () => ({ ok: true, data: PROFILE })],
-  [/^\/v2\/me\/orders$/,                () => ({ ok: true, data: ORDERS })],
+  // Mirrors the API: ?status= (raw or bucket), ?q= on the ref, page/limit.
+  [/^\/v2\/me\/orders$/, q => {
+    let rows = ORDERS
+    const st = q.get('status')
+    if (st) rows = rows.filter(o => (MY_BUCKETS[st] || [st]).includes(o.status))
+    const term = (q.get('q') || '').toLowerCase()
+    if (term) rows = rows.filter(o => o.order_ref.toLowerCase().includes(term))
+    const limit = Number(q.get('limit')) || 50, pageN = Number(q.get('page')) || 1
+    return { ok: true, data: rows.slice((pageN - 1) * limit, pageN * limit),
+      meta: { pagination: { page: pageN, limit, total: rows.length, pages: Math.ceil(rows.length / limit) } } }
+  }],
+  [/^\/v2\/me\/orders\/[^/]+$/, (q, path) => {
+    const ref = decodeURIComponent(path.split('/').pop())
+    const hit = ORDERS.find(o => o.order_ref === ref)
+    return hit ? { ok: true, data: hit } : { ok: false, error: 'Order not found' }
+  }],
   [/^\/v2\/me\/messages$/,              () => ({ ok: true, data: MESSAGES })],
   [/^\/v2\/me\/messages\/[^/]+\/read$/, () => ({ ok: true })],
   [/^\/v2\/me\/wallet$/,                () => ({ ok: true, data: { balance_ngn: ZERO_WALLET ? 0 : 18300 } })],
