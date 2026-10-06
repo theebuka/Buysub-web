@@ -355,7 +355,7 @@ async function redirectExistingSession(token: string) {
     const me = await fetch(`${API}/v2/me`, { headers: { Authorization: `Bearer ${token}` } }).then(r => r.json())
     if (['admin', 'super_admin', 'support_agent'].includes(me?.data?.role)) { window.location.href = '/admin'; return }
     const partner = await fetch(`${API}/v2/partners/me`, { headers: { Authorization: `Bearer ${token}` } })
-    if (partner.ok) { window.location.href = '/partners/dashboard'; return }
+    if (partner.ok) { window.location.href = '/partner'; return }
   } catch {}
   window.location.href = '/account'
 }
@@ -368,9 +368,9 @@ async function redirectByRole(token: string, loginType: LoginType) {
   if (loginType === 'partner') {
     try {
       const res = await fetch(`${API}/v2/partners/me`, { headers: { Authorization: `Bearer ${token}` } })
-      if (res.ok) { window.location.href = '/partners/dashboard'; return }
+      if (res.ok) { window.location.href = '/partner'; return }
     } catch {}
-    window.location.href = '/partners/dashboard'; return
+    window.location.href = '/partner'; return
   }
   window.location.href = '/account'
 }

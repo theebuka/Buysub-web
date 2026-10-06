@@ -75,3 +75,18 @@ export function toneColors(tone: Tone): { bg: string; fg: string } {
     default:        return { bg: 'var(--bs-badge-neutral-bg)', fg: 'var(--bs-badge-neutral-fg)' }
   }
 }
+
+/**
+ * Partner commissions share status words with orders but not their meaning:
+ * a pending commission is under review, not awaiting payment. Approved is
+ * owed (neutral), paid is done (success), so the two never look the same.
+ */
+const COMMISSION: Record<string, Def> = {
+  pending:  { label: 'Pending review', tone: 'warning' },
+  approved: { label: 'Approved',       tone: 'info' },
+  paid:     { label: 'Paid',           tone: 'success' },
+  rejected: { label: 'Rejected',       tone: 'error' },
+}
+export function commissionStatus(status: string | null | undefined): { label: string; tone: Tone } {
+  return COMMISSION[String(status || '')] ?? { label: humanise(String(status || '')), tone: 'neutral' }
+}

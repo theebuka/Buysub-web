@@ -1,6 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  // A dev server can run beside production builds without the two writing
+  // over each other's output (NEXT_DIST_DIR=.next-dev in .claude/launch.json).
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   // In-app URLs for pages that still live on the Framer site (buysub.ng).
   // Temporary (307) so they can become real pages later without browsers
   // having cached the hop.

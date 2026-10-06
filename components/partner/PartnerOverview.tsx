@@ -1,0 +1,103 @@
+'use client'
+
+import Link from 'next/link'
+import { Skeleton, CommissionBadge } from '@/components/ui'
+import { useApi } from '@/lib/useApi'
+import { fmtDate, fmtNGN } from '@/lib/format'
+import { ROUTES } from '@/lib/routes'
+import { PageHead, PanelEmpty, PanelError, RowsSkeleton } from '@/components/account/AccountShell'
+import { MainLink } from './PartnerShell'
+import { ClicksChart } from './ClicksChart'
+import { usePartner, type Commission, type PartnerStats } from './usePartner'
+import s from '@/components/account/account.module.css'
+
+export function CommissionRow({ c }: { c: Commission }) {
+  return (
+    <li className={`${s.row} ${s.rowStack}`}>
+      <div className={s.rowMain}>
+        <span className={s.rowTitle}>{c.orders?.order_ref ? `Order ${c.orders.order_ref}` : 'Order'}</span>
+        <span className={s.rowSub}>{fmtDate(c.created_at)}{c.orders?.total_ngn != null ? ` · order total ${fmtNGN(c.orders.total_ngn)}` : ''}</span>
+      </div>
+      <div className={s.rowEnd}>
+        <span className={s.rowAmount}>{fmtNGN(c.amount_ngn)}</span>
+        <CommissionBadge status={c.status} />
+      </div>
+    </li>
+  )
+}
+
+export default function PartnerOverview() {
+  const { affiliate } = usePartner()
+  const stats = useApi<PartnerStats>('/v2/partners/me/stats')
+  const recent = useApi<Commission[]>('/v2/affiliates/me/commissions?limit=5')
+  const st = stats.data
+  const owed = (Number(st?.approved_ngn) || 0) + (Number(st?.pending_ngn) || 0)
+  const rate = st?.clicks ? (st.conversions / st.clicks) * 100 : 0
+  const last30 = st?.daily || []
+  const clicks30 = last30.reduce((n, d) => n + d.clicks, 0)
+  const orders30 = last30.reduce((n, d) => n + d.conversions, 0)
+  const loading = stats.loading
+
+  const num = (v: number | string | undefined, f: (x: any) => string = x => Number(x).toLocaleString('en-NG')) =>
+    loading ? <Skeleton width={80} height={28} /> : f(v ?? 0)
+
+  return (
+    <>
+      <PageHead
+        title="Overview"
+        lede={st?.commission_rate != null ? `You earn ${st.commission_rate}% on every order placed through your link.` : 'Share your link. Every order placed through it earns you commission.'}
+      />
+
+      <section className={s.section}>
+        <h2 className={s.h2}>Your referral link</h2>
+        {affiliate && <MainLink code={affiliate.referral_code} />}
+        <p className={s.muted}>Shoppers who open it are linked to you for 30 days. <Link className={s.textLink} href={ROUTES.partner.links}>Link to a product or category</Link></p>
+      </section>
+
+      {stats.error ? <div className={s.panel}><PanelError message={stats.error} onRetry={stats.reload} /></div> : (
+        <div className={`${s.panel} ${s.stats}`}>
+          <div className={s.stat}>
+            <span className={s.statLabel}>Clicks</span>
+            <span className={s.statValue}>{num(st?.clicks)}</span>
+            <span className={s.statFoot}>All time</span>
+          </div>
+          <div className={s.stat}>
+            <span className={s.statLabel}>Orders</span>
+            <span className={s.statValue}>{num(st?.conversions)}</span>
+            <span className={s.statFoot}>{!st?.clicks ? 'No clicks yet' : !st.conversions ? 'None yet' : `${rate < 1 ? rate.toFixed(1) : Math.round(rate)}% of clicks`}</span>
+          </div>
+          <div className={s.stat}>
+            <span className={s.statLabel}>Awaiting payout</span>
+            <span className={s.statValue}>{num(owed, fmtNGN)}</span>
+            <span className={s.statFoot}>{fmtNGN(st?.earnings_ngn ?? 0)} paid to date</span>
+          </div>
+        </div>
+      )}
+
+      <section className={s.section}>
+        <div className={s.sectionHead}>
+          <h2 className={s.h2}>Last 30 days</h2>
+          {last30.length > 0 && <span className={s.muted}>{clicks30.toLocaleString('en-NG')} clicks · {orders30} orders</span>}
+        </div>
+        <div className={`${s.panel} ${s.panelPad}`}>
+          {loading ? <Skeleton height={150} />
+            : last30.length && clicks30 > 0 ? <ClicksChart data={last30} />
+            : <p className={s.secondary}>No clicks in the last 30 days. Share your link to start seeing activity here.</p>}
+        </div>
+      </section>
+
+      <section className={s.section}>
+        <div className={s.sectionHead}>
+          <h2 className={s.h2}>Recent conversions</h2>
+          {(recent.data?.length || 0) > 0 && <Link href={ROUTES.partner.conversions} className={s.textLink}>All conversions</Link>}
+        </div>
+        <div className={s.panel}>
+          {recent.loading ? <RowsSkeleton n={3} />
+            : recent.error ? <PanelError message={recent.error} onRetry={recent.reload} />
+            : !recent.data?.length ? <PanelEmpty title="No conversions yet">When someone orders through your link, the order and your commission show here.</PanelEmpty>
+            : <ul className={s.rows}>{recent.data.map(c => <CommissionRow key={c.id} c={c} />)}</ul>}
+        </div>
+      </section>
+    </>
+  )
+}

@@ -257,15 +257,36 @@ const PARTNER_AFFILIATE = PARTNER === 'approved' ? {
   referral_code: 'OKONKWO-DIGITAL-2026',   // long enough to test wrapping
   status: 'active',
   display_name: 'Okonkwo Digital',
+  commission_rate: 10,
 } : null
 
+// The /partner portal adds approved_ngn, commission_rate and a 30-day daily
+// series (see handlePartnerMyStats). Deterministic numbers with a few quiet
+// days, so the chart shows real variation and real zeros.
+const DAILY = Array.from({ length: 30 }, (_, i) => {
+  const d = new Date(Date.UTC(2026, 8, 7 + i)).toISOString().slice(0, 10)
+  const clicks = [12, 30, 0, 44, 18, 9, 61, 25, 33, 0, 14, 52, 70, 41, 22, 8, 0, 37, 46, 29, 55, 88, 64, 31, 19, 40, 73, 26, 12, 49][i]
+  const conversions = clicks > 50 ? 2 : clicks > 30 ? 1 : 0
+  return { date: d, clicks, conversions, earned_ngn: conversions * 1850 }
+})
 const PARTNER_STATS = {
   affiliate_id: PARTNER_AFFILIATE ? 'aff-1' : null,
   clicks: 4820,
   conversions: 0,          // a zero next to a large number
   earnings_ngn: HUGE,
   pending_ngn: 47500,
+  approved_ngn: 12300,
+  commission_rate: 10,
+  daily: DAILY,
 }
+
+const COMMISSIONS = [
+  { id: 'c1', amount_ngn: 1850, status: 'pending', created_at: '2026-10-04T13:10:00Z', orders: { order_ref: 'BS-24310', total_ngn: 18500, created_at: '2026-10-04T13:09:00Z' } },
+  { id: 'c2', amount_ngn: 6270, status: 'approved', created_at: '2026-09-28T09:41:00Z', orders: { order_ref: 'BS-24277', total_ngn: 62700, created_at: '2026-09-28T09:40:00Z' } },
+  { id: 'c3', amount_ngn: 690, status: 'paid', paid_at: '2026-09-30T10:00:00Z', created_at: '2026-09-12T18:00:00Z', orders: { order_ref: 'BS-24190', total_ngn: 6900, created_at: '2026-09-12T17:58:00Z' } },
+  { id: 'c4', amount_ngn: 1500, status: 'rejected', created_at: '2026-09-02T08:00:00Z', orders: { order_ref: 'BS-24133', total_ngn: 15000, created_at: '2026-09-02T07:59:00Z' } },
+  { id: 'c5', amount_ngn: 10050, status: 'paid', paid_at: '2026-08-31T10:00:00Z', created_at: '2026-08-19T12:00:00Z', orders: { order_ref: 'BS-23990', total_ngn: 100500, created_at: '2026-08-19T11:58:00Z' } },
+]
 
 // ── storefront fixtures (Phase 12) ──────────────────────────────────────
 // /v2/products, /v2/ads and /v2/discount/auto-apply all fell through to the
@@ -697,6 +718,11 @@ const ROUTES = [
   [/^\/v2\/me\/wallet$/,                () => ({ ok: true, data: { balance_ngn: ZERO_WALLET ? 0 : 18300 } })],
   [/^\/v2\/me\/wallet\/transactions$/,  () => ({ ok: true, data: TXNS })],
   [/^\/v2\/partners\/me\/stats$/,        () => ({ ok: true, data: PARTNER_STATS })],
+  [/^\/v2\/affiliates\/me\/commissions$/, q => {
+    const limit = Number(q.get('limit')) || 20, pageN = Number(q.get('page')) || 1
+    return { ok: true, data: COMMISSIONS.slice((pageN - 1) * limit, pageN * limit),
+      meta: { pagination: { page: pageN, limit, total: COMMISSIONS.length, pages: Math.ceil(COMMISSIONS.length / limit) } } }
+  }],
   [/^\/v2\/partners\/me$/,              () => ({ ok: true, data: { profile: PARTNER_PROFILE, affiliate: PARTNER_AFFILIATE } })],
   // AppShell polls THIS endpoint (not /v2/admin/notifications, which is the
   // admin CRUD list). It returned [] until Phase 11, so the toast, banner and

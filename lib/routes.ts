@@ -30,7 +30,11 @@ export const ROUTES = {
   },
   partner: {
     apply: '/partners',
-    home: '/partners/dashboard',
+    home: '/partner',
+    links: '/partner/links',
+    conversions: '/partner/conversions',
+    payouts: '/partner/payouts',
+    profile: '/partner/profile',
   },
   admin: {
     home: '/admin',

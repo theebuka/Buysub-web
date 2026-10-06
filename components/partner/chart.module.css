@@ -1,0 +1,14 @@
+.fig { display: flex; flex-direction: column; gap: var(--bs-space-2); }
+.plot { position: relative; padding-top: var(--bs-space-5); }
+.yMax { position: absolute; top: 0; left: 0; font-size: var(--bs-text-2xs); color: var(--bs-text-muted); font-variant-numeric: tabular-nums; }
+.grid { position: absolute; left: 0; right: 0; top: var(--bs-space-5); border-top: 1px dashed var(--bs-border-default); }
+.bars { position: relative; display: flex; align-items: flex-end; gap: 2px; border-bottom: 1px solid var(--bs-border-strong); }
+.hit { flex: 1; height: 100%; display: flex; align-items: flex-end; padding: 0; border: none; background: transparent; cursor: default; }
+.hit:focus-visible { outline: none; box-shadow: var(--bs-ring); border-radius: 2px; }
+.bar { display: block; width: 100%; background: var(--bs-accent); opacity: .72; border-radius: 4px 4px 0 0; transition: opacity var(--bs-dur-1) var(--bs-ease-out); }
+.barOn { opacity: 1; }
+.xAxis { display: flex; justify-content: space-between; font-size: var(--bs-text-2xs); color: var(--bs-text-muted); }
+.tip { position: absolute; top: 0; transform: translate(-50%, -100%); margin-top: -6px; min-width: 140px; padding: var(--bs-space-2) var(--bs-space-3); border-radius: var(--bs-radius-md); background: var(--bs-bg-elevated); border: 1px solid var(--bs-border-default); box-shadow: var(--bs-elev-2); font-size: var(--bs-text-xs); color: var(--bs-text-secondary); pointer-events: none; z-index: 2; white-space: nowrap; }
+.tipDate { color: var(--bs-text-primary); font-weight: var(--bs-weight-semibold); margin-bottom: 4px; }
+.tipRow { display: flex; justify-content: space-between; gap: var(--bs-space-4); }
+.tipRow b { color: var(--bs-text-primary); font-weight: var(--bs-weight-semibold); font-variant-numeric: tabular-nums; }

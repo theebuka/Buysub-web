@@ -27,7 +27,7 @@ Two things `next build` alone won't catch:
 - **Any dynamic route needs `export const runtime = 'edge'`**, or the Pages build fails with "routes were not configured to run with the Edge Runtime". `app/page.tsx` is dynamic because it reads `searchParams`.
 - **`.npmrc` sets `legacy-peer-deps=true`.** Without it the build's `npx` install fails on peer ranges. Every build from 2026-08-02 to 2026-10-06 failed that way, so production sat on the 2026-05-08 build.
 
-To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `npx wrangler pages dev .vercel/output/static --compatibility-flags nodejs_compat`. **Edge routes (`/`, `/shop/[slug]`, `/shop/c/[category]`) don't work under plain `next start`**: they render the 404 page and log `TypeError: e[o] is not a function`. Check them with next-on-pages + wrangler instead. Under local wrangler a server-side fetch can't reach the fixture API on 127.0.0.1, so the product page falls back to loading the product in the browser there. next-on-pages is deprecated in favour of OpenNext (`@opennextjs/cloudflare`); migrating is a separate job.
+To watch changes live against the fixture API, use the `fixture-api` and `web-dev` entries in the workspace `.claude/launch.json` (next dev on :3200 with `NEXT_DIST_DIR=.next-dev`, so it never collides with `npm run build`). Plain `npm run dev` talks to the production API, whose CORS rejects localhost. To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `npx wrangler pages dev .vercel/output/static --compatibility-flags nodejs_compat`. **Edge routes (`/`, `/shop/[slug]`, `/shop/c/[category]`) don't work under plain `next start`**: they render the 404 page and log `TypeError: e[o] is not a function`. Check them with next-on-pages + wrangler instead. Under local wrangler a server-side fetch can't reach the fixture API on 127.0.0.1, so the product page falls back to loading the product in the browser there. next-on-pages is deprecated in favour of OpenNext (`@opennextjs/cloudflare`); migrating is a separate job.
 
 ## Architecture
 
@@ -46,7 +46,8 @@ To reproduce the real build locally: `npx @cloudflare/next-on-pages@1`, then `np
 | `/admin` | `app/admin/page.tsx` (~5.5k lines) | 13 tabs, the whole back office |
 | `/admin/receipt` | `app/admin/receipt/page.tsx` | PDF receipt generator (ported from Airtable) |
 | `/partners` | `app/partners/page.tsx` | partner application form (draft persisted to localStorage) |
-| `/partners/dashboard` | `app/partners/dashboard/page.tsx` | partner earnings |
+| `/partner/*` | `app/partner/*` → `components/partner/*` | partner portal: overview (link, figures, 30-day clicks chart), referral link builder, conversions, payouts, profile. `PartnerShell` shows the application status instead until approved |
+| `/partners/dashboard` | `app/partners/dashboard/page.tsx` | redirect stub to `/partner` (keeps the hash). Still the partner sign-up `redirectTo` (allow-listed) |
 | `/order/verify` | `app/order/verify/VerifyContent.tsx` | Paystack callback landing page (clears the cart on success) |
 | `/reset-password` | `app/reset-password/page.tsx` | target of the forgot-password email; must be on the Supabase Auth redirect allow-list |
 
@@ -66,7 +67,7 @@ Tokens for API calls come from `supabase.auth.getSession()`, which refreshes an 
 
 Every authenticated request sends `Authorization: Bearer <access_token>`. Each surface has its own local `apiFetch` that redirects to `/login` on 401/403. There is no middleware and no route protection — pages guard themselves client-side after mount.
 
-Post-login routing lives in `redirectByRole()` in `app/login/page.tsx`: a same-origin `?next=` wins, else admin → `/admin`, partner → `/partners/dashboard`, customer → `/account`. Arriving with an existing session uses `redirectExistingSession()`, which routes by the account's real role (`/v2/me`). Customer sign-up passes name/phone/gender as auth metadata, and `completeProfile()` (`POST /v2/auth/signup`, token-identified, idempotent) runs after sign-up and at each customer login.
+Post-login routing lives in `redirectByRole()` in `app/login/page.tsx`: a same-origin `?next=` wins, else admin → `/admin`, partner → `/partner`, customer → `/account`. Arriving with an existing session uses `redirectExistingSession()`, which routes by the account's real role (`/v2/me`). Customer sign-up passes name/phone/gender as auth metadata, and `completeProfile()` (`POST /v2/auth/signup`, token-identified, idempotent) runs after sign-up and at each customer login.
 
 ### Data flow
 
