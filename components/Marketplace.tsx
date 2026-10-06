@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { API_BASE } from "@/lib/config";
 import { getProducts, getAutoApplyDiscounts as fetchAutoApplyAPI, validateDiscount as validateDiscountAPI, createWhatsAppOrder, createOrder, initPaystackPayment } from "@/lib/api";
-import { PERIODS, TAB_ORDER, FX, CART_STORAGE_KEY, LOGO_DEV_TOKEN, WHATSAPP_NUMBER, Product, CartItem, AppliedDiscount, DiscountRecord, format, discountPct, isInStock, hasCategory, getCategoryList, cartKey, isValidEmail, norm, isItemEligible, getEligibleSubtotal, calcDiscountAmount } from "@/lib/constants";
+import { PERIODS, TAB_ORDER, FX, CART_STORAGE_KEY, LOGO_DEV_TOKEN, WHATSAPP_NUMBER, Product, CartItem, AppliedDiscount, DiscountRecord, format, isInStock, hasCategory, getCategoryList, cartKey, isValidEmail, norm, isItemEligible, getEligibleSubtotal, calcDiscountAmount } from "@/lib/constants";
+import { priceFor, availablePeriods, savingsVs } from "@/lib/pricing";
 import { useReferral } from '@/lib/useReferral'
 import { useShopAds, ShopBanner, ShopSidebar, SponsoredProductCard, ReferralBanner, interleaveAds } from '@/components/ShopAds'
 
@@ -209,6 +210,7 @@ export default function Marketplace() {
         eligibleSubtotal > 0
 
     const addToCart = (product: any, itemPeriod: string) => {
+        if (priceFor(product, itemPeriod) === null) return
         const pid = product.id || product.name
         const key = cartKey(pid, itemPeriod)
         setCartItems((prev) => ({
@@ -563,7 +565,8 @@ export default function Marketplace() {
                 const updated: string[] = []
                 Object.entries(prev).forEach(([key, item]) => {
                     const freshProduct = freshById[item.product.id]
-                    if (!freshProduct) {
+                    // Gone, or no longer sold for this period: checkout would reject it
+                    if (!freshProduct || priceFor(freshProduct, item.itemPeriod) === null) {
                         removed.push(item.product.name)
                         return
                     }
@@ -1218,15 +1221,18 @@ export default function Marketplace() {
                             )
                         }
                         const p = item;
-                        const price = (p as any)[cfg.field]
+                        // null = not sold for this period (shown as unavailable, never ₦0)
+                        const price = priceFor(p, period)
                         const monthly = p.price_1m
-                        const discount = discountPct(monthly, price, cfg.months)
+                        const discount = savingsVs(p, period)
                         const isOutright = p.billing_type === "one_time"
                         const pid = p.id || p.name
                         const key = cartKey(pid, period)
                         const inCart = !!cartItems[key]
                         const cartQty = cartItems[key]?.qty ?? 0
                         const inStock = isInStock(p.stock_status)
+                        const otherPeriods = availablePeriods(p).map((k) => PERIODS[k].name)
+                        const buyable = inStock && price !== null
 
                         return (
                             <div
@@ -1352,6 +1358,24 @@ export default function Marketplace() {
                                 >
                                     <div style={S.bottomBlock}>
                                         <div style={S.priceBlock}>
+                                            {price === null ? (
+                                                <>
+                                                    <div
+                                                        style={{
+                                                            fontSize: isMobile ? 14 : 15,
+                                                            fontWeight: 600,
+                                                            color: "var(--bs-text-secondary)",
+                                                        }}
+                                                    >
+                                                        Not available {cfg.name.toLowerCase()}
+                                                    </div>
+                                                    <div style={{ fontSize: 11, color: "var(--bs-text-muted)" }}>
+                                                        {otherPeriods.length
+                                                            ? `Available: ${otherPeriods.join(", ")}`
+                                                            : "Currently unavailable"}
+                                                    </div>
+                                                </>
+                                            ) : (
                                             <div
                                                 style={{
                                                     ...S.price,
@@ -1370,7 +1394,8 @@ export default function Marketplace() {
                                                     </span>
                                                 )}
                                             </div>
-                                            {!isOutright && discount && (
+                                            )}
+                                            {!isOutright && discount !== null && (
                                                 <div style={S.discountRow}>
                                                     <span style={S.strike}>
                                                         {format(
@@ -1387,7 +1412,7 @@ export default function Marketplace() {
                                                     </span>
                                                 </div>
                                             )}
-                                            {isOutright && (
+                                            {isOutright && price !== null && (
                                                 <div
                                                     style={{
                                                         fontSize: 11,
@@ -1423,19 +1448,19 @@ export default function Marketplace() {
                                         <button
                                             className="cart-add-btn"
                                             onClick={() => addToCart(p, period)}
-                                            disabled={!inStock}
+                                            disabled={!buyable}
                                             style={{
                                                 width: "100%",
                                                 height: 40,
                                                 borderRadius: 10,
-                                                background: inStock
+                                                background: buyable
                                                     ? "#7C5CFF"
                                                     : "var(--bs-bg-muted)",
                                                 border: "none",
-                                                color: inStock
+                                                color: buyable
                                                     ? "#fff"
                                                     : "var(--bs-text-faint)",
-                                                cursor: inStock
+                                                cursor: buyable
                                                     ? "pointer"
                                                     : "not-allowed",
                                                 fontSize: 13,
@@ -1448,9 +1473,11 @@ export default function Marketplace() {
                                             }}
                                         >
                                             <CartIcon />
-                                            {inStock
-                                                ? `Add to cart · ${cfg.name}`
-                                                : "Out of stock"}
+                                            {!inStock
+                                                ? "Out of stock"
+                                                : price === null
+                                                    ? `Not available · ${cfg.name}`
+                                                    : `Add to cart · ${cfg.name}`}
                                         </button>
                                     ) : (
                                         <div
@@ -2081,7 +2108,8 @@ const cardStyle = (isMobile: boolean) => ({
 })
 
 const S: any = {
-    stickyControls: { position: "sticky", top: 0, zIndex: 50, background: "var(--bs-bg-base)", paddingTop: 16, paddingBottom: 16, marginBottom: 20, borderBottom: "1px solid var(--bs-border-default)" },
+    // Sits under the 64px sticky Navbar; at top:0 it covered the header on scroll
+    stickyControls: { position: "sticky", top: 64, zIndex: 50, background: "var(--bs-bg-base)", paddingTop: 16, paddingBottom: 16, marginBottom: 20, borderBottom: "1px solid var(--bs-border-default)" },
     topBarRow: { display: "flex", justifyContent: "space-between", alignItems: "center", gap: 16, flexWrap: "wrap" },
     topLeftGroup: { display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" },
     topRightGroup: { display: "flex", gap: 8, alignItems: "center" },

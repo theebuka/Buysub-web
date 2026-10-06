@@ -293,6 +293,15 @@ const PRODUCTS = [
     billing_type: 'one_time', billing_period: null,
     tags: null, domain: 'steampowered.com',
     stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 6 },
+  // In stock but no price for any period, like 36 live products in Oct 2026.
+  // It used to render ₦0 with a working Add to cart; it must read unavailable.
+  { id: 'p-applemusic', name: 'Apple Music Individual', slug: 'apple-music-individual',
+    category: 'music streaming', description: 'Over 100 million songs, ad-free.',
+    short_description: '100M songs, ad-free', category_tagline: 'Music',
+    price_1m: null, price_3m: null, price_6m: null, price_1y: null,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'apple.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 6 },
   // ── Rows 7-10 exist to make SponsoredProductCard reachable ─────────────
   // Marketplace calls interleaveAds(visible, sponsoredCards, 8), which inserts
   // an ad only after every 8th product. At six rows the modulo never fires, so
