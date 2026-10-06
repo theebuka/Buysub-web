@@ -4,8 +4,9 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
 import { toast } from "sonner"
 import { useTheme as useThemeController } from '@/lib/theme'
 import { getAccessToken } from '@/lib/session'
+import { API_BASE } from '@/lib/config'
 
-const API = process.env.NEXT_PUBLIC_API_URL!
+const API = API_BASE
 const LOGO_DEV_TOKEN = 'pk_S77F38yQR6WQWErhPEEp1w'
 const ALL_CATEGORIES = ['all','music streaming','video streaming','security','ai','productivity','sports','bundles','education','cloud','gaming','services','coins','social media','lifestyle']
 

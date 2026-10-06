@@ -13,10 +13,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { T } from '@/lib/constants'
 import { useTheme } from '@/lib/theme'
 import { createClient } from '@supabase/supabase-js'
+import { API_BASE } from '@/lib/config'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-const API = process.env.NEXT_PUBLIC_API_BASE || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'
+const API = API_BASE
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 

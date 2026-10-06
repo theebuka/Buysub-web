@@ -11,8 +11,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { API_BASE } from '@/lib/config'
 
-const API = process.env.NEXT_PUBLIC_API_BASE || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'
+const API = API_BASE
 const COOKIE_NAME = 'bs_ref'
 const COOKIE_DAYS = 30
 

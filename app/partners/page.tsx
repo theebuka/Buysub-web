@@ -11,11 +11,12 @@
 import { useState, useEffect, useRef } from 'react'
 import { T } from '@/lib/constants'
 import { useTheme } from '@/lib/theme'
+import { API_BASE } from '@/lib/config'
 
 /* ===============================================================
    CONFIG
 =============================================================== */
-const API = process.env.NEXT_PUBLIC_API_BASE || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'
+const API = API_BASE
 const STORAGE_KEY = 'partner_signup_draft_v4'
 const WHATSAPP_NUMBER = '2348107872916'
 const CURRENT_YEAR = new Date().getFullYear()

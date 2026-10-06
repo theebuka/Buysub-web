@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { API_BASE } from "@/lib/config";
 import { getProducts, getAutoApplyDiscounts as fetchAutoApplyAPI, validateDiscount as validateDiscountAPI, createWhatsAppOrder, createOrder, initPaystackPayment } from "@/lib/api";
 import { PERIODS, TAB_ORDER, FX, CART_STORAGE_KEY, LOGO_DEV_TOKEN, WHATSAPP_NUMBER, Product, CartItem, AppliedDiscount, DiscountRecord, format, discountPct, isInStock, hasCategory, getCategoryList, cartKey, isValidEmail, norm, isItemEligible, getEligibleSubtotal, calcDiscountAmount } from "@/lib/constants";
 import { useReferral } from '@/lib/useReferral'
@@ -154,7 +155,7 @@ export default function Marketplace() {
         }))
     
         // Fetch full profile for name + phone
-        fetch(`${process.env.NEXT_PUBLIC_API_BASE || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'}/v2/me`, {
+        fetch(`${API_BASE}/v2/me`, {
         headers: { Authorization: `Bearer ${((): string => {
             try {
             for (const key of Object.keys(localStorage)) {

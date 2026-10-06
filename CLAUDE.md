@@ -68,7 +68,7 @@ Referrals: `lib/useReferral.ts` reads `?ref=` (URL wins over cookie), validates 
 
 ### Pricing and discounts
 
-`lib/constants.ts` holds the shared domain model: the `PERIODS` map (period key → `{ months, field, label, name }`, where `field` is the product column `price_3m` / `price_6m` / `price_1y`), the `TAB_ORDER` category list, static `FX` rates (NGN base — note `app/admin/receipt/page.tsx` carries its own divergent `FX` table), and the `Product` / `CartItem` / `DiscountRecord` types.
+`lib/constants.ts` holds the shared domain model: the `PERIODS` map (period key → `{ months, field, label, name }`, where `field` is the product column `price_3m` / `price_6m` / `price_1y`), the `TAB_ORDER` category list, static `FX` rates (NGN base; the only FX table — `app/admin/receipt/page.tsx` imports it, and uses the order's stored `fx_rate` for receipts of existing orders), and the `Product` / `CartItem` / `DiscountRecord` types.
 
 `isItemEligible` / `getEligibleSubtotal` / `calcDiscountAmount` in `lib/constants.ts` are an intentional **frontend mirror of backend discount logic** (include/exclude by product and category, percentage vs fixed, `max_discount_ngn` cap). If discount rules change server-side, these must be updated in lockstep or the displayed total will disagree with the charged total.
 
@@ -93,7 +93,7 @@ Client-only values (localStorage, `window`) must never be read during render. Th
 
 ## Gotchas
 
-- **Two env var names for the same API base.** `lib/api.ts`, `app/admin/page.tsx`, and `app/admin/receipt/page.tsx` read `NEXT_PUBLIC_API_URL`; `app/dashboard`, `app/login`, `app/partners/*`, `components/Marketplace.tsx`, `components/ShopAds.tsx`, and `lib/useReferral.ts` read `NEXT_PUBLIC_API_BASE`. Only `NEXT_PUBLIC_API_URL` is defined in `.env.example` / `.env.local`, so the `API_BASE` group silently falls back to the hardcoded production Workers URL — including in local dev. `app/admin/page.tsx` uses `process.env.NEXT_PUBLIC_API_URL!` with no fallback, so it breaks outright if that var is missing.
+- **Two env var names for the same API base**, resolved in one place: `lib/config.ts` exports `API_BASE` (`NEXT_PUBLIC_API_BASE`, else `NEXT_PUBLIC_API_URL`, else the live Workers URL). Every file imports it; never read either variable directly. Before this, half the files read only `NEXT_PUBLIC_API_BASE` and fell back to production, so a local run with only `NEXT_PUBLIC_API_URL` set sent login, dashboard, partner, ads and referral traffic to the live API.
 - **Hardcoded production URLs and tokens.** The Workers API URL, the WhatsApp number `2348107872916`, and the logo.dev publishable token are literal strings duplicated across several files. Changing any of them means grepping, not editing one constant.
 - **Duplicated helpers.** `fmt`/`fmtDate`/`statusColor`, the theme token objects, the session-reading function, and the FX table each exist in multiple copies. When fixing a bug in one, check whether the same code exists in the sibling surfaces.
 
@@ -109,4 +109,4 @@ NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY
 NEXT_PUBLIC_SITE_URL
 ```
 
-Add `NEXT_PUBLIC_API_BASE` with the same value as `NEXT_PUBLIC_API_URL` if you want the second group of files to hit a non-production API.
+`NEXT_PUBLIC_API_URL` alone is enough; `NEXT_PUBLIC_API_BASE`, if set, takes precedence (see `lib/config.ts`).

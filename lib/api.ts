@@ -2,7 +2,7 @@
 // BUYSUB — Frontend API Client
 // ============================================================
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'https://buysub-api-v2.ebuka-nwaju.workers.dev';
+import { API_BASE } from './config';
 
 interface ApiResponse<T = any> {
   ok: boolean;

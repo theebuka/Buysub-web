@@ -6,16 +6,10 @@ import Navbar from "./Navbar"
 import Footer from "./Footer"
 import { toast } from "sonner"
 import { syncThemeToRoute } from "@/lib/theme"
+import { API_BASE } from "@/lib/config"
 
-// Both names are read on purpose. The app has two env vars for the same base
-// and they split by file: NEXT_PUBLIC_API_URL is used by lib/api.ts and the two
-// admin surfaces, NEXT_PUBLIC_API_BASE by everything else. API_BASE comes first
-// because that is what the fixture workflow sets; API_URL is the fallback
-// because it is the only one declared in .env.example. The literal stays last,
-// so deployed behaviour is unchanged. The split itself is still Deferred.
-const API = process.env.NEXT_PUBLIC_API_BASE
-  || process.env.NEXT_PUBLIC_API_URL
-  || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'
+// Precedence between the two env var names lives in lib/config.ts.
+const API = API_BASE
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
     const [modal, setModal] = useState<any>(null)
