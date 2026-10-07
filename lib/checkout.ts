@@ -17,6 +17,7 @@
 import { useEffect, useSyncExternalStore } from 'react'
 import {
   PERIODS, format, getEligibleSubtotal, calcDiscountAmount, isValidEmail,
+  normalizeVolumeTiers, volumeDiscountNGN,
   type AppliedDiscount,
 } from './constants'
 import {
@@ -92,6 +93,9 @@ export function orderItems(cart: Cart) {
       duration_months: cfg.months,
       unit_price_ngn: (product as any)[cfg.field] || 0,
       quantity: qty,
+      // For /v2/discount/validate's eligible subtotal. Orders ignore it: the
+      // API works the volume discount out from the product itself.
+      volume_discount_ngn: volumeDiscountNGN((product as any)[cfg.field] || 0, qty, normalizeVolumeTiers(product.volume_tiers)),
     }
   })
 }
@@ -100,6 +104,9 @@ export function orderItems(cart: Cart) {
 export type Totals = {
   count: number
   subtotal: number
+  /** Taken off by volume tiers (lib/constants volumeDiscountNGN). */
+  volume: number
+  /** Taken off by the promo code, after the volume discount. */
   discount: number
   total: number
   /** The active promo applies to only part of the cart. */
@@ -114,14 +121,19 @@ export function computeTotals(cart: Cart, fxRate: number, promoState: PromoState
     const price = (product as any)[PERIODS[itemPeriod].field]
     return s + (price ? price * fxRate * qty : 0)
   }, 0)
+  const volume = lines.reduce((s, { product, qty, itemPeriod }) => {
+    const price = (product as any)[PERIODS[itemPeriod].field]
+    return s + (price ? volumeDiscountNGN(price, qty, normalizeVolumeTiers(product.volume_tiers)) * fxRate : 0)
+  }, 0)
   const eligible = active ? getEligibleSubtotal(cart, active, fxRate) : 0
   const discount = active ? calcDiscountAmount(eligible, active, fxRate) : 0
   return {
     count: lines.reduce((n, l) => n + l.qty, 0),
     subtotal,
+    volume,
     discount,
-    total: Math.max(0, subtotal - discount),
-    partial: !!active && eligible < subtotal && eligible > 0,
+    total: Math.max(0, subtotal - volume - discount),
+    partial: !!active && eligible < subtotal - volume && eligible > 0,
     active,
   }
 }

@@ -330,7 +330,9 @@ const PRODUCTS = [
       { q: 'Can I change my profile name?', a: 'Yes. Your profile is yours to rename and lock with a PIN.' },
       { q: 'What happens when my plan ends?', a: 'Access stops at the end of the period. Renew from your account to keep watching.' },
     ],
-    seo_title: 'Netflix Premium in Naira · BuySub', seo_description: 'Netflix Premium 4K, paid in Naira.' },
+    seo_title: 'Netflix Premium in Naira · BuySub', seo_description: 'Netflix Premium 4K, paid in Naira.',
+    // Volume discounts (migration 19).
+    volume_tiers: [{ min_qty: 3, percent: 5 }, { min_qty: 5, percent: 10 }] },
   { id: 'p-spotify', name: 'Spotify Duo', slug: 'spotify-duo',
     category: 'music streaming', description: 'Two premium accounts.',
     short_description: 'Two premium accounts', category_tagline: 'Music',
@@ -365,7 +367,10 @@ const PRODUCTS = [
   // One-time, and the only row with a period price missing — the card has to
   // cope with a null where PERIODS expects a number.
   { id: 'p-steam', name: 'Steam Wallet Top-up', slug: 'steam-wallet',
-    category: 'gaming, coins', description: 'Credit applied to your Steam wallet.',
+    category: 'gaming, coins',
+    description: 'Credit applied straight to your Steam wallet, in your account’s own currency.\n\nUse it on games, DLC, the Community Market or gifts. Credit doesn’t expire.',
+    // "How it works" as paragraphs (one entry): the prose form.
+    how_it_works: ['After payment we top up the Steam account you give us at checkout, usually within the hour. You don’t share your password: we only need the account name.\n\nThe credit shows in your Steam wallet as soon as it lands, and we send a WhatsApp message with the receipt.'],
     short_description: 'Credit for your Steam wallet', category_tagline: 'Gaming',
     price_1m: null, price_3m: 15000, price_6m: null, price_1y: null,
     billing_type: 'one_time', billing_period: null,

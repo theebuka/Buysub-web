@@ -1,8 +1,8 @@
 'use client'
 
 // The admin console frame. Each section is its own route under /admin; this
-// layout gates on a staff role and renders the shell. /admin/receipt sits
-// outside the (console) group and keeps its own page.
+// layout gates on a staff role and renders the shell. The receipt generator
+// is one of those sections.
 
 import { Suspense } from 'react'
 import { AdminShell } from '@/components/admin/AdminShell'

@@ -76,20 +76,17 @@ export default function ProductPage({ slug, initial }: { slug: string; initial: 
 
   return (
     <div className={s.page} style={{ paddingBottom: 'var(--bs-space-12)' }}>
-      <Breadcrumbs items={[
+      <div className={s.crumbsGap}><Breadcrumbs items={[
         { label: 'Shop', href: '/shop' },
         ...(cat ? [{ label: categoryLabel(cat), href: categoryHref(cat) }] : []),
         { label: product.name },
-      ]} />
+      ]} /></div>
       <div className={s.productLayout}>
         <div className={s.productMain}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-3)' }}>
-            <ProductHero product={product} />
-            <div style={{ display: 'flex', gap: 'var(--bs-space-1)', flexWrap: 'wrap' }}>
-              <ShareButton product={product} />
-              <SaveButton product={product} variant="button" />
-            </div>
-          </div>
+          <ProductHero product={product} actions={<>
+            <ShareButton product={product} />
+            <SaveButton product={product} variant="button" />
+          </>} />
           <Features product={product} />
           <BoughtTogether product={product} />
           <Description product={product} />

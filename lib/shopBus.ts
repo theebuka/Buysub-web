@@ -30,5 +30,5 @@ function send(name: string, detail: any, fallbackUrl: string) {
 export const shop = {
   openSearch: () => window.dispatchEvent(new Event(SHOP_EVENTS.openSearch)),
   search: (q: string) => send(SHOP_EVENTS.search, { q }, `/shop?q=${encodeURIComponent(q)}`),
-  category: (category: string) => send(SHOP_EVENTS.category, { category }, `/shop/c/${encodeURIComponent(category)}`),
+  category: (category: string) => send(SHOP_EVENTS.category, { category }, category === 'all' ? '/shop' : `/shop/c/${encodeURIComponent(category)}`),
 }

@@ -10,6 +10,7 @@ import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { Drawer, Icon, IconButton, Kbd, type IconName } from '@/components/ui'
 import { useTheme } from '@/lib/theme'
 import { signOut } from '@/lib/useSession'
+import { LogoFull } from '@/components/brand/Logo'
 import { AdminPalette } from './AdminPalette'
 import s from './admin.module.css'
 
@@ -30,7 +31,7 @@ function SideNav({ sections, groups, pathname, email, role, onNavigate }: {
   return (
     <>
       <div className={s.brand}>
-        <Link href="/admin" className={s.brandName} style={{ textDecoration: 'none' }} onClick={onNavigate}>BuySub</Link>
+        <Link href="/admin" className={s.brandName} style={{ textDecoration: 'none' }} onClick={onNavigate}><LogoFull height={24} /></Link>
         <span className={s.brandTag}>Admin</span>
       </div>
       <nav className={s.navScroll} aria-label="Admin sections">
@@ -49,7 +50,6 @@ function SideNav({ sections, groups, pathname, email, role, onNavigate }: {
         ))}
       </nav>
       <div className={s.sideFoot}>
-        <Link href="/admin/receipt" className={s.navLink} onClick={onNavigate}><Icon name="plus" size={16} />New receipt</Link>
         <Link href="/shop" className={s.navLink} onClick={onNavigate}><Icon name="external" size={16} />View store</Link>
         <button type="button" className={s.navLink} onClick={toggle} style={{ border: 'none', background: 'transparent', cursor: 'pointer', fontFamily: 'inherit', width: '100%' }}>
           <Icon name={isDark ? 'sun' : 'moon'} size={16} />{isDark ? 'Light theme' : 'Dark theme'}

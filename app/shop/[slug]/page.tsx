@@ -21,7 +21,9 @@ const load = cache(async (slug: string): Promise<Product | null | 'missing'> => 
   const timer = setTimeout(() => ctrl.abort(), 1500)
   try {
     const res = await Promise.race([
-      fetch(`${API_BASE}/v2/products/${encodeURIComponent(slug)}`, { signal: ctrl.signal }),
+      // no-store: Next caches fetch() forever by default, which served stale
+      // prices and product fields until the next deploy.
+      fetch(`${API_BASE}/v2/products/${encodeURIComponent(slug)}`, { signal: ctrl.signal, cache: 'no-store' }),
       new Promise<never>((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500)),
     ])
     if (res.status === 404) return 'missing'

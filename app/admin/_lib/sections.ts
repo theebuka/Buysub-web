@@ -13,6 +13,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   S('Commerce', 'orders', 'Orders', 'receipt', 'orders_pending_manual'),
   S('Commerce', 'rejected', 'Rejected orders', 'alert', 'orders_rejected_pending'),
   S('Commerce', 'discounts', 'Discounts', 'tag'),
+  S('Commerce', 'receipt', 'New receipt', 'file'),
   S('Catalog', 'products', 'Products', 'store'),
   S('Catalog', 'reviews', 'Reviews', 'star'),
   S('Customers', 'customers', 'Customers', 'users'),

@@ -66,12 +66,16 @@ export interface Product {
   faqs?: { q: string; a: string }[] | null;
   seo_title?: string | null;
   seo_description?: string | null;
+  /** Quantity tiers, e.g. [{ min_qty: 3, percent: 5 }] (migration 19). */
+  volume_tiers?: VolumeTier[] | null;
   // From the API's product_public_stats (migration 11). sold_count is null
   // below the admin's "show sold from" threshold; absent before the migration.
   sold_count?: number | null;
   rating_avg?: number | null;
   rating_count?: number;
 }
+
+export interface VolumeTier { min_qty: number; percent: number }
 
 export interface CartItem {
   product: Product;
@@ -155,14 +159,53 @@ export const isItemEligible = (item: CartItem, discount: DiscountRecord | Applie
   return true;
 };
 
+// What's left of each eligible line after its volume discount, so a code
+// never discounts money a volume tier already took off.
 export const getEligibleSubtotal = (
   cartItems: Record<string, CartItem>, discount: DiscountRecord | AppliedDiscount, fxRate: number
 ): number =>
   Object.values(cartItems).reduce((sum, item) => {
     if (!isItemEligible(item, discount)) return sum;
     const price = (item.product as any)[PERIODS[item.itemPeriod]?.field];
-    return sum + (price ? price * fxRate * item.qty : 0);
+    if (!price) return sum;
+    const lineNGN = price * item.qty;
+    return sum + (lineNGN - volumeDiscountNGN(price, item.qty, normalizeVolumeTiers(item.product.volume_tiers))) * fxRate;
   }, 0);
+
+// ── Volume discounts (mirror of buysub-api-deploy/src/shared/discount.ts) ──
+// Buy min_qty or more of one product on one line and that line gets percent
+// off. The highest tier reached wins. Change one side, change both.
+export const MAX_VOLUME_TIERS = 5;
+export const MAX_VOLUME_PERCENT = 90;
+
+export const normalizeVolumeTiers = (raw: unknown): VolumeTier[] => {
+  if (!Array.isArray(raw)) return [];
+  const byQty = new Map<number, number>();
+  for (const t of raw) {
+    const q = Math.floor(Number((t as any)?.min_qty));
+    const pct = Math.round(Number((t as any)?.percent) * 100) / 100;
+    if (!Number.isFinite(q) || q < 2 || q > 1000) continue;
+    if (!Number.isFinite(pct) || pct <= 0 || pct > MAX_VOLUME_PERCENT) continue;
+    byQty.set(q, pct);
+  }
+  return Array.from(byQty.entries())
+    .sort((a, b) => a[0] - b[0])
+    .slice(0, MAX_VOLUME_TIERS)
+    .map(([min_qty, percent]) => ({ min_qty, percent }));
+};
+
+export const volumeTierFor = (tiers: VolumeTier[], quantity: number): VolumeTier | null => {
+  let best: VolumeTier | null = null;
+  for (const t of tiers) if (quantity >= t.min_qty && (!best || t.percent > best.percent)) best = t;
+  return best;
+};
+
+/** NGN taken off one line (unit price x quantity) by its volume tier. */
+export const volumeDiscountNGN = (unitPriceNGN: number, quantity: number, tiers: VolumeTier[]): number => {
+  const tier = volumeTierFor(tiers, quantity);
+  if (!tier) return 0;
+  return Math.round(unitPriceNGN * quantity * (tier.percent / 100) * 100) / 100;
+};
 
 export const calcDiscountAmount = (
   eligibleSubtotal: number, discount: DiscountRecord | AppliedDiscount, fxRate: number
@@ -197,14 +240,19 @@ export const calcDiscountAmount = (
 export const CSS_VARS = `
   :root {
     /* ── Colour ─────────────────────────────────────────────── */
-    --bs-bg-base: #050507;
-    --bs-bg-card: #0B0B0F;
-    --bs-bg-elevated: #111116;
-    --bs-bg-input: #0E0E13;
-    --bs-bg-muted: #1A1A22;
-    --bs-bg-subtle: #16161E;
-    --bs-text-primary: #F0F0F5;
-    --bs-text-secondary: #A0A0B0;
+    /* Neutral greys, no blue cast, and cards lifted clearly off the page.
+       The earlier blue-grey set (#050507 page, #0B0B0F cards, #F0F0F5 text)
+       read as dull next to G2G's #0A0A0A / #171717 / #FAFAFA: the tint pulls
+       white toward grey and the surfaces barely separated. Accent values
+       come from "BuySub brand assets": #5340FE brand, #7855FF tint. */
+    --bs-bg-base: #0A0A0A;
+    --bs-bg-card: #141414;
+    --bs-bg-elevated: #1A1A1A;
+    --bs-bg-input: #101010;
+    --bs-bg-muted: #262626;
+    --bs-bg-subtle: #1F1F1F;
+    --bs-text-primary: #FAFAFA;
+    --bs-text-secondary: #A3A3A3;
     /* Was #6E6E80, which failed AA on every dark surface it renders on:
        4.08 on bg-base, 3.93 on bg-card, 3.77 on bg-elevated, 3.47 on bg-muted.
        Phase 0 did this same correction for light (#8896a6 -> #66717F) and
@@ -222,57 +270,39 @@ export const CSS_VARS = `
        converging on spacing that exists and works rather than inventing it.
        Dark's 17.89 was the outlier. Do not push past ~5.0:1 here (#898997,
        gap 7.66); that is where three tiers start reading as two. */
-    --bs-text-muted: #838392;
-    --bs-text-faint: #4A4A58;
-    --bs-border-default: #1E1E28;
-    --bs-border-subtle: #16161E;
-    --bs-border-strong: #2A2A36;
-    --bs-accent: #7C5CFF;
-    --bs-accent-hover: #6B4EE6;
+    --bs-text-muted: #8F8F8F;
+    --bs-text-faint: #525252;
+    --bs-border-default: #2A2A2A;
+    --bs-border-subtle: #1F1F1F;
+    --bs-border-strong: #404040;
+    --bs-accent: #7855FF;
+    --bs-accent-hover: #4A36E8;
     --bs-success: #22C55E;
     --bs-error: #EF4444;
     --bs-warning: #F59E0B;
+    /* Rating stars only. Not a status colour. */
+    --bs-star: #FFB400;
 
     /* ── rgb companions, derived from the hex above ─────────── */
     /* For rgba() tints: rgba(var(--bs-accent-rgb), 0.12)          */
-    --bs-accent-rgb: 124, 92, 255;
+    --bs-accent-rgb: 120, 85, 255;
     --bs-success-rgb: 34, 197, 94;
     --bs-error-rgb: 239, 68, 68;
     --bs-warning-rgb: 245, 158, 11;
-    --bs-text-muted-rgb: 131, 131, 146;
+    --bs-text-muted-rgb: 143, 143, 143;
     /* Legacy alias, still read by app/admin/page.tsx. Prefer
        --bs-text-muted-rgb in new code. */
     --bs-muted-rgb: var(--bs-text-muted-rgb);
 
     /* Accent as TEXT, on a page or card background only.
        Text sitting on an accent FILL stays #fff — see --bs-accent-fill. */
-    --bs-accent-on-surface: #7C5CFF;
+    --bs-accent-on-surface: #9580FF;
 
-    /* Accent as a FILL THAT CARRIES TEXT. The mirror of the token above:
-       -on-surface is the accent adjusted to be readable AS text, this is the
-       accent adjusted to be readable UNDER text.
-
-       #fff on plain --bs-accent measures 4.35:1. AA needs 4.5 for body text,
-       and none of the 28 accent-filled controls in this app qualify for the
-       3:1 large-text allowance — the largest label is 14px, where the
-       threshold is 24px (or 18.66px bold). So every one of them failed.
-
-       #7756FF is the minimum darkening that clears the floor with headroom:
-       4.61:1, hue 251.8 -> 251.7, saturation unchanged at 100%, purely 1.2
-       points of HSL lightness. dE2000 from #7C5CFF is 1.77, below the ~2.3
-       just-noticeable-difference threshold, so the brand colour reads as
-       unchanged. #7958FF would also pass but only by 0.02, and any later
-       surface change erases that; #704DFF (5.0:1) is dE 4.32 and visibly off.
-
-       ONLY for fills with text on them. A fill with no text — a chart bar, a
-       progress meter, a dot, a swatch — keeps --bs-accent, so the brand
-       colour is untouched wherever it is seen on its own. Borders, tints and
-       gradient stops also keep --bs-accent.
-
-       Deliberately absent from [data-theme="light"]: it is the same value in
-       both themes, like --bs-accent itself, and #fff sits on it in both.
-       --bs-accent-hover already measures 5.44:1 and needs no sibling. */
-    --bs-accent-fill: #7756FF;
+    /* Accent as a FILL THAT CARRIES TEXT: buttons, the selected segment,
+       count pills. The brand violet from the brand assets, #5340FE, in both
+       themes; #fff on it is 5.95:1. --bs-accent (the tint, #7855FF in dark)
+       is for fills with no text on them: meters, dots, rings, tints. */
+    --bs-accent-fill: #5340FE;
 
     /* ── Status badges ──────────────────────────────────────────
        OPAQUE fills, not rgba() tints. A badge renders on three
@@ -294,15 +324,15 @@ export const CSS_VARS = `
        rejection, reversible via /v2/admin/orders/:id/undo-reject.
        It is action-needed, so it takes the warning hue. Terminal
        rejected and cancelled use -error. Do not merge them. */
-    --bs-badge-success-bg: #0E2118;
+    --bs-badge-success-bg: #16291D;
     --bs-badge-success-fg: #22C55E;
-    --bs-badge-warning-bg: #271D0F;
+    --bs-badge-warning-bg: #2F2513;
     --bs-badge-warning-fg: #F59E0B;
-    --bs-badge-error-bg: #261215;
+    --bs-badge-error-bg: #2E1B1B;
     --bs-badge-error-fg: #F04E4E;
-    --bs-badge-neutral-bg: #17171D;
-    --bs-badge-neutral-fg: #878796;
-    --bs-badge-pending-bg: #1E170F;
+    --bs-badge-neutral-bg: #1F1F1F;
+    --bs-badge-neutral-fg: #A3A3A3;
+    --bs-badge-pending-bg: #261F13;
     --bs-badge-pending-fg: #F59E0B;
 
     /* ── Text on a tint of its own colour ───────────────────────
@@ -377,12 +407,12 @@ export const CSS_VARS = `
     --bs-control-lg: 48px;  /* customer inputs and buttons (44px is the touch floor) */
     --bs-control-xl: 52px;  /* primary CTA */
 
-    /* ── Radius: 6 steps, mirroring Marketplace ─────────────── */
+    /* ── Radius: 6 steps ──────────────────────────────────────── */
     --bs-radius-sm: 6px;    /* badges, tags, chips */
     --bs-radius-md: 10px;   /* inputs, buttons, controls */
-    --bs-radius-lg: 14px;   /* panels, logo tiles, line items */
-    --bs-radius-xl: 20px;   /* cards and modals, mobile card scale */
-    --bs-radius-2xl: 28px;  /* desktop card scale */
+    --bs-radius-lg: 12px;   /* panels, logo tiles, line items */
+    --bs-radius-xl: 16px;   /* cards and modals, mobile card scale */
+    --bs-radius-2xl: 20px;  /* desktop card scale */
     --bs-radius-full: 999px;
 
     /* ── Chrome ─────────────────────────────────────────────── */
@@ -401,8 +431,8 @@ export const CSS_VARS = `
     --bs-font-sans: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
     /* ── Scrollbar ──────────────────────────────────────────── */
-    --bs-scroll-thumb: #2A2A33;
-    --bs-scroll-thumb-hover: #3A3A46;
+    --bs-scroll-thumb: #333333;
+    --bs-scroll-thumb-hover: #474747;
 
     /* ── Elevation ──────────────────────────────────────────── */
     /* Dark separates by surface + border, not shadow. Reach for elev-2 and
@@ -428,28 +458,29 @@ export const CSS_VARS = `
      --bs-bg-base, both failing AA. --bs-text-faint is for decorative and
      disabled use only, never for text a user has to read. */
   [data-theme="light"] {
-    --bs-bg-base: #F8F9FB;
+    --bs-bg-base: #F5F5F5;
     --bs-bg-card: #FFFFFF;
-    --bs-bg-elevated: #F1F3F5;
+    --bs-bg-elevated: #F5F5F5;
     --bs-bg-input: #FFFFFF;
-    --bs-bg-muted: #E8EAED;
-    --bs-bg-subtle: #EEF0F3;
-    --bs-text-primary: #1A1A2E;
-    --bs-text-secondary: #4A5568;
-    --bs-text-muted: #66717F;
-    --bs-text-faint: #7F8896;
-    --bs-border-default: #E2E5E9;
-    --bs-border-subtle: #EEF0F3;
-    --bs-border-strong: #D1D1D6;
-    --bs-accent: #7C5CFF;
-    --bs-accent-hover: #6B4EE6;
+    --bs-bg-muted: #E5E5E5;
+    --bs-bg-subtle: #F0F0F0;
+    --bs-text-primary: #0A0A0A;
+    --bs-text-secondary: #525252;
+    --bs-text-muted: #666666;
+    --bs-text-faint: #A3A3A3;
+    --bs-border-default: #E5E5E5;
+    --bs-border-subtle: #F0F0F0;
+    --bs-border-strong: #D4D4D4;
+    --bs-accent: #5340FE;
+    --bs-accent-hover: #4A36E8;
     --bs-success: #059669;
     --bs-error: #DC2626;
     --bs-warning: #D97706;
+    --bs-star: #F5A300;
 
-    /* #7C5CFF as text on white is 4.0:1 and fails AA. #5B3FD4 is 6.76:1 on
-       card, 5.61:1 on the darkest light surface. Fills stay #7C5CFF. */
-    --bs-accent-on-surface: #5B3FD4;
+    /* The brand violet is already 5.95:1 on white; text uses a step deeper
+       (7.04:1) so links read as text rather than as buttons. */
+    --bs-accent-on-surface: #4A36E8;
 
     /* Status badges. Same construction as :root — the 0.12 tint of the
        light state token flattened against #FFFFFF (0.08 for -pending).
@@ -463,8 +494,8 @@ export const CSS_VARS = `
     --bs-badge-warning-fg: #9A5404;
     --bs-badge-error-bg: #FBE5E5;
     --bs-badge-error-fg: #BF2121;
-    --bs-badge-neutral-bg: #EDEEF0;
-    --bs-badge-neutral-fg: #5C6672;
+    --bs-badge-neutral-bg: #F0F0F0;
+    --bs-badge-neutral-fg: #525252;
     --bs-badge-pending-bg: #FCF4EB;
     --bs-badge-pending-fg: #9E5704;
 
@@ -474,17 +505,18 @@ export const CSS_VARS = `
     --bs-success-rgb: 5, 150, 105;
     --bs-error-rgb: 220, 38, 38;
     --bs-warning-rgb: 217, 119, 6;
-    --bs-text-muted-rgb: 102, 113, 127;
+    --bs-text-muted-rgb: 102, 102, 102;
+    --bs-accent-rgb: 83, 64, 254;
 
-    --bs-scroll-thumb: #CDD1D7;
-    --bs-scroll-thumb-hover: #AEB4BC;
+    --bs-scroll-thumb: #D4D4D4;
+    --bs-scroll-thumb-hover: #A3A3A3;
 
     --bs-elev-1: 0 1px 3px rgba(0,0,0,0.06);
     --bs-elev-2: 0 4px 12px rgba(0,0,0,0.08);
     --bs-elev-3: 0 16px 40px rgba(0,0,0,0.12);
 
-    /* --bs-brand-slab-* and --bs-accent-rgb are deliberately absent here.
-       They must stay dark/identical under light — see the note in :root. */
+    /* --bs-brand-slab-* are deliberately absent here. They must stay dark
+       under light — see the note in :root. */
   }
 
   @media (min-width: 768px)  { :root { --bs-page-gutter: 24px; } }

@@ -30,19 +30,19 @@ import CartDrawer from '@/components/shop/CartDrawer'
 import { useSession, loadPartner, loadWallet, signOut, type SessionState } from '@/lib/useSession'
 import { useProducts } from '@/lib/useProducts'
 import { useTheme, isThemeableRoute } from '@/lib/theme'
-import { getCategoryList, isInStock, TAB_ORDER, format, type Product } from '@/lib/constants'
+import { getCategoryList, isInStock, TAB_ORDER, PERIODS, format, type Product } from '@/lib/constants'
 import { fromPrice } from '@/lib/pricing'
 import { fmtNGN, initials, categoryLabel } from '@/lib/format'
 import { ROUTES, EXTERNAL, isStaff } from '@/lib/routes'
 import { shop, SHOP_EVENTS } from '@/lib/shopBus'
+import { LogoFull } from '@/components/brand/Logo'
 import css from './nav.module.css'
 
 // ── Logo ─────────────────────────────────────────────────────
 export function Logo() {
   return (
     <Link href={ROUTES.home} className={css.logo} aria-label="BuySub home">
-      <span className={css.logoMark} aria-hidden="true">B</span>
-      <span>BuySub</span>
+      <LogoFull height={30} title="BuySub" />
     </Link>
   )
 }
@@ -79,17 +79,45 @@ function useCategories(products: Product[]) {
 }
 
 // ── Browse mega menu ─────────────────────────────────────────
+// Categories on the left; the hovered category's products on the right as
+// logo, name and "From" price; the best sellers across the shop along the
+// bottom, so a category with two products doesn't leave the panel empty.
+function MegaProduct({ p, close }: { p: Product; close: () => void }) {
+  const fp = fromPrice(p)
+  const stock = isInStock(p.stock_status)
+  return (
+    <Link href={productHref(p)} data-menu-item className={`${css.megaProduct} ${!stock || !fp ? css.megaDim : ''}`} onClick={close}>
+      <ProductLogo product={p} size={40} radius="var(--bs-radius-md)" />
+      <span className={css.megaProductText}>
+        <span className={css.megaProductName}>{p.name}</span>
+        <span className={css.megaProductPrice}>
+          {!stock ? 'Out of stock'
+            : fp ? <>From <b>{format(fp.price, 'NGN')}</b>{p.billing_type === 'one_time' ? '' : ` ${PERIODS[fp.period]?.label ?? ''}`}</>
+            : 'Currently unavailable'}
+        </span>
+      </span>
+    </Link>
+  )
+}
+
 function BrowsePanel({ close }: { close: () => void }) {
   const { products, loading } = useProducts()
   const cats = useCategories(products)
   const [active, setActive] = useState<string | null>(null)
   const current = cats.find(c => c.key === active) ?? cats[0]
+  const popular = useMemo(() => products
+    .filter(p => isInStock(p.stock_status) && fromPrice(p))
+    .sort((a, b) => (b.sold_count ?? 0) - (a.sold_count ?? 0) || (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .slice(0, 4), [products])
+  // Hide best sellers already listed in the category above.
+  const shown = new Set((current?.products ?? []).slice(0, 6).map(p => p.id))
+  const extra = popular.filter(p => !shown.has(p.id))
 
   if (loading) {
     return (
       <div className={css.mega}>
         <div className={css.megaCats}>{Array.from({ length: 8 }, (_, i) => <Skeleton key={i} height={36} />)}</div>
-        <div className={css.megaBody}>{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} height={56} />)}</div>
+        <div className={css.megaBody}><Skeleton width={160} height={18} /><div className={css.megaGrid}>{Array.from({ length: 6 }, (_, i) => <Skeleton key={i} height={56} />)}</div></div>
       </div>
     )
   }
@@ -98,6 +126,13 @@ function BrowsePanel({ close }: { close: () => void }) {
   return (
     <div className={css.mega}>
       <ul className={css.megaCats} role="list">
+        <li>
+          <button type="button" data-menu-item className={css.megaCat} onClick={() => { close(); shop.category('all') }}>
+            <span>All products</span>
+            <span className={css.megaCount}>{products.length}</span>
+          </button>
+        </li>
+        <li className={css.megaSep} aria-hidden="true" />
         {cats.map(c => (
           <li key={c.key}>
             <button
@@ -118,28 +153,25 @@ function BrowsePanel({ close }: { close: () => void }) {
       {current && (
         <div className={css.megaBody}>
           <div className={css.megaHead}>
-            <span>{categoryLabel(current.key)}</span>
+            <span className={css.megaTitle}>
+              {categoryLabel(current.key)}
+              <span className={css.megaTitleCount}>{current.products.length} product{current.products.length === 1 ? '' : 's'}</span>
+            </span>
             <button type="button" className={css.megaAll} onClick={() => { close(); shop.category(current.key) }}>
               View all <Icon name="arrowRight" size={14} />
             </button>
           </div>
           <div className={css.megaGrid}>
-            {current.products.slice(0, 8).map(p => {
-              const fp = fromPrice(p)
-              const stock = isInStock(p.stock_status)
-              return (
-                <Link key={p.id} href={productHref(p)} data-menu-item className={css.megaProduct} onClick={close}>
-                  <ProductLogo product={p} size={40} radius="var(--bs-radius-md)" />
-                  <span className={css.megaProductText}>
-                    <span className={css.megaProductName}>{p.name}</span>
-                    <span className={css.megaProductPrice}>
-                      {!stock ? 'Out of stock' : fp ? <>From <b>{format(fp.price, 'NGN')}</b></> : 'Currently unavailable'}
-                    </span>
-                  </span>
-                </Link>
-              )
-            })}
+            {current.products.slice(0, 6).map(p => <MegaProduct key={p.id} p={p} close={close} />)}
           </div>
+          {extra.length > 0 && (
+            <div className={css.megaPopular}>
+              <span className={css.megaPopularLabel}>Best sellers</span>
+              <div className={css.megaGrid}>
+                {extra.map(p => <MegaProduct key={p.id} p={p} close={close} />)}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

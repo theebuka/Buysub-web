@@ -63,7 +63,7 @@ export function RejectedTab() {
 
   return (
     <>
-      <AdminHead title="Rejected orders" lede="Rejected orders wait here for a second check. Undo sends an order back to Needs approval; Confirm cancels it for good." />
+      <AdminHead title="Rejected orders" lede="Each rejection waits here for a second check. Undo returns the order to Needs approval; Confirm cancels it." />
       <DataTable
         caption="Rejected orders awaiting confirmation"
         columns={columns}

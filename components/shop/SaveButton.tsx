@@ -8,7 +8,7 @@ import { useSavedIds, toggleSaved } from '@/lib/saved'
 import type { Product } from '@/lib/constants'
 import s from './shop.module.css'
 
-export function SaveButton({ product, variant = 'icon' }: { product: Product; variant?: 'icon' | 'button' }) {
+export function SaveButton({ product, variant = 'icon' }: { product: Product; variant?: 'icon' | 'compact' | 'button' }) {
   const saved = useSavedIds().includes(product.id)
   const onClick = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation()
@@ -17,14 +17,14 @@ export function SaveButton({ product, variant = 'icon' }: { product: Product; va
   }
   if (variant === 'button') {
     return (
-      <Button variant="ghost" size="md" icon="heart" aria-pressed={saved} onClick={onClick}
+      <Button variant="secondary" size="md" icon="heart" aria-pressed={saved} onClick={onClick}
         className={saved ? s.savedOn : undefined}>
         {saved ? 'Saved' : 'Save'}
       </Button>
     )
   }
   return (
-    <IconButton icon="heart" size="md" label={saved ? `Remove ${product.name} from saved` : `Save ${product.name}`}
+    <IconButton icon="heart" size={variant === 'compact' ? 'sm' : 'md'} label={saved ? `Remove ${product.name} from saved` : `Save ${product.name}`}
       aria-pressed={saved} onClick={onClick} className={`${s.saveBtn} ${saved ? s.savedOn : ''}`} />
   )
 }

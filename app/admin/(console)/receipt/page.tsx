@@ -1,6 +1,10 @@
 // ============================================================
 // PHASE 3 — Receipt Generator (Ported from Airtable → Supabase)
-// File: apps/web/app/admin/receipt/page.tsx
+// File: app/admin/(console)/receipt/page.tsx
+//
+// Lives inside the admin console (sidebar, staff gate) since the IA refactor.
+// The web form was restyled to the console; buildPDF and the PDF layout are
+// unchanged.
 //
 // Changes from the Airtable version:
 //   1. loadProducts() → GET /v2/products (single call, no pagination)
@@ -10,7 +14,6 @@
 //   5. Product shape uses Supabase column names
 //   6. After PDF download, optionally logs to orders table
 //
-// UI is preserved 1:1 from the Framer version.
 // ============================================================
 
 'use client'
@@ -20,6 +23,10 @@ import { toast } from 'sonner'
 import { getAccessToken } from '@/lib/session'
 import { API_BASE } from '@/lib/config'
 import { FX } from '@/lib/constants'
+import { Button, IconButton, Select, WhatsAppGlyph } from '@/components/ui'
+import { AdminHead, Panel } from '@/components/admin/AdminUI'
+import a from '@/components/admin/admin.module.css'
+import r from './receipt.module.css'
 
 /* ================================================================
    CONFIG
@@ -699,261 +706,213 @@ export default function ReceiptGenerator() {
   const displayPrice = (ngn: number) => ngn > 0 ? fmtShort(ngn, currency, fxRate) : '—'
 
   /* ─────────── RENDER ─────────── */
+  const fillFromOrder = (order: any) => {
+    if (!order) return
+    setOrderRef(order.order_ref || orderRef)
+    setCustName(order.customer_name || '')
+    setCustEmail(order.customer_email || '')
+    setCustPhone(order.customer_phone || '')
+    setCurrency(order.currency || 'NGN')
+    setOrderFx({ currency: order.currency || 'NGN', rate: Number(order.fx_rate) })
+    setPaymentMethod(order.payment_method || '')
+    if (order.created_at) setPurchaseDate(order.created_at.slice(0, 10))
+    if (order.order_items && order.order_items.length > 0) {
+      const orderItems: LineItem[] = order.order_items.map((oi: any) => ({
+        id: uid(), productId: oi.product_id || '', name: oi.product_name || '',
+        category: oi.category || '', tags: '', period: oi.billing_period || 'Annual',
+        isOutright: oi.billing_period === 'One-time', qty: oi.quantity || 1,
+        unitPriceNGN: oi.unit_price_ngn || 0, override: '', whatsapp_group_url: oi.whatsapp_group_url || '',
+      }))
+      setItems(orderItems)
+    }
+  }
+
+  const removeItem = (id: string) => setItems(p => p.filter(i => i.id !== id))
+
   return (
-    <div style={{
-      background: 'var(--bs-bg-base)', minHeight: '100dvh',
-      color: 'var(--bs-text-primary)',
-      padding: '0 16px 60px', paddingTop: 'calc(10vh + 16px)', boxSizing: 'border-box',
-    }}>
-      <style>{`
-        .rg-cust-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
-        @media (max-width: 640px) { .rg-cust-grid { grid-template-columns: 1fr 1fr; } .rg-cust-name { grid-column: 1 / -1; } }
-        .rg-dt-headers { display: grid; grid-template-columns: 1fr 110px 130px 72px 110px 40px; gap: 10px; padding-bottom: 6px; border-bottom: 1px solid var(--bs-border-subtle); margin-bottom: 8px; }
-        .rg-dt-row { display: grid; grid-template-columns: 1fr 110px 130px 72px 110px 40px; gap: 10px; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--bs-border-subtle); margin-bottom: 8px; }
-        .rg-mob-card { display: none; }
-        @media (max-width: 640px) {
-          .rg-dt-headers { display: none; } .rg-dt-row { display: none; }
-          .rg-mob-card { display: block; margin-bottom: 12px; padding: 12px; background: var(--bs-bg-elevated); border-radius: 12px; border: 1px solid var(--bs-border-subtle); }
-          .rg-mob-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
-          .rg-mob-row3 { display: flex; gap: 10px; align-items: flex-end; }
-        }
-      `}</style>
-
-      <div style={{ maxWidth: 780, margin: '0 auto', width: '100%' }}>
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 24, gap: 12, flexWrap: 'wrap' }}>
-          <div>
-            <div style={{ fontSize: 'var(--bs-text-lg)' }}>Receipt Generator</div>
-            <div style={{ fontSize: 11, color: 'var(--bs-text-muted)', marginTop: 4 }}>Internal · {orderRef} · Generated {fmtDate(date)}</div>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ fontSize: 11, color: 'var(--bs-text-secondary)' }}>Currency</span>
-            <select value={currency} onChange={e => { setCurrency(e.target.value); setDResult(null) }}
-              style={{ ...IS, width: 86, height: 'var(--bs-control-md)', fontSize: 13 }}>
+    <>
+      <AdminHead
+        title={isFromOrder ? `Receipt for ${orderRef}` : 'New receipt'}
+        lede={<>Reference <span className={a.mono}>{orderRef || '…'}</span>{date ? ` · ${fmtDate(date)}` : ''}. Fill in the order, then download the PDF or send it on WhatsApp.</>}
+        actions={
+          <label className={r.currency}>
+            <span>Currency</span>
+            <Select fieldSize="md" value={currency} onChange={e => { setCurrency(e.target.value); setDResult(null) }} style={{ width: 96 }}>
               {CURRENCIES.map(c => <option key={c}>{c}</option>)}
-            </select>
-          </div>
-        </div>
+            </Select>
+          </label>
+        }
+      />
 
-        {/* Customer */}
-        <Panel title="Customer">
-          <div style={{ marginBottom: 14 }}>
-            <Lbl>Search existing customer</Lbl>
-            <CustomerCombobox
-              onSelect={c => { setCustName(c.name); setCustEmail(c.email); setCustPhone(c.phone) }}
-              onOrderFound={order => {
-                if (!order) return
-                setOrderRef(order.order_ref || orderRef)
-                setCustName(order.customer_name || '')
-                setCustEmail(order.customer_email || '')
-                setCustPhone(order.customer_phone || '')
-                setCurrency(order.currency || 'NGN')
-                setOrderFx({ currency: order.currency || 'NGN', rate: Number(order.fx_rate) })
-                setPaymentMethod(order.payment_method || '')
-                if (order.created_at) setPurchaseDate(order.created_at.slice(0, 10))
-                if (order.order_items && order.order_items.length > 0) {
-                  const orderItems: LineItem[] = order.order_items.map((oi: any) => ({
-                    id: uid(), productId: oi.product_id || '', name: oi.product_name || '',
-                    category: oi.category || '', tags: '', period: oi.billing_period || 'Annual',
-                    isOutright: oi.billing_period === 'One-time', qty: oi.quantity || 1,
-                    unitPriceNGN: oi.unit_price_ngn || 0, override: '', whatsapp_group_url: oi.whatsapp_group_url || '',
-                  }))
-                  setItems(orderItems)
-                }
-              }}
-            />
-          </div>
-          <div className="rg-cust-grid">
-            <div className="rg-cust-name"><Lbl>Name</Lbl><input style={IS} placeholder="Full name" value={custName} onChange={e => setCustName(e.target.value)} /></div>
-            <div><Lbl>Email</Lbl><input style={IS} type="email" placeholder="email@example.com" value={custEmail} onChange={e => setCustEmail(e.target.value)} /></div>
-            <div><Lbl>Phone</Lbl><input style={IS} type="tel" placeholder="080... or +234..." value={custPhone} onChange={e => setCustPhone(e.target.value)} /></div>
-          </div>
-        </Panel>
+      <div className={r.layout}>
+        <div className={r.form}>
+          <Panel title="Customer" pad>
+            <div className={r.stack}>
+              <div>
+                <Lbl>Find a customer or order</Lbl>
+                <CustomerCombobox
+                  onSelect={c => { setCustName(c.name); setCustEmail(c.email); setCustPhone(c.phone) }}
+                  onOrderFound={fillFromOrder}
+                />
+              </div>
+              <div className={r.grid3}>
+                <div><Lbl>Name</Lbl><input style={IS} placeholder="Full name" value={custName} onChange={e => setCustName(e.target.value)} /></div>
+                <div><Lbl>Email</Lbl><input style={IS} type="email" placeholder="email@example.com" value={custEmail} onChange={e => setCustEmail(e.target.value)} /></div>
+                <div><Lbl>Phone</Lbl><input style={IS} type="tel" placeholder="080… or +234…" value={custPhone} onChange={e => setCustPhone(e.target.value)} /></div>
+              </div>
+            </div>
+          </Panel>
 
-        {/* Order Items */}
-        <Panel title={prodLoading ? 'Order Items  —  loading…' : `Order Items  ·  ${products.length} products`}>
-          <div className="rg-dt-headers">
-            {['Product', 'Period', `Unit price (${currency})`, 'Qty', 'Line total', ''].map((h, i) => (
-              <div key={i} style={{ fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted)' }}>{h}</div>
-            ))}
-          </div>
-          {items.map(item => {
-            const unitNGN = unitPriceNGN(item, currency, fxRate)
-            const lineNGN = unitNGN * item.qty
-            return (
-              <div key={item.id}>
-                <div className="rg-dt-row">
-                  <ProductCombobox products={products} value={item.name} onChange={p => onProductSelect(item.id, p)} />
-                  <select style={IS} value={item.period} disabled={item.isOutright} onChange={e => onPeriodChange(item.id, e.target.value)}>
-                    {item.isOutright ? <option>One-time</option> : PERIOD_NAMES.map(p => <option key={p}>{p}</option>)}
+          <Panel title="Items" action={<span className={a.muted} style={{ fontSize: 'var(--bs-text-xs)' }}>{prodLoading ? 'Loading products…' : `${products.length} products`}</span>}>
+            <div className={r.items}>
+              <div className={r.itemHead} aria-hidden="true">
+                <span>Product</span><span>Period</span><span>Unit price ({currency})</span><span>Qty</span><span className={r.right}>Line total</span><span />
+              </div>
+              {items.map(item => {
+                const unitNGN = unitPriceNGN(item, currency, fxRate)
+                const lineNGN = unitNGN * item.qty
+                return (
+                  <div key={item.id} className={r.itemRow}>
+                    <div className={r.cProduct}>
+                      <Lbl className={r.mLabel}>Product</Lbl>
+                      <ProductCombobox products={products} value={item.name} onChange={p => onProductSelect(item.id, p)} />
+                    </div>
+                    <div className={r.cPeriod}>
+                      <Lbl className={r.mLabel}>Period</Lbl>
+                      <select style={IS} value={item.period} disabled={item.isOutright} onChange={e => onPeriodChange(item.id, e.target.value)}>
+                        {item.isOutright ? <option>One-time</option> : PERIOD_NAMES.map(p => <option key={p}>{p}</option>)}
+                      </select>
+                    </div>
+                    <div className={r.cPrice}>
+                      <Lbl className={r.mLabel}>Unit price ({currency})</Lbl>
+                      <input style={IS} inputMode="decimal" placeholder={unitNGN > 0 ? fmtShort(unitNGN, currency, fxRate) : '0.00'} value={item.override} onChange={e => setItem(item.id, { override: e.target.value })} />
+                    </div>
+                    <div className={r.cQty}>
+                      <Lbl className={r.mLabel}>Qty</Lbl>
+                      <input style={{ ...IS, textAlign: 'center' }} type="number" min="1" value={item.qty} onChange={e => setItem(item.id, { qty: Math.max(1, parseInt(e.target.value) || 1) })} />
+                    </div>
+                    <div className={`${r.cTotal} ${r.right}`}>
+                      <Lbl className={r.mLabel}>Line total</Lbl>
+                      <span className={r.lineTotal}>{lineNGN > 0 ? displayPrice(lineNGN) : '—'}</span>
+                    </div>
+                    <div className={r.cRemove}>
+                      <IconButton icon="trash" size="sm" label="Remove item" onClick={() => removeItem(item.id)} disabled={items.length === 1} />
+                    </div>
+                  </div>
+                )
+              })}
+              <div className={r.addRow}>
+                <Button variant="ghost" size="sm" icon="plus" onClick={() => setItems(p => [...p, emptyItem()])}>Add item</Button>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Discount and tax" pad>
+            <div className={r.grid2}>
+              <div>
+                <Lbl>Promo code</Lbl>
+                {dResult ? (
+                  <div className={r.applied}>
+                    <span><b>{dResult.code}</b> · saves {fmtShort(dResult.amountNGN, currency, fxRate)}</span>
+                    <IconButton icon="close" size="sm" label="Remove promo code" onClick={() => { setDResult(null); setDCode('') }} />
+                  </div>
+                ) : (
+                  <div className={r.inline}>
+                    <input style={{ ...IS, flex: 1, textTransform: 'uppercase' }} placeholder="Code" value={dCode}
+                      onChange={e => { setDCode(e.target.value.toUpperCase()); setDError('') }}
+                      onKeyDown={e => e.key === 'Enter' && applyDiscount()} />
+                    <Button variant="secondary" size="md" onClick={applyDiscount} loading={dLoading} disabled={!dCode.trim()}>Apply</Button>
+                  </div>
+                )}
+                {dError && <p className={r.error}>{dError}</p>}
+              </div>
+              <div>
+                <Lbl>Tax</Lbl>
+                <div className={r.inline}>
+                  <label className={r.check}>
+                    <input type="checkbox" checked={taxEnabled} onChange={e => setTaxEnabled(e.target.checked)} />
+                    Apply tax
+                  </label>
+                  <span className={r.pct}>
+                    <input type="number" min="0" max="100" step="0.5" value={taxRate} disabled={!taxEnabled}
+                      onChange={e => setTaxRate(e.target.value)} aria-label="Tax rate, percent"
+                      style={{ ...IS, width: 84, textAlign: 'right', paddingRight: 28, opacity: taxEnabled ? 1 : 0.5 }} />
+                    <span aria-hidden="true">%</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </Panel>
+
+          <Panel title="Order details" pad>
+            <div className={r.stack}>
+              <div className={r.grid3}>
+                <div><Lbl>Purchase date</Lbl><input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} style={IS} /></div>
+                <div>
+                  <Lbl>Payment method</Lbl>
+                  <select style={IS} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                    <option value="">Select…</option>
+                    {PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}
                   </select>
-                  <input style={IS} placeholder={unitNGN > 0 ? fmtShort(unitNGN, currency, fxRate) : '0.00'} value={item.override} onChange={e => setItem(item.id, { override: e.target.value })} />
-                  <input style={{ ...IS, textAlign: 'center' }} type="number" min="1" value={item.qty} onChange={e => setItem(item.id, { qty: Math.max(1, parseInt(e.target.value) || 1) })} />
-                  <div style={{ ...IS, background: 'var(--bs-bg-elevated)', border: '1px solid var(--bs-border-subtle)', color: 'var(--bs-text-secondary)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>
-                    {lineNGN > 0 ? displayPrice(lineNGN) : '—'}
-                  </div>
-                  <button onClick={() => setItems(p => p.filter(i => i.id !== item.id))} disabled={items.length === 1}
-                    style={{ width: 40, height: 40, borderRadius: 'var(--bs-radius-md)', background: 'transparent', border: '1px solid var(--bs-border-default)', color: 'var(--bs-text-muted)', cursor: items.length === 1 ? 'not-allowed' : 'pointer', fontSize: 'var(--bs-text-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: items.length === 1 ? 0.3 : 1, flexShrink: 0 }}>
-                    <XIcon />
-                  </button>
                 </div>
-                {/* Mobile card - same structure as original */}
-                <div className="rg-mob-card">
-                  <div style={{ marginBottom: 10 }}>
-                    <Lbl>Product</Lbl>
-                    <ProductCombobox products={products} value={item.name} onChange={p => onProductSelect(item.id, p)} />
-                  </div>
-                  <div className="rg-mob-row2">
-                    <div><Lbl>Period</Lbl><select style={IS} value={item.period} disabled={item.isOutright} onChange={e => onPeriodChange(item.id, e.target.value)}>{item.isOutright ? <option>One-time</option> : PERIOD_NAMES.map(p => <option key={p}>{p}</option>)}</select></div>
-                    <div><Lbl>Unit price ({currency})</Lbl><input style={IS} placeholder={unitNGN > 0 ? fmtShort(unitNGN, currency, fxRate) : '0.00'} value={item.override} onChange={e => setItem(item.id, { override: e.target.value })} /></div>
-                  </div>
-                  <div className="rg-mob-row3">
-                    <div style={{ width: 80 }}><Lbl>Qty</Lbl><input style={{ ...IS, textAlign: 'center' }} type="number" min="1" value={item.qty} onChange={e => setItem(item.id, { qty: Math.max(1, parseInt(e.target.value) || 1) })} /></div>
-                    <div style={{ flex: 1 }}><Lbl>Line total</Lbl><div style={{ ...IS, background: 'var(--bs-bg-input)', border: '1px solid var(--bs-border-subtle)', color: 'var(--bs-text-secondary)', display: 'flex', alignItems: 'center', pointerEvents: 'none' }}>{lineNGN > 0 ? displayPrice(lineNGN) : '—'}</div></div>
-                    <button onClick={() => setItems(p => p.filter(i => i.id !== item.id))} disabled={items.length === 1}
-                      style={{ width: 40, height: 40, borderRadius: 'var(--bs-radius-md)', background: 'transparent', border: '1px solid var(--bs-border-default)', color: 'var(--bs-text-muted)', cursor: items.length === 1 ? 'not-allowed' : 'pointer', fontSize: 'var(--bs-text-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: items.length === 1 ? 0.3 : 1, flexShrink: 0 }}>
-                      <XIcon />
-                    </button>
-                  </div>
+                <div><Lbl>Sales rep</Lbl><input style={IS} placeholder="Name or initials" value={salesRep} onChange={e => setSalesRep(e.target.value)} /></div>
+              </div>
+              <div className={r.grid2}>
+                <div>
+                  <Lbl>Note <span className={a.muted}>(blank uses the default)</span></Lbl>
+                  <textarea value={note} onChange={e => setNote(e.target.value)} placeholder={DEFAULT_NOTE} rows={4} style={TA} />
+                </div>
+                <div>
+                  <Lbl>Payment instructions <span className={a.muted}>(blank uses the default)</span></Lbl>
+                  <textarea value={paymentInstructions} onChange={e => setPaymentInstructions(e.target.value)} placeholder={DEFAULT_PAYMENT_INSTRUCTIONS} rows={4} style={TA} />
                 </div>
               </div>
-            )
-          })}
-          <button onClick={() => setItems(p => [...p, emptyItem()])} style={{ background: 'transparent', border: 'none', color: 'var(--bs-accent-on-surface)', cursor: 'pointer', fontSize: 13, padding: '4px 0' }}>+ Add item</button>
-        </Panel>
-
-        {/* Discount */}
-        <Panel title="Discount (optional)">
-          {dResult ? (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '10px 14px', background: 'rgba(var(--bs-success-rgb), 0.07)', border: '1px solid rgba(var(--bs-success-rgb), 0.2)', borderRadius: 10 }}>
-              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                <span style={{ fontSize: 11, background: 'rgba(var(--bs-success-rgb), 0.18)', borderRadius: 'var(--bs-radius-sm)', padding: '2px 8px', color: 'color-mix(in srgb, var(--bs-success), var(--bs-on-tint-mix))' }}>{dResult.code}</span>
-                <span style={{ fontSize: 13, color: 'color-mix(in srgb, var(--bs-success), var(--bs-on-tint-mix))' }}>{dResult.display} · saves {fmtShort(dResult.amountNGN, currency, fxRate)}</span>
-              </div>
-              <button onClick={() => { setDResult(null); setDCode('') }} style={{ background: 'transparent', border: 'none', color: 'var(--bs-text-faint)', cursor: 'pointer', fontSize: 'var(--bs-text-lg)', lineHeight: 1, flexShrink: 0 }}><XIcon /></button>
             </div>
-          ) : (
-            <>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <input style={{ ...IS, flex: 1, letterSpacing: '0.06em' }} placeholder="Promo code" value={dCode}
-                  onChange={e => { setDCode(e.target.value.toUpperCase()); setDError('') }}
-                  onKeyDown={e => e.key === 'Enter' && applyDiscount()} />
-                <button onClick={applyDiscount} disabled={dLoading || !dCode.trim()}
-                  style={{ height: 40, padding: '0 20px', borderRadius: 'var(--bs-radius-md)', background: dCode.trim() ? 'var(--bs-accent-fill)' : 'var(--bs-bg-muted)', border: 'none', color: dCode.trim() ? '#fff' : 'var(--bs-text-faint)', cursor: dCode.trim() ? 'pointer' : 'not-allowed', fontSize: 13, flexShrink: 0 }}>
-                  {dLoading ? 'Checking…' : 'Apply'}
-                </button>
-              </div>
-              {dError && <div style={{ fontSize: 12, color: '#dc2626', marginTop: 7 }}>{dError}</div>}
-            </>
-          )}
-        </Panel>
+          </Panel>
+        </div>
 
-        {/* Tax */}
-        <Panel title="Tax (optional)">
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <label style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer', fontSize: 13 }}>
-              <input type="checkbox" checked={taxEnabled} onChange={e => setTaxEnabled(e.target.checked)} style={{ width: 16, height: 16, accentColor: '#7C5CFF', cursor: 'pointer' }} />
-              Apply tax
-            </label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <input type="number" min="0" max="100" step="0.5" value={taxRate} disabled={!taxEnabled}
-                onChange={e => setTaxRate(e.target.value)}
-                style={{ ...IS, width: 90, opacity: taxEnabled ? 1 : 0.4, cursor: taxEnabled ? 'text' : 'not-allowed', textAlign: 'center' }} />
-              <span style={{ fontSize: 13, color: 'var(--bs-text-secondary)' }}>%</span>
+        <aside className={r.summary}>
+          <Panel title="Summary" pad>
+            <dl className={r.totals}>
+              <TotRow label={`Subtotal · ${items.reduce((n, i) => n + (i.name ? i.qty : 0), 0)} item${items.reduce((n, i) => n + (i.name ? i.qty : 0), 0) === 1 ? '' : 's'}`} value={fmtShort(subtotalNGN, currency, fxRate)} />
+              {discountNGN > 0 && dResult && <TotRow label={`Discount (${dResult.display})`} value={`−${fmtShort(discountNGN, currency, fxRate)}`} />}
+              {taxEnabled && taxNGN > 0 && <TotRow label={`Tax (${taxRate}%)`} value={fmtShort(taxNGN, currency, fxRate)} />}
+              <TotRow label="Total" value={fmtShort(totalNGN, currency, fxRate)} bold />
+            </dl>
+            <div className={r.actions}>
+              <Button full size="md" onClick={handleDownload} loading={generating} icon="download">{generated ? 'Download again' : 'Download PDF'}</Button>
+              <Button full size="md" variant="secondary" onClick={handleWhatsApp} disabled={generating}>
+                <WhatsAppGlyph size={16} />{waSent ? 'Send again' : 'Download and send on WhatsApp'}
+              </Button>
             </div>
-            {taxEnabled && taxNGN > 0 && <span style={{ fontSize: 12, color: 'var(--bs-text-muted)' }}>= {fmtShort(taxNGN, currency, fxRate)}</span>}
-          </div>
-        </Panel>
-
-        {/* Order Details */}
-        <Panel title="Order Details">
-          <TwoCol style={{ marginBottom: 12 }}>
-            <div><Lbl>Purchase Date</Lbl><input type="date" value={purchaseDate} onChange={e => setPurchaseDate(e.target.value)} style={{ ...IS, colorScheme: 'dark' }} /></div>
-            <div><Lbl>Payment Method</Lbl><select style={IS} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}><option value="">Select…</option>{PAYMENT_METHODS.map(m => <option key={m}>{m}</option>)}</select></div>
-          </TwoCol>
-          <TwoCol style={{ marginBottom: 12 }}>
-            <div><Lbl>Sales Rep</Lbl><input style={IS} placeholder="Name or initials" value={salesRep} onChange={e => setSalesRep(e.target.value)} /></div>
-          </TwoCol>
-          <Lbl>Notes <span style={{ color: 'var(--bs-text-muted)', fontSize: 'var(--bs-text-2xs)' }}>(leave blank for default)</span></Lbl>
-          <textarea value={note} onChange={e => setNote(e.target.value)} placeholder={DEFAULT_NOTE}
-            style={{ ...IS, height: 88, padding: '10px 12px', resize: 'vertical', lineHeight: 1.7, fontSize: 12 } as any} />
-        </Panel>
-
-        {/* Payment Instructions */}
-        <Panel title="Payment Instructions">
-          <Lbl>Instructions printed on receipt <span style={{ color: 'var(--bs-text-muted)', fontSize: 'var(--bs-text-2xs)' }}>(leave blank for default)</span></Lbl>
-          <textarea value={paymentInstructions} onChange={e => setPaymentInstructions(e.target.value)} placeholder={DEFAULT_PAYMENT_INSTRUCTIONS}
-            style={{ ...IS, height: 80, padding: '10px 12px', resize: 'vertical', lineHeight: 1.7, fontSize: 12 } as any} />
-        </Panel>
-
-        {/* Totals */}
-        <div style={{ background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-subtle)', borderRadius: 'var(--bs-radius-lg)', padding: '18px 20px', marginBottom: 14, display: 'flex', justifyContent: 'flex-end' }}>
-          <div style={{ width: '100%', maxWidth: 300, display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {(discountNGN > 0 || taxNGN > 0) && <TotRow label="Subtotal" value={fmtShort(subtotalNGN, currency, fxRate)} />}
-            {discountNGN > 0 && dResult && <TotRow label={`Discount (${dResult.display})`} value={`−${fmtShort(discountNGN, currency, fxRate)}`} color="var(--bs-success)" />}
-            {taxEnabled && taxNGN > 0 && <TotRow label={`Tax (${taxRate}%)`} value={fmtShort(taxNGN, currency, fxRate)} />}
-            {(discountNGN > 0 || taxNGN > 0) && <div style={{ height: 1, background: 'var(--bs-border-default)' }} />}
-            <TotRow label="Total" value={fmtShort(totalNGN, currency, fxRate)} bold />
-          </div>
-        </div>
-
-        {/* Actions */}
-        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-          <button onClick={handleDownload} disabled={generating}
-            style={{ flex: 1, minWidth: 160, height: 52, borderRadius: 'var(--bs-radius-lg)', background: 'var(--bs-accent-fill)', border: 'none', color: '#fff', cursor: generating ? 'not-allowed' : 'pointer', fontSize: 'var(--bs-text-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: generating ? 0.7 : 1 }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" /></svg>
-            {generating ? 'Generating…' : generated ? 'Download Again' : 'Download PDF'}
-          </button>
-          <button onClick={handleWhatsApp} disabled={generating}
-            style={{ flex: 1, minWidth: 160, height: 52, borderRadius: 'var(--bs-radius-lg)', background: '#25D366', border: 'none', color: '#fff', cursor: generating ? 'not-allowed' : 'pointer', fontSize: 'var(--bs-text-sm)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: generating ? 0.7 : 1 }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" /><path d="M12 0C5.373 0 0 5.373 0 12c0 2.122.554 4.116 1.523 5.847L.057 23.57a.75.75 0 0 0 .92.92l5.723-1.466A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.93 0-3.736-.518-5.287-1.42l-.379-.225-3.932 1.007 1.007-3.932-.225-.379A9.953 9.953 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" /></svg>
-            {waSent ? 'Send Again' : 'Send & Download Receipt'}
-          </button>
-        </div>
-
-        <div style={{ marginTop: 10, fontSize: 11, color: 'var(--bs-text-muted)', lineHeight: 1.6 }}>
-          Both buttons download the PDF. Attach it manually in WhatsApp before sending.
-        </div>
-
-        {(generated || waSent) && (
-          <div style={{ marginTop: 14, padding: '11px 16px', borderRadius: 10, background: 'rgba(var(--bs-success-rgb), 0.07)', border: '1px solid rgba(var(--bs-success-rgb), 0.18)', fontSize: 13, color: 'color-mix(in srgb, var(--bs-success), var(--bs-on-tint-mix))', display: 'flex', gap: 8, alignItems: 'center' }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12" /></svg>
-            {waSent ? 'Receipt downloaded · WhatsApp opened. Attach the PDF before sending.' : 'Receipt downloaded.'}
-          </div>
-        )}
+            <p className={r.hint}>
+              {waSent ? 'Downloaded and WhatsApp opened. Attach the PDF before you send.'
+                : generated ? 'Receipt downloaded.'
+                : 'WhatsApp opens with the message filled in. Attach the downloaded PDF before you send.'}
+            </p>
+          </Panel>
+        </aside>
       </div>
-    </div>
+    </>
   )
 }
 
-/* ── Micro-components (identical to original) ── */
-const Panel = ({ title, children }: { title: string; children: React.ReactNode }) => (
-  <div style={{ background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-subtle)', borderRadius: 'var(--bs-radius-lg)', padding: '18px 20px', marginBottom: 14 }}>
-    <div style={{ fontSize: 'var(--bs-text-2xs)', color: 'var(--bs-text-muted)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 14 }}>{title}</div>
-    {children}
-  </div>
+/* ── Small pieces ── */
+const Lbl = ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  <div className={`${r.label} ${className || ''}`}>{children}</div>
 )
 
-const TwoCol = ({ children, style }: { children: React.ReactNode; style?: any }) => (
-  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 12, ...style }}>{children}</div>
-)
-
-const Lbl = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: 11, color: 'var(--bs-text-secondary)', marginBottom: 5 }}>{children}</div>
-)
-
-const TotRow = ({ label, value, bold = false, color }: { label: string; value: string; bold?: boolean; color?: string }) => (
-  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline' }}>
-    <span style={{ fontSize: 12, color: color ?? 'var(--bs-text-secondary)' }}>{label}</span>
-    <span style={{ fontSize: bold ? 17 : 13, fontWeight: bold ? 600 : 400, color: color ?? 'var(--bs-text-primary)' }}>{value}</span>
-  </div>
+const TotRow = ({ label, value, bold = false }: { label: string; value: string; bold?: boolean }) => (
+  <div className={`${r.totRow} ${bold ? r.totBold : ''}`}><dt>{label}</dt><dd>{value}</dd></div>
 )
 
 const IS: any = {
-  height: 40, padding: '0 12px', borderRadius: 'var(--bs-radius-md)', fontSize: 13, width: '100%',
+  height: 'var(--bs-control-md)', padding: '0 12px', borderRadius: 'var(--bs-radius-md)', fontSize: 'var(--bs-text-sm)', width: '100%',
   background: 'var(--bs-bg-input)', border: '1px solid var(--bs-border-default)',
-  color: 'var(--bs-text-primary)', boxSizing: 'border-box',
+  color: 'var(--bs-text-primary)', boxSizing: 'border-box', fontFamily: 'inherit', colorScheme: 'inherit',
 }
+
+const TA: any = { ...IS, height: 'auto', padding: '10px 12px', resize: 'vertical', lineHeight: 1.6 }
 
 const DD: any = {
   position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0,

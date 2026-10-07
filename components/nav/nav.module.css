@@ -25,7 +25,6 @@
 .skip:focus-visible { transform: none; opacity: 1; pointer-events: auto; }
 
 .logo { display: inline-flex; align-items: center; gap: var(--bs-space-2); height: var(--bs-control-lg); font-size: var(--bs-text-lg); font-weight: var(--bs-weight-bold); color: var(--bs-text-primary); border-radius: var(--bs-radius-md); letter-spacing: -.01em; flex-shrink: 0; }
-.logoMark { width: 30px; height: 30px; border-radius: 9px; display: inline-flex; align-items: center; justify-content: center; background: var(--bs-accent-fill); color: #fff; font-size: var(--bs-text-base); font-weight: var(--bs-weight-bold); }
 
 .primary { display: flex; align-items: center; }
 .navBtn { font-family: inherit;
@@ -64,7 +63,7 @@
 
 /* ── Account popover ────────────────────────────────────────── */
 .acctHead { display: flex; align-items: center; gap: var(--bs-space-3); padding: var(--bs-space-2) var(--bs-space-2) var(--bs-space-3); }
-.acctName { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.acctName { line-height: 1.25; margin-bottom: 4px; font-size: var(--bs-text-sm); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .acctEmail { font-size: var(--bs-text-xs); color: var(--bs-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .walletCard { display: flex; align-items: center; justify-content: space-between; gap: var(--bs-space-3); padding: var(--bs-space-3); border-radius: var(--bs-radius-md); background: var(--bs-bg-elevated); color: var(--bs-text-secondary); margin-bottom: var(--bs-space-2); }
 .walletCard:hover { color: var(--bs-text-primary); }
@@ -76,27 +75,34 @@
 .inviteText { display: block; font-size: var(--bs-text-xs); color: var(--bs-text-secondary); margin-top: 2px; }
 
 /* ── Mega menu ──────────────────────────────────────────────── */
-.mega { display: grid; grid-template-columns: 220px 1fr; gap: var(--bs-space-2); min-height: 320px; }
+.mega { display: grid; grid-template-columns: 232px minmax(0, 1fr); min-height: 340px; }
 /* Anchored to the header, not the Browse button, so it never runs off the
    right edge. The header's backdrop-filter makes it the containing block for
    fixed descendants, so these offsets are relative to the full-width bar. */
-.header .megaPanel { position: fixed; top: calc(var(--bs-header-h) - 4px); left: max(16px, calc(50% - 450px)); width: min(900px, calc(100% - 32px)); }
+.header .megaPanel { position: fixed; top: calc(var(--bs-header-h) - 4px); left: calc(max(0px, (100% - var(--bs-page-max)) / 2) + var(--bs-page-gutter)); width: min(940px, calc(100% - 2 * var(--bs-page-gutter))); padding: var(--bs-space-2); }
 .megaEmpty { padding: var(--bs-space-4); font-size: var(--bs-text-sm); color: var(--bs-text-secondary); width: 320px; }
-.megaCats { list-style: none; display: flex; flex-direction: column; gap: 2px; padding-right: var(--bs-space-2); border-right: 1px solid var(--bs-border-subtle); max-height: 420px; overflow-y: auto; }
-.megaCat { font-family: inherit; display: flex; align-items: center; justify-content: space-between; width: 100%; height: 36px; padding: 0 var(--bs-space-3); border: none; border-radius: var(--bs-radius-md); background: transparent; color: var(--bs-text-secondary); font-size: var(--bs-text-sm); font-weight: var(--bs-weight-medium); text-align: left; cursor: pointer; }
+.megaCats { list-style: none; display: flex; flex-direction: column; gap: 2px; padding: var(--bs-space-1) var(--bs-space-2) var(--bs-space-1) 0; border-right: 1px solid var(--bs-border-subtle); max-height: 460px; overflow-y: auto; }
+.megaSep { height: 1px; margin: var(--bs-space-1) var(--bs-space-3); background: var(--bs-border-subtle); }
+.megaCat { font-family: inherit; display: flex; align-items: center; justify-content: space-between; gap: var(--bs-space-2); width: 100%; height: 38px; padding: 0 var(--bs-space-3); border: none; border-radius: var(--bs-radius-md); background: transparent; color: var(--bs-text-secondary); font-size: var(--bs-text-md); text-align: left; cursor: pointer; white-space: nowrap; }
 .megaCat:hover, .megaCat:focus-visible, .megaCat[aria-current="true"] { background: var(--bs-bg-elevated); color: var(--bs-text-primary); outline: none; }
-.megaCount { font-size: var(--bs-text-2xs); color: var(--bs-text-muted); }
-.megaBody { padding: var(--bs-space-1) var(--bs-space-2); display: flex; flex-direction: column; gap: var(--bs-space-3); min-width: 0; }
-.megaHead { display: flex; align-items: center; justify-content: space-between; font-size: var(--bs-text-base); font-weight: var(--bs-weight-semibold); }
-.megaAll { font-family: inherit; display: inline-flex; align-items: center; gap: var(--bs-space-1); height: 32px; padding: 0 var(--bs-space-2); border: none; border-radius: var(--bs-radius-sm); background: transparent; color: var(--bs-accent-on-surface); font-size: var(--bs-text-xs); font-weight: var(--bs-weight-semibold); cursor: pointer; }
+.megaCat[aria-current="true"] { font-weight: var(--bs-weight-medium); }
+.megaCount { font-size: var(--bs-text-xs); color: var(--bs-text-muted); font-variant-numeric: tabular-nums; }
+.megaBody { padding: var(--bs-space-2) var(--bs-space-2) 0 var(--bs-space-5); display: flex; flex-direction: column; gap: var(--bs-space-3); min-width: 0; }
+.megaHead { display: flex; align-items: center; justify-content: space-between; gap: var(--bs-space-3); }
+.megaTitle { display: flex; align-items: baseline; gap: var(--bs-space-2); font-size: var(--bs-text-lg); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); }
+.megaTitleCount { font-size: var(--bs-text-xs); font-weight: var(--bs-weight-regular); color: var(--bs-text-muted); }
+.megaAll { font-family: inherit; display: inline-flex; align-items: center; gap: var(--bs-space-1); height: 32px; padding: 0 var(--bs-space-2); border: none; border-radius: var(--bs-radius-sm); background: transparent; color: var(--bs-accent-on-surface); font-size: var(--bs-text-sm); font-weight: var(--bs-weight-medium); cursor: pointer; white-space: nowrap; }
 .megaAll:hover { background: rgba(var(--bs-accent-rgb), .1); }
-.megaGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--bs-space-1); }
-.megaProduct { font-family: inherit; display: flex; align-items: center; gap: var(--bs-space-3); padding: var(--bs-space-2); border: none; border-radius: var(--bs-radius-md); background: transparent; color: var(--bs-text-primary); text-align: left; cursor: pointer; min-width: 0; }
+.megaGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--bs-space-1) var(--bs-space-2); margin: 0 calc(-1 * var(--bs-space-2)); }
+.megaProduct { display: flex; align-items: center; gap: var(--bs-space-3); padding: var(--bs-space-2); border-radius: var(--bs-radius-md); color: var(--bs-text-primary); min-width: 0; }
 .megaProduct:hover, .megaProduct:focus-visible { background: var(--bs-bg-elevated); outline: none; }
-.megaProductText { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.megaProductName { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-semibold); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.megaProductPrice { font-size: var(--bs-text-xs); color: var(--bs-text-muted); }
+.megaDim { opacity: .6; }
+.megaProductText { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.megaProductName { font-size: var(--bs-text-md); font-weight: var(--bs-weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.megaProductPrice { font-size: var(--bs-text-xs); color: var(--bs-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .megaProductPrice b { color: var(--bs-text-primary); font-weight: var(--bs-weight-semibold); }
+.megaPopular { margin-top: auto; padding: var(--bs-space-3) 0 var(--bs-space-1); border-top: 1px solid var(--bs-border-subtle); display: flex; flex-direction: column; gap: var(--bs-space-2); }
+.megaPopularLabel { font-size: var(--bs-text-xs); font-weight: var(--bs-weight-medium); color: var(--bs-text-muted); }
 
 /* ── Mobile drawer ──────────────────────────────────────────── */
 .drawerHead { display: flex; align-items: center; justify-content: space-between; height: var(--bs-header-h); padding: 0 var(--bs-space-2) 0 var(--bs-space-4); border-bottom: 1px solid var(--bs-border-default); }

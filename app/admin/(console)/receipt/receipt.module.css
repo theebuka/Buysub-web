@@ -1,0 +1,57 @@
+/* Receipt form inside the admin console: the form on the left, a sticky
+   summary with the totals and the two actions on the right. */
+
+.currency { display: inline-flex; align-items: center; gap: var(--bs-space-2); font-size: var(--bs-text-sm); color: var(--bs-text-secondary); }
+
+.layout { display: grid; gap: var(--bs-space-4); align-items: start; }
+@media (min-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr) 340px; gap: var(--bs-space-6); } }
+.form { display: flex; flex-direction: column; gap: var(--bs-space-4); min-width: 0; }
+.summary { min-width: 0; }
+@media (min-width: 1100px) { .summary { position: sticky; top: calc(56px + var(--bs-space-6)); } }
+
+.stack { display: flex; flex-direction: column; gap: var(--bs-space-4); }
+.grid2 { display: grid; gap: var(--bs-space-4); }
+.grid3 { display: grid; gap: var(--bs-space-3); }
+@media (min-width: 720px) {
+  .grid2 { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .grid3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+}
+
+.label { font-size: var(--bs-text-xs); font-weight: var(--bs-weight-medium); color: var(--bs-text-secondary); margin-bottom: 6px; }
+.right { text-align: right; justify-self: end; }
+.inline { display: flex; align-items: center; gap: var(--bs-space-2); }
+.check { display: inline-flex; align-items: center; gap: var(--bs-space-2); font-size: var(--bs-text-sm); color: var(--bs-text-primary); cursor: pointer; white-space: nowrap; margin-right: var(--bs-space-2); }
+.pct { position: relative; display: inline-flex; align-items: center; }
+.pct > span { position: absolute; right: 12px; font-size: var(--bs-text-sm); color: var(--bs-text-muted); pointer-events: none; }
+.error { margin-top: 6px; font-size: var(--bs-text-xs); color: var(--bs-badge-error-fg); }
+.applied { display: flex; align-items: center; justify-content: space-between; gap: var(--bs-space-2); height: var(--bs-control-md); padding: 0 4px 0 12px; border: 1px solid var(--bs-border-default); border-radius: var(--bs-radius-md); font-size: var(--bs-text-sm); color: var(--bs-text-secondary); }
+.applied b { color: var(--bs-text-primary); font-weight: var(--bs-weight-semibold); }
+
+/* Items: a table on wide screens, one card per line below that. */
+.items { display: flex; flex-direction: column; }
+.itemHead, .itemRow { display: grid; grid-template-columns: minmax(0, 1fr) 120px 140px 72px 110px 32px; gap: var(--bs-space-3); align-items: center; padding: 0 var(--bs-space-4); }
+.itemHead { height: 40px; font-size: var(--bs-text-xs); color: var(--bs-text-muted); border-bottom: 1px solid var(--bs-border-subtle); }
+.itemRow { padding-top: var(--bs-space-3); padding-bottom: var(--bs-space-3); border-bottom: 1px solid var(--bs-border-subtle); }
+.mLabel { display: none; }
+.lineTotal { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-semibold); font-variant-numeric: tabular-nums; color: var(--bs-text-primary); white-space: nowrap; }
+.addRow { padding: var(--bs-space-2) var(--bs-space-2); }
+
+@media (max-width: 899px) {
+  .itemHead { display: none; }
+  .itemRow { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: var(--bs-space-4); gap: var(--bs-space-3); }
+  .mLabel { display: block; }
+  .cProduct { grid-column: 1 / -1; }
+  .cTotal { text-align: left; justify-self: start; align-self: end; }
+  .cRemove { justify-self: end; align-self: end; }
+}
+
+/* Summary */
+.totals { display: flex; flex-direction: column; gap: var(--bs-space-2); }
+.totRow { display: flex; justify-content: space-between; align-items: baseline; gap: var(--bs-space-3); font-size: var(--bs-text-sm); }
+.totRow dt { color: var(--bs-text-secondary); }
+.totRow dd { color: var(--bs-text-primary); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.totBold { margin-top: var(--bs-space-2); padding-top: var(--bs-space-3); border-top: 1px solid var(--bs-border-subtle); }
+.totBold dt { color: var(--bs-text-primary); font-weight: var(--bs-weight-semibold); }
+.totBold dd { font-size: var(--bs-text-xl); font-weight: var(--bs-weight-bold); }
+.actions { display: flex; flex-direction: column; gap: var(--bs-space-2); margin-top: var(--bs-space-5); }
+.hint { margin-top: var(--bs-space-3); font-size: var(--bs-text-xs); line-height: 1.5; color: var(--bs-text-muted); }

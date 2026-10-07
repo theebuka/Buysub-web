@@ -41,13 +41,21 @@ export function Stars({ value, size = 14 }: { value: number; size?: number }) {
 const compact = (n: number) => n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1).replace(/\.0$/, '')}k` : String(n)
 
 /** "★ 4.7 (86) · 1.2k sold" under a product name. Renders nothing without data. */
+/** "4.7 ★ (86) · 1.2k sold": one star, not a row of five, so it fits a card line. */
 export function RatingLine({ product: p, size = 12 }: { product: Product; size?: number }) {
   const rated = (p.rating_count ?? 0) > 0 && p.rating_avg != null
   const sold = p.sold_count ?? 0
   if (!rated && !sold) return null
+  const avg = Number(p.rating_avg)
   return (
     <span className={s.ratingLine}>
-      {rated && <><Stars value={Number(p.rating_avg)} size={size} /><span>{Number(p.rating_avg).toFixed(1)} ({compact(p.rating_count!)})</span></>}
+      {rated && (
+        <span className={s.ratingScore} aria-label={`Rated ${avg.toFixed(1)} out of 5 from ${p.rating_count} review${p.rating_count === 1 ? '' : 's'}`}>
+          <b aria-hidden="true">{avg.toFixed(1)}</b>
+          <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden="true" className={s.ratingStar}><path d={STAR} fill="currentColor" /></svg>
+          <span aria-hidden="true">({compact(p.rating_count!)})</span>
+        </span>
+      )}
       {rated && sold > 0 && <span aria-hidden="true">·</span>}
       {sold > 0 && <span>{compact(sold)} sold</span>}
     </span>

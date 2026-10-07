@@ -64,6 +64,14 @@ export function howItWorks(p: Product): string[] {
   return s.length ? s : DEFAULT_STEPS
 }
 
+/** "How it works" written as prose: stored as a single entry (the editor's
+ *  Paragraphs mode), which may hold several paragraphs. Two or more entries
+ *  are numbered steps. */
+export function howItWorksProse(p: Product): string | null {
+  const s = Array.isArray(p.how_it_works) ? p.how_it_works.filter(Boolean) : []
+  return s.length === 1 ? s[0] : null
+}
+
 export function features(p: Product): string[] {
   return Array.isArray(p.features) ? p.features.filter(Boolean) : []
 }

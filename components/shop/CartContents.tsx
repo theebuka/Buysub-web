@@ -9,7 +9,7 @@ import { Button, ButtonLink, EmptyState, Icon, IconButton, Input, ProductLogo } 
 import { useCart, cartLines, setLineQty, removeLine, MAX_LINE_QTY, reconcileCart } from '@/lib/cart'
 import { useCurrency } from '@/lib/currency'
 import { usePromo, computeTotals, applyPromoCode, clearManualPromo, usePromoMinimumGuard, clearPromoNotice } from '@/lib/checkout'
-import { PERIODS, format } from '@/lib/constants'
+import { PERIODS, format, normalizeVolumeTiers, volumeDiscountNGN, volumeTierFor } from '@/lib/constants'
 import { priceFor } from '@/lib/pricing'
 import { isOneTime, productHref } from '@/lib/catalog'
 import { fetchProducts } from '@/lib/useProducts'
@@ -88,6 +88,12 @@ export function Totals({ showPromo = true, walletNGN = 0 }: { showPromo?: boolea
       {showPromo && !promo.auto?.is_exclusive && <PromoBox />}
       <dl className={s.sumRows}>
         <div><dt>Subtotal</dt><dd>{format(t.subtotal, currency)}</dd></div>
+        {t.volume > 0 && (
+          <div className={s.sumDiscount}>
+            <dt>Volume discount</dt>
+            <dd>−{format(t.volume, currency)}</dd>
+          </div>
+        )}
         {t.discount > 0 && (
           <div className={s.sumDiscount}>
             <dt>Discount{t.active ? ` (${t.active.code})` : ''}</dt>
@@ -113,12 +119,17 @@ export function CartLines({ compact, onNavigate }: { compact?: boolean; onNaviga
     <ul className={s.lines}>
       {cartLines(cart).map(({ key, item }) => {
         const unit = priceFor(item.product, item.itemPeriod) ?? 0
+        const tiers = normalizeVolumeTiers(item.product.volume_tiers)
+        const tier = volumeTierFor(tiers, item.qty)
+        const next = tiers.find(x => x.min_qty > item.qty && x.percent > (tier?.percent ?? 0))
         return (
           <li key={key} className={s.line}>
             <ProductLogo product={item.product} size={compact ? 40 : 48} radius="var(--bs-radius-md)" />
             <div className={s.lineMain}>
               <Link href={productHref(item.product)} className={s.lineName} onClick={onNavigate}>{item.product.name}</Link>
               <span className={s.lineMeta}>{isOneTime(item.product) ? 'One-time' : PERIODS[item.itemPeriod]?.name} · {format(unit * rate, currency)} each</span>
+              {tier && <span className={s.lineDeal}>{tier.percent}% volume discount applied</span>}
+              {!tier && next && !compact && <span className={s.lineHint}>Buy {next.min_qty} or more to save {next.percent}%</span>}
               {!compact && (
                 <div className={s.lineActions}>
                   <div className={s.stepper} role="group" aria-label={`Quantity of ${item.product.name}`}>
@@ -132,7 +143,9 @@ export function CartLines({ compact, onNavigate }: { compact?: boolean; onNaviga
             </div>
             <div className={s.lineTotal}>
               {compact && <span className={s.muted}>×{item.qty}</span>}
-              {format(unit * rate * item.qty, currency)}
+              {tier
+                ? <><s className={s.lineWas}>{format(unit * rate * item.qty, currency)}</s>{format((unit * item.qty - volumeDiscountNGN(unit, item.qty, tiers)) * rate, currency)}</>
+                : format(unit * rate * item.qty, currency)}
             </div>
           </li>
         )

@@ -9,7 +9,7 @@ import { toast } from 'sonner'
 import { Button, Icon } from '@/components/ui'
 import { addToCart, setCartDrawer, MAX_LINE_QTY } from '@/lib/cart'
 import { useCurrency } from '@/lib/currency'
-import { PERIODS, format, isInStock, type Product } from '@/lib/constants'
+import { PERIODS, format, isInStock, normalizeVolumeTiers, volumeDiscountNGN, volumeTierFor, type Product } from '@/lib/constants'
 import { priceFor, savingsVs } from '@/lib/pricing'
 import { defaultPeriod, isOneTime, toOffers } from '@/lib/catalog'
 import { StockAlert } from './Saved'
@@ -31,6 +31,9 @@ export function BuyBox({ product: p, onAdded }: { product: Product; onAdded?: ()
 
   const stock = isInStock(p.stock_status)
   const price = period ? priceFor(p, period) : null
+  const tiers = normalizeVolumeTiers(p.volume_tiers)
+  const tier = volumeTierFor(tiers, qty)
+  const off = price !== null ? volumeDiscountNGN(price, qty, tiers) : 0
   const canBuy = stock && price !== null
 
   const add = (then: 'drawer' | 'checkout') => {
@@ -93,9 +96,27 @@ export function BuyBox({ product: p, onAdded }: { product: Product; onAdded?: ()
         </div>
       </div>
 
+      {tiers.length > 0 && (
+        <div className={s.tiers}>
+          <span className={s.tiersHead}>Buy more, save more</span>
+          <div className={s.tierList} role="group" aria-label="Volume discounts">
+            {tiers.map(t => (
+              <button key={t.min_qty} type="button" className={s.tier} aria-pressed={tier?.min_qty === t.min_qty}
+                onClick={() => setQty(t.min_qty)}>
+                <span className={s.tierQty}>{t.min_qty}+</span>
+                <span className={s.tierPct}>{t.percent}% off</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className={s.buyRow}>
         <span className={s.muted}>Total</span>
-        <span className={s.buyTotal}>{price !== null ? format(price * rate * qty, currency) : '—'}</span>
+        <span className={s.buyTotalWrap}>
+          {off > 0 && price !== null && <s className={s.buyWas}>{format(price * rate * qty, currency)}</s>}
+          <span className={s.buyTotal}>{price !== null ? format((price * qty - off) * rate, currency) : '—'}</span>
+        </span>
       </div>
 
       <div className={s.buyBtns}>

@@ -8,13 +8,14 @@ import Link from 'next/link'
 import { useState, type ReactNode } from 'react'
 import { Icon, IconButton, Input } from '@/components/ui'
 import { EXTERNAL, ROUTES } from '@/lib/routes'
+import { LogoFull } from '@/components/brand/Logo'
 import s from './auth.module.css'
 
 export function AuthLayout({ children, wide, legal = true }: { children: ReactNode; wide?: boolean; legal?: boolean }) {
   return (
     <div className={s.page}>
       <header className={s.top}>
-        <Link href={ROUTES.home} className={s.logo}><span className={s.logoMark} aria-hidden="true">B</span>BuySub</Link>
+        <Link href={ROUTES.home} className={s.logo}><LogoFull height={28} /></Link>
         <Link href={ROUTES.shop} className={s.topLink}>Back to shop</Link>
       </header>
       <main className={s.center}>

@@ -10,7 +10,7 @@
 @media (min-width: 900px) { .side { display: flex; flex-direction: column; gap: var(--bs-space-5); position: sticky; top: calc(var(--bs-header-h) + var(--bs-space-6)); align-self: start; } }
 .who { display: flex; align-items: center; gap: var(--bs-space-3); padding: 0 var(--bs-space-2); min-width: 0; }
 .whoAvatar { flex-shrink: 0; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--bs-bg-elevated); border: 1px solid var(--bs-border-default); color: var(--bs-text-primary); font-size: var(--bs-text-xs); font-weight: var(--bs-weight-semibold); }
-.whoText { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.whoText { display: flex; flex-direction: column; gap: 4px; min-width: 0; line-height: 1.25; }
 .whoName { font-size: var(--bs-text-md); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .whoEmail { font-size: var(--bs-text-xs); color: var(--bs-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .nav { list-style: none; display: flex; flex-direction: column; gap: 2px; }

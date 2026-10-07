@@ -4,7 +4,8 @@
 // and edit. Sections follow what a product is: listing, prices, availability,
 // product page (migration 07) and after purchase.
 
-import { Button } from '@/components/ui'
+import { useState } from 'react'
+import { Button, SegmentedControl, Textarea } from '@/components/ui'
 import { AreaField, FormSection, SelectField, SidePanel, SwitchRow, TextField } from '@/components/admin/AdminForm'
 import { adminStyles as s } from '@/components/admin/AdminUI'
 import { ALL_CATEGORIES, sentenceCase } from '../_lib/shared'
@@ -15,6 +16,63 @@ const CATEGORY_OPTIONS = [{ value: '', label: 'Choose a category' }, ...ALL_CATE
 const PRICE_FIELDS: [string, string][] = [['price_1m', '1 month'], ['price_3m', '3 months'], ['price_6m', '6 months'], ['price_1y', '1 year']]
 
 export const slugify = (name: string) => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '')
+
+/** "How it works" as numbered steps (one per line, stored one per entry) or
+ *  as paragraphs (stored as a single entry; lib/catalog howItWorksProse). */
+function HowItWorksField({ value, onChange }: { value: unknown; onChange: (v: string[]) => void }) {
+  const list: string[] = Array.isArray(value) ? value : []
+  const [mode, setMode] = useState<'steps' | 'prose'>(() => list.filter(Boolean).length === 1 ? 'prose' : 'steps')
+  const text = mode === 'prose' ? list.join('\n\n') : list.join('\n')
+  const write = (v: string, m = mode) => onChange(m === 'prose' ? (v.trim() ? [v] : []) : v.split('\n'))
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-2)' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--bs-space-2)' }}>
+        <span style={{ fontSize: 'var(--bs-text-xs)', fontWeight: 'var(--bs-weight-semibold)' as any, color: 'var(--bs-text-secondary)' }}>How it works</span>
+        <SegmentedControl label="How it works format" value={mode}
+          options={[{ value: 'steps', label: 'Steps' }, { value: 'prose', label: 'Paragraphs' }]}
+          onChange={m => { setMode(m); write(text, m) }} />
+      </div>
+      <Textarea rows={5} aria-label="How it works" value={text} onChange={e => write(e.target.value)}
+        placeholder={mode === 'prose' ? 'Describe what the subscription includes and how access works. Leave a blank line between paragraphs.' : 'One step per line'} />
+      <p className={s.hint}>{mode === 'prose' ? 'Shown as paragraphs. Leave a blank line between them.' : 'One step per line, shown numbered. Blank uses the standard steps.'}</p>
+    </div>
+  )
+}
+
+/** Volume discounts (migration 19): buy min_qty or more on one line, get
+ *  percent off that line. Cleaned the same way on save by the API. */
+function VolumeTiersField({ value, onChange }: { value: unknown; onChange: (v: { min_qty: number | string; percent: number | string }[]) => void }) {
+  const tiers: { min_qty: number | string; percent: number | string }[] = Array.isArray(value) ? value : []
+  const setTier = (i: number, k: 'min_qty' | 'percent', v: string) => onChange(tiers.map((t, j) => j === i ? { ...t, [k]: v } : t))
+  const last = tiers[tiers.length - 1]
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-2)' }}>
+      <span style={{ fontSize: 'var(--bs-text-xs)', fontWeight: 'var(--bs-weight-semibold)' as any, color: 'var(--bs-text-secondary)' }}>Volume discounts</span>
+      <p className={s.hint} style={{ marginTop: 0 }}>Applied automatically when one cart line reaches the quantity. The highest tier reached wins; promo codes apply after it.</p>
+      {tiers.map((t, i) => (
+        <div key={i} style={{ display: 'grid', gridTemplateColumns: 'minmax(0,1fr) minmax(0,1fr) auto', gap: 'var(--bs-space-2)', alignItems: 'center' }}>
+          <label className={s.tierField}><span>Buy at least</span>
+            <input className={s.searchInput} style={{ paddingLeft: 'var(--bs-space-3)' }} type="number" min={2} step={1} inputMode="numeric"
+              value={t.min_qty} onChange={e => setTier(i, 'min_qty', e.target.value)} aria-label={`Tier ${i + 1} minimum quantity`} />
+          </label>
+          <label className={s.tierField}><span>Percent off</span>
+            <input className={s.searchInput} style={{ paddingLeft: 'var(--bs-space-3)' }} type="number" min={1} max={90} step={0.5} inputMode="decimal"
+              value={t.percent} onChange={e => setTier(i, 'percent', e.target.value)} aria-label={`Tier ${i + 1} percent off`} />
+          </label>
+          <Button size="sm" variant="ghost" onClick={() => onChange(tiers.filter((_, j) => j !== i))} aria-label={`Remove tier ${i + 1}`} style={{ alignSelf: 'end' }}>Remove</Button>
+        </div>
+      ))}
+      {tiers.length < 5 && (
+        <div>
+          <Button size="sm" variant="secondary" icon="plus"
+            onClick={() => onChange([...tiers, { min_qty: last ? Number(last.min_qty || 1) + 2 : 3, percent: last ? Number(last.percent || 0) + 5 : 5 }])}>
+            Add tier
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
 
 /** Product-page fields (supabase-migrations/07). Blank fields are not shown on the shop. */
 export function ProductPageFields({ form, setForm }: { form: ProductFormState; setForm: (f: (p: ProductFormState) => ProductFormState) => void }) {
@@ -33,7 +91,7 @@ export function ProductPageFields({ form, setForm }: { form: ProductFormState; s
       </div>
       <div className={s.cols2}>
         <AreaField label="What you get" hint="One per line." rows={4} value={lines('features')} onChange={v => setLines('features', v)} placeholder={'4 screens at once\nUltra HD'} />
-        <AreaField label="How it works" hint="One step per line. Blank uses the standard steps." rows={4} value={lines('how_it_works')} onChange={v => setLines('how_it_works', v)} />
+        <HowItWorksField value={form.how_it_works} onChange={v => set('how_it_works', v)} />
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-2)' }}>
         <span style={{ fontSize: 'var(--bs-text-xs)', fontWeight: 'var(--bs-weight-semibold)' as any, color: 'var(--bs-text-secondary)' }}>Questions and answers</span>
@@ -47,6 +105,7 @@ export function ProductPageFields({ form, setForm }: { form: ProductFormState; s
         ))}
         <div><Button size="sm" variant="secondary" icon="plus" onClick={() => set('faqs', [...faqs, { q: '', a: '' }])}>Add question</Button></div>
       </div>
+      <VolumeTiersField value={form.volume_tiers} onChange={v => set('volume_tiers', v)} />
       <div className={s.cols2}>
         <TextField label="Search title" value={form.seo_title} onChange={v => set('seo_title', v)} placeholder={`${form.name || 'Product'} · BuySub`} />
         <TextField label="Search description" value={form.seo_description} onChange={v => set('seo_description', v)} placeholder="Defaults to the short description" />
