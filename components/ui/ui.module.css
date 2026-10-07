@@ -200,7 +200,7 @@
 /* ── Menu / Popover ─────────────────────────────────────────── */
 .popover {
   position: absolute; top: calc(100% + 8px); z-index: 70;
-  min-width: 220px;
+  min-width: 220px; max-width: calc(100vw - 2 * var(--bs-page-gutter));
   background: var(--bs-bg-card); color: var(--bs-text-primary);
   border: 1px solid var(--bs-border-default);
   border-radius: var(--bs-radius-lg);

@@ -276,7 +276,7 @@ function AccountMenu({ session }: { session: SessionState }) {
   return (
     <Popover
       align="end"
-      width={300}
+      width={360}
       panelLabel="Account"
       trigger={({ toggle, props }) => (
         <button type="button" className={css.avatarBtn} onClick={toggle} aria-label="Account menu" {...props}>
