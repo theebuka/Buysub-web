@@ -16,8 +16,10 @@ export const ROUTES = {
   help: '/help',
 
   login: '/login',
-  loginAs: (as: 'partner' | 'admin') => `/login?as=${as}`,
-  signup: '/login?mode=signup',
+  /** Sign in, then land on `next` (same-origin path). One sign-in for every role. */
+  loginNext: (next: string) => `/login?next=${encodeURIComponent(next)}`,
+  signup: '/signup',
+  forgot: '/login?mode=forgot',
 
   account: {
     home: '/account',
@@ -29,6 +31,7 @@ export const ROUTES = {
     notifications: '/account/notifications',
     referrals: '/account/referrals',
     settings: '/account/settings',
+    support: '/account/support',
   },
   saved: '/saved',
   partner: {
@@ -38,9 +41,11 @@ export const ROUTES = {
     conversions: '/partner/conversions',
     payouts: '/partner/payouts',
     profile: '/partner/profile',
+    support: '/partner/support',
   },
   admin: {
     home: '/admin',
+    support: '/admin/support',
   },
 } as const
 

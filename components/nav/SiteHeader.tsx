@@ -235,7 +235,7 @@ function AccountMenu({ session }: { session: SessionState }) {
     return (
       <div className={css.authBtns}>
         <ButtonLink href={ROUTES.login} variant="ghost" size="md" className="bs-desktop-only">Sign in</ButtonLink>
-        <ButtonLink href={ROUTES.partner.apply} variant="primary" size="md" className="bs-desktop-only">Become a partner</ButtonLink>
+        <ButtonLink href={ROUTES.signup} variant="primary" size="md" className="bs-desktop-only">Create account</ButtonLink>
         <span className="bs-mobile-only"><Link href={ROUTES.login} className={css.navIcon} aria-label="Sign in"><Icon name="user" size={20} /></Link></span>
       </div>
     )
@@ -321,7 +321,7 @@ function MobileNav({ open, onClose, session, onSearch }: {
         <div className={css.drawerSection}>
           <MenuLabel>Earn</MenuLabel>
           <MenuItem href={ROUTES.partner.apply} icon="gift" onClick={onClose}>Partner programme</MenuItem>
-          <MenuItem href={ROUTES.loginAs('partner')} icon="users" onClick={onClose}>Partner sign in</MenuItem>
+          <MenuItem href={ROUTES.loginNext(ROUTES.partner.home)} icon="users" onClick={onClose}>Partner sign in</MenuItem>
         </div>
         <div className={css.drawerSection}>
           <MenuLabel>Currency</MenuLabel>

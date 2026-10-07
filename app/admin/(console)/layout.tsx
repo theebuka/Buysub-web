@@ -6,7 +6,8 @@
 
 import { Suspense } from 'react'
 import { AdminShell } from '@/components/admin/AdminShell'
-import { ButtonLink, Skeleton } from '@/components/ui'
+import { Button, ButtonLink, Skeleton } from '@/components/ui'
+import { signOut } from '@/lib/session'
 import { RequireRole, useSession } from '@/lib/useSession'
 import { useApi } from '@/lib/useApi'
 import { ADMIN_GROUPS, ADMIN_SECTIONS } from '../_lib/sections'
@@ -38,7 +39,7 @@ function NoAccess() {
           {session.user?.email || 'This account'} isn’t a staff account. Sign in with a staff account to use the admin console.
         </p>
         <div style={{ display: 'flex', gap: 'var(--bs-space-2)', marginTop: 'var(--bs-space-2)' }}>
-          <ButtonLink href="/login?as=admin" size="md">Switch account</ButtonLink>
+          <Button size="md" onClick={async () => { await signOut(); window.location.href = '/login?next=%2Fadmin' }}>Switch account</Button>
           <ButtonLink href="/account" size="md" variant="secondary">My account</ButtonLink>
         </div>
       </div>

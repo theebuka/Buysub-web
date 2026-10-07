@@ -1,0 +1,44 @@
+/* Sign in, sign up, forgot and reset password. One quiet card on the page
+   background, in the manner of Cloudflare's and shadcn's auth screens. */
+
+.page { min-height: 100dvh; display: flex; flex-direction: column; background: var(--bs-bg-base); color: var(--bs-text-primary); }
+.top { display: flex; align-items: center; justify-content: space-between; height: 64px; padding: 0 var(--bs-page-gutter); }
+.logo { display: inline-flex; align-items: center; gap: var(--bs-space-2); font-size: var(--bs-text-lg); font-weight: var(--bs-weight-bold); letter-spacing: -.01em; color: var(--bs-text-primary); border-radius: var(--bs-radius-md); }
+.logoMark { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; background: var(--bs-accent-fill); color: #fff; font-size: var(--bs-text-sm); font-weight: var(--bs-weight-bold); }
+.topLink { font-size: var(--bs-text-sm); color: var(--bs-text-secondary); border-radius: var(--bs-radius-sm); }
+.topLink:hover { color: var(--bs-text-primary); }
+
+.center { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: var(--bs-space-6) var(--bs-space-4) var(--bs-space-12); }
+.card { width: 100%; max-width: 400px; animation: bs-rise var(--bs-dur-3) var(--bs-ease-out) both; }
+@media (min-width: 520px) {
+  .card { padding: var(--bs-space-8); background: var(--bs-bg-card); border: 1px solid var(--bs-border-default); border-radius: var(--bs-radius-xl); box-shadow: var(--bs-elev-1); }
+}
+.cardWide { max-width: 460px; }
+.title { font-size: 24px; font-weight: var(--bs-weight-bold); letter-spacing: -.015em; line-height: var(--bs-leading-tight); }
+.sub { margin-top: 6px; font-size: var(--bs-text-md); color: var(--bs-text-secondary); line-height: var(--bs-leading-snug); }
+.form { margin-top: var(--bs-space-6); display: grid; gap: var(--bs-space-4); }
+.row2 { display: grid; gap: var(--bs-space-3); grid-template-columns: 1fr 1fr; }
+.labelRow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--bs-space-2); }
+.label { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-medium); color: var(--bs-text-primary); }
+.inlineLink { font-size: var(--bs-text-sm); color: var(--bs-text-secondary); background: none; border: none; padding: 0; font-family: inherit; cursor: pointer; border-radius: var(--bs-radius-sm); }
+.inlineLink:hover { color: var(--bs-text-primary); text-decoration: underline; }
+.pass { position: relative; }
+.pass input { padding-right: 48px !important; }
+.eye { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); }
+.hint { font-size: var(--bs-text-xs); color: var(--bs-text-muted); }
+
+.alert { display: flex; gap: var(--bs-space-2); align-items: flex-start; padding: var(--bs-space-3); border-radius: var(--bs-radius-md); font-size: var(--bs-text-sm); line-height: var(--bs-leading-snug); border: 1px solid; }
+.alert svg { flex-shrink: 0; margin-top: 1px; }
+.alertError { color: var(--bs-badge-error-fg); background: var(--bs-badge-error-bg); border-color: color-mix(in srgb, var(--bs-error) 30%, transparent); }
+.alertOk { color: var(--bs-badge-success-fg); background: var(--bs-badge-success-bg); border-color: color-mix(in srgb, var(--bs-success) 30%, transparent); }
+.alertBtn { margin-top: var(--bs-space-1); display: inline-block; font: inherit; font-weight: var(--bs-weight-semibold); color: inherit; background: none; border: none; padding: 0; text-decoration: underline; cursor: pointer; }
+
+.switch { margin-top: var(--bs-space-6); text-align: center; font-size: var(--bs-text-md); color: var(--bs-text-secondary); }
+.switch a, .switch button { color: var(--bs-text-primary); font-weight: var(--bs-weight-semibold); }
+.switch a:hover, .switch button:hover { text-decoration: underline; }
+.legal { margin-top: var(--bs-space-5); max-width: 360px; text-align: center; font-size: var(--bs-text-xs); line-height: var(--bs-leading-relaxed); color: var(--bs-text-muted); }
+.legal a { color: var(--bs-text-secondary); text-decoration: underline; text-decoration-color: var(--bs-border-strong); }
+
+.checking { display: flex; align-items: center; gap: var(--bs-space-3); font-size: var(--bs-text-md); color: var(--bs-text-secondary); }
+
+.top :focus-visible, .card :focus-visible, .switch :focus-visible, .legal :focus-visible { outline: none; box-shadow: var(--bs-ring); }

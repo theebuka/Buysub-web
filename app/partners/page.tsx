@@ -1307,7 +1307,7 @@ export default function PartnersPage() {
     return (
       <div style={{ maxWidth: 560, margin: '0 auto', padding: 'var(--bs-space-12) var(--bs-space-4)' }}>
         <EmptyState icon="users" title="Applications are closed for now"
-          action={<ButtonLink href="/login?as=partner" variant="secondary">Partner sign in</ButtonLink>}>
+          action={<ButtonLink href="/login?next=%2Fpartner" variant="secondary">Partner sign in</ButtonLink>}>
           We’re not taking new partner applications at the moment. Please check back soon.
         </EmptyState>
       </div>

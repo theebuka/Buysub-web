@@ -41,7 +41,7 @@ const COLUMNS: { title: string; links: L[] }[] = [
     title: 'Earn',
     links: [
       { label: 'Partner programme', href: ROUTES.partner.apply },
-      { label: 'Partner sign in', href: ROUTES.loginAs('partner') },
+      { label: 'Partner sign in', href: ROUTES.loginNext(ROUTES.partner.home) },
     ],
   },
   {

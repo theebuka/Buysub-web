@@ -153,13 +153,12 @@ export default function HomePage() {
 
       <section className={s.promo}>
         <div>
-          <p className={s.promoEyebrow}>BuySub Partners</p>
           <h2 className={s.promoTitle}>Earn on every subscription you refer</h2>
           <p className={s.promoText}>Share your link with friends, followers or customers. When they buy, you earn commission.</p>
         </div>
         <div className={s.promoBtns}>
           <ButtonLink href={ROUTES.partner.apply} size="xl" iconRight="arrowRight">Become a partner</ButtonLink>
-          <ButtonLink href={ROUTES.loginAs('partner')} size="xl" variant="ghost" className={s.promoGhost}>Partner sign in</ButtonLink>
+          <ButtonLink href={ROUTES.loginNext(ROUTES.partner.home)} size="xl" variant="ghost" className={s.promoGhost}>Partner sign in</ButtonLink>
         </div>
       </section>
     </div>
