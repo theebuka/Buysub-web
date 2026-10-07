@@ -13,6 +13,9 @@
 //     account → emptied, so a shared browser doesn't leak or mix carts;
 //   * each change in this tab is saved shortly after (debounced);
 //   * coming back to the tab picks up changes made on another device.
+//   * a change made in this tab before the first sync finishes (the order
+//     confirmation page empties the cart while the session is still loading)
+//     is newer than the account's copy, so it wins and is saved;
 // Only { product_id, period, qty } is stored; lines are re-priced from the
 // live product list. If the API is unavailable (before migration 17) the cart
 // stays browser-only.
@@ -35,6 +38,7 @@ let syncedUser: string | null = null
 let applying = false
 let lastServerAt: string | null = null
 let timer: ReturnType<typeof setTimeout> | null = null
+let changedBeforeSync = false
 
 function getOwner(): string | null {
   try { return localStorage.getItem(OWNER_KEY) } catch { return null }
@@ -88,7 +92,8 @@ function flush() {
 }
 
 function onLocalChange() {
-  if (applying || !syncedUser) return
+  if (applying) return
+  if (!syncedUser) { changedBeforeSync = true; return }
   if (timer) clearTimeout(timer)
   timer = setTimeout(save, SAVE_DELAY_MS)
 }
@@ -100,10 +105,19 @@ async function syncWithAccount(userId: string) {
   const r = await authFetch<Remote>('/v2/me/cart', { redirectOnAuth: false })
   if (!r.ok || !r.data) return // API unavailable: stay browser-only
   const account = await fromLines(r.data.items || [])
-  const hasLocal = Object.keys(local).length > 0
   setOwner(userId)
-  syncedUser = userId
   lastServerAt = r.data.updated_at
+  // This browser's cart already belongs to the account and was changed here
+  // while we were fetching: keep it and save it over the account's copy.
+  if (owner === userId && changedBeforeSync) {
+    changedBeforeSync = false
+    syncedUser = userId
+    await save()
+    return
+  }
+  const hasLocal = Object.keys(local).length > 0
+  changedBeforeSync = false
+  syncedUser = userId
   apply(hasLocal ? merge(account, local) : account)
   if (hasLocal) await save()
 }
@@ -140,6 +154,7 @@ export function CartSync() {
     if (session.status === 'loading') return
     if (!userId) {
       syncedUser = null
+      changedBeforeSync = false
       if (timer) { clearTimeout(timer); timer = null }
       if (getOwner()) { setOwner(null); apply({}) }
       return
