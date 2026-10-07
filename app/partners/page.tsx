@@ -883,7 +883,9 @@ function FormStack({ children }: { children: React.ReactNode }) {
 function FieldRow({ children }: { children: React.ReactNode }) {
   // Collapses to one column under 600px via .bs-field-row — two inputs cannot
   // share a 360px row.
-  return <div className="bs-field-row" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: T.space[3] }}>{children}</div>
+  // minmax(0, 1fr): a bare 1fr column won't shrink below its content, so the
+  // phone inputs (flag + code + input) pushed the second column past the edge.
+  return <div className="bs-field-row" style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)', gap: T.space[3] }}>{children}</div>
 }
 
 function Field({
