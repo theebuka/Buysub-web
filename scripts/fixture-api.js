@@ -213,6 +213,7 @@ const TXNS = [
 // role drives the site header's account menu (Admin console link for staff).
 // FIXTURE_ROLE=admin to see it.
 const PROFILE = {
+  id: 'fixture-user',
   role: process.env.FIXTURE_ROLE || 'customer',
   full_name: NAMELESS ? '' : 'Ada Okonkwo',
   phone: '08031229041',
@@ -756,13 +757,20 @@ const REFERRALS = {
   ],
 }
 
+// Saved on the account (another device), merged with the browser list on sign-in.
+const SAVED = ['p-claude']
+
 const PAYOUTS = {
-  enabled: true, min_ngn: 5000, hold_days: 7,
-  available_ngn: 12300, on_hold_ngn: 1850,
-  open: null,
+  enabled: true, min_ngn: 5000, hold_days: 14,
+  frequency: 'Quarterly', next_payout_date: '2027-01-01', cutoff_at: '2026-12-17T23:00:00Z',
+  next_ngn: 12300, later_ngn: 1850, has_details: true,
+  open: [
+    { id: 'po3', amount_ngn: 9400, status: 'pending', period_start: '2026-07-01', period_end: '2026-10-01', frequency: 'Quarterly', created_at: '2026-10-01T08:00:00Z', processed_at: null, admin_note: null, reference: null },
+  ],
   history: [
-    { id: 'po2', amount_ngn: 10050, status: 'paid', created_at: '2026-08-29T10:00:00Z', processed_at: '2026-08-31T10:00:00Z', admin_note: null, reference: 'TRF-88213' },
-    { id: 'po1', amount_ngn: 4200, status: 'rejected', created_at: '2026-07-30T10:00:00Z', processed_at: '2026-07-31T09:00:00Z', admin_note: 'Account name doesn’t match the business name. Update it in your profile.', reference: null },
+    { id: 'po3', amount_ngn: 9400, status: 'pending', period_start: '2026-07-01', period_end: '2026-10-01', frequency: 'Quarterly', created_at: '2026-10-01T08:00:00Z', processed_at: null, admin_note: null, reference: null },
+    { id: 'po2', amount_ngn: 10050, status: 'paid', period_start: '2026-04-01', period_end: '2026-07-01', frequency: 'Quarterly', created_at: '2026-07-01T08:00:00Z', processed_at: '2026-07-03T10:00:00Z', admin_note: null, reference: 'TRF-88213' },
+    { id: 'po1', amount_ngn: 4200, status: 'rejected', period_start: '2026-01-01', period_end: '2026-04-01', frequency: 'Quarterly', created_at: '2026-04-01T08:00:00Z', processed_at: '2026-04-02T09:00:00Z', admin_note: 'Account name doesn’t match the business name. Update it in your profile', reference: null },
   ],
 }
 PARTNER_STATS.tier = {
@@ -783,7 +791,7 @@ const ADMIN_FLAGS = {
   reviews: { enabled: true, config: { show_sold_from: 10 }, exists: true },
   renewal_reminders: { enabled: true, config: { days_before: 7 }, exists: true },
   customer_referrals: { enabled: false, config: { reward_ngn: 500, friend_reward_ngn: 0, min_order_ngn: 2000 }, exists: true },
-  partner_payouts: { enabled: true, config: { min_ngn: 5000, hold_days: 7 }, exists: true },
+  partner_payouts: { enabled: true, config: { min_ngn: 5000, hold_days: 14 }, exists: true },
   partner_tiers: { enabled: false, config: { tiers: PARTNER_STATS.tier.tiers }, exists: true },
 }
 
@@ -793,16 +801,16 @@ const ADMIN_REVIEWS = [
 ]
 
 const ADMIN_PAYOUTS = [
-  { id: 'apo1', amount_ngn: 12300, status: 'pending', created_at: '2026-10-05T09:00:00Z', processed_at: null, admin_note: null, reference: null,
+  { id: 'apo1', amount_ngn: 12300, status: 'pending', period_start: '2026-09-01', period_end: '2026-10-01', frequency: 'Monthly', created_at: '2026-10-01T08:00:00Z', processed_at: null, admin_note: null, reference: null,
     payout_details: { payout_method: 'Bank Transfer', bank_name: 'GTBank', account_name: 'Okonkwo Digital Subscriptions Ltd', account_number: '0123456789' },
     affiliate_id: 'aff-1', affiliates: { store_name: 'Okonkwo Digital Subscriptions', business_name: null, referral_code: 'OKONKWO-DIGITAL-2026' } },
-  { id: 'apo2', amount_ngn: HUGE, status: 'pending', created_at: '2026-10-04T09:00:00Z', processed_at: null, admin_note: null, reference: null,
+  { id: 'apo2', amount_ngn: HUGE, status: 'pending', period_start: '2026-07-01', period_end: '2026-10-01', frequency: 'Quarterly', created_at: '2026-10-01T08:00:00Z', processed_at: null, admin_note: null, reference: null,
     payout_details: { payout_method: 'Crypto', crypto_token: 'USDT', crypto_chain: 'TRC20', wallet_address: 'TXk3m9QpX7aL2vR8sN4bW6cY1dE5fG0hJ' },
     affiliates: { store_name: 'Lagos Gadget Hub', referral_code: 'LGH' } },
-  { id: 'apo3', amount_ngn: 10050, status: 'paid', created_at: '2026-08-29T10:00:00Z', processed_at: '2026-08-31T10:00:00Z', admin_note: null, reference: 'TRF-88213',
+  { id: 'apo3', amount_ngn: 10050, status: 'paid', period_start: '2026-08-01', period_end: '2026-09-01', frequency: 'Monthly', created_at: '2026-09-01T08:00:00Z', processed_at: '2026-08-31T10:00:00Z', admin_note: null, reference: 'TRF-88213',
     payout_details: { payout_method: 'Bank Transfer', bank_name: 'Access Bank', account_name: 'Ada Okonkwo', account_number: '0987654321' },
     affiliates: { store_name: 'Okonkwo Digital Subscriptions', referral_code: 'OKONKWO-DIGITAL-2026' } },
-  { id: 'apo4', amount_ngn: 4200, status: 'rejected', created_at: '2026-07-30T10:00:00Z', processed_at: '2026-07-31T09:00:00Z', admin_note: 'Account name doesn’t match.', reference: null,
+  { id: 'apo4', amount_ngn: 4200, status: 'rejected', period_start: '2026-01-01', period_end: '2026-07-01', frequency: 'Biannual', created_at: '2026-07-01T08:00:00Z', processed_at: '2026-07-31T09:00:00Z', admin_note: 'Account name doesn’t match.', reference: null,
     payout_details: { payout_method: 'Bank Transfer', bank_name: 'Zenith', account_name: 'B. Ade', account_number: '1122334455' },
     affiliates: { store_name: 'Ade Stores', referral_code: 'ADE' } },
 ]
@@ -811,7 +819,8 @@ const ADMIN_PAYOUTS = [
 const POST_ROUTES = [
   // Sends the browser straight back as if Paystack had redirected.
   [/^\/v2\/me\/wallet\/fund$/, () => ({ ok: true, data: { authorization_url: '/account/wallet?reference=FIXTURE-TOPUP', reference: 'FIXTURE-TOPUP' } })],
-  [/^\/v2\/partners\/me\/payouts$/, () => ({ ok: true, data: { id: 'po3', amount_ngn: 12300, status: 'pending', created_at: new Date().toISOString() } })],
+  [/^\/v2\/admin\/jobs\/partner-payouts$/, () => ({ ok: true, data: { created: 0, below_minimum: 2, exists: 0, not_due: 3, failed: 0 } })],
+  [/^\/v2\/me\/saved\/merge$/, (body) => ({ ok: true, data: [...new Set([...(body.product_ids || []), ...SAVED])] })],
   [/^\/v2\/me\/reviews$/, (body) => ({ ok: true, data: { id: 'rv-mine', rating: body.rating, body: body.body || null, status: 'published', created_at: new Date().toISOString() } })],
   [/^\/v2\/stock-alerts$/, () => ({ ok: true, data: { subscribed: true } })],
 ]
@@ -825,6 +834,7 @@ const ROUTES = [
   [/^\/v2\/me\/notifications$/,        () => ({ ok: true, data: { items: INBOX, unread: INBOX.filter(n => !n.read_at).length, has_more: false } })],
   [/^\/v2\/me\/reviews\/[^/]+$/,       () => ({ ok: true, data: { enabled: true, can_review: true, review: null } })],
   [/^\/v2\/me\/referrals$/,            () => ({ ok: true, data: REFERRALS })],
+  [/^\/v2\/me\/saved$/,                () => ({ ok: true, data: SAVED })],
   [/^\/v2\/me\/wallet\/fund\/verify$/, () => ({ ok: true, data: { credited: true, amount_ngn: 5000, balance_ngn: 23300 } })],
   [/^\/v2\/partners\/me\/payouts$/,   () => ({ ok: true, data: PAYOUTS })],
   [/^\/v2\/admin\/flags$/,             () => ({ ok: true, data: ADMIN_FLAGS })],

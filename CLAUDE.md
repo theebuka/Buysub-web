@@ -38,7 +38,7 @@ To watch changes live against the fixture API, use the `fixture-api` and `web-de
 | `/` | `app/page.tsx` (edge) → `components/home/HomePage.tsx` | home: hero search, categories, popular, partner promo. Old `/?category=…` style links redirect to `/shop` with their query; `?ref=` is recorded here |
 | `/shop`, `/shop/c/[category]` | `components/shop/ShopPage.tsx` | catalog: filters in the URL, quick view on card click |
 | `/shop/[slug]` | `app/shop/[slug]/page.tsx` (edge, fetches the product for metadata and schema.org JSON-LD) → `components/shop/ProductPage.tsx` | product page: buy box, frequently bought together, reviews, recently viewed; the quick view `pushState`s this URL |
-| `/saved` | `components/shop/SavedPage.tsx` | saved (heart) and recently viewed products, this browser only (`lib/saved.ts`) |
+| `/saved` | `components/shop/SavedPage.tsx` | saved (heart) products, synced to the account when signed in (`lib/saved.ts`, `/v2/me/saved`), and recently viewed (this browser only) |
 | `/sitemap.xml`, `/robots.txt` | `app/sitemap.xml/route.ts` (edge), `app/robots.ts` | the sitemap is a plain route handler: as `app/sitemap.ts` its catalog fetch never returned under next-on-pages |
 | `/cart`, `/checkout` | `components/shop/CartPage.tsx`, `CheckoutPage.tsx` | cart, then details + Paystack / WhatsApp |
 | `/help` | `app/help/page.tsx` | help centre |

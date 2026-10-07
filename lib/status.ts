@@ -93,7 +93,7 @@ export function commissionStatus(status: string | null | undefined): { label: st
 
 /** Partner payout requests (migration 15). Pending is with BuySub, not the partner. */
 const PAYOUT: Record<string, Def> = {
-  pending:  { label: 'Requested', tone: 'warning' },
+  pending:  { label: 'Processing', tone: 'warning' },
   paid:     { label: 'Paid',      tone: 'success' },
   rejected: { label: 'Declined',  tone: 'error' },
 }

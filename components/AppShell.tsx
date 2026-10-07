@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation"
 import SiteHeader from "./nav/SiteHeader"
 import SiteFooter from "./nav/SiteFooter"
 import MaintenanceGate from "./MaintenanceGate"
+import { SavedSync } from "@/lib/saved"
 import { toast } from "sonner"
 import { syncThemeToRoute } from "@/lib/theme"
 import { API_BASE } from "@/lib/config"
@@ -210,6 +211,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
       >
         <MaintenanceGate>{children}</MaintenanceGate>
+        <SavedSync />
       </div>
 
       {modal && (

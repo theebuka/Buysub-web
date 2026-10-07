@@ -1,9 +1,11 @@
 'use client'
 
-// /admin/payouts: partner payout requests. Send the money first (bank
-// transfer or crypto, outside BuySub), then mark the request paid with the
+// /admin/payouts: scheduled partner payouts. The API's daily job creates one
+// per partner when their chosen period (monthly, quarterly, ...) ends; "Create
+// due payouts" runs it now and is safe to repeat. Send the money first (bank
+// transfer or crypto, outside BuySub), then mark the payout paid with the
 // transfer reference. Declining needs a reason the partner will see; their
-// commission becomes requestable again.
+// commission rolls into their next payout.
 
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -13,12 +15,13 @@ import { AdminHead, CellTitle, adminStyles as s } from '@/components/admin/Admin
 import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
 import { authFetch } from '@/lib/apiAuth'
 import { invalidate } from '@/lib/useApi'
-import { fmtDate, fmtNGN } from '@/lib/format'
+import { fmtDate, fmtNGN, fmtPayoutPeriod } from '@/lib/format'
 import { payoutStatus } from '@/lib/status'
 import { useAdminList } from '../_lib/useAdminList'
 
 type Payout = {
   id: string; amount_ngn: number; status: string; created_at: string; processed_at: string | null
+  period_start: string | null; period_end: string; frequency: string
   admin_note: string | null; reference: string | null
   payout_details: { payout_method?: string; bank_name?: string; account_name?: string; account_number?: string; crypto_token?: string; crypto_chain?: string; wallet_address?: string }
   affiliates?: { store_name?: string | null; business_name?: string | null; referral_code?: string } | null
@@ -45,6 +48,19 @@ export function PayoutsTab() {
   const list = useAdminList<Payout>('/v2/admin/payouts', { params: ['status'], limit: 25 })
   const status = list.params.status ?? ''
   const [dialog, setDialog] = useState<{ kind: 'paid' | 'rejected'; p: Payout } | null>(null)
+  const [running, setRunning] = useState(false)
+
+  const runDue = async () => {
+    setRunning(true)
+    const r = await authFetch<{ created: number; below_minimum: number }>('/v2/admin/jobs/partner-payouts', { method: 'POST' })
+    setRunning(false)
+    if (!r.ok) { toast.error(r.error || 'Couldn’t create payouts'); return }
+    const n = r.data?.created ?? 0
+    toast.success(n ? `${n} payout${n === 1 ? '' : 's'} created` : 'No payouts due', {
+      description: r.data?.below_minimum ? `${r.data.below_minimum} below the minimum carried over.` : undefined,
+    })
+    if (n) { list.reload(); invalidate('/v2/admin/stats') }
+  }
 
   const settle = async (text: string) => {
     if (!dialog) return
@@ -64,7 +80,14 @@ export function PayoutsTab() {
     { key: 'partner', header: 'Partner', cell: p => <div className={s.clip}><CellTitle title={name(p)} sub={p.affiliates?.referral_code} /></div> },
     { key: 'amount', header: 'Amount', align: 'right', cell: p => <b className={s.num}>{fmtNGN(p.amount_ngn)}</b> },
     { key: 'to', header: 'Pay to', cell: p => <Destination d={p.payout_details || {}} /> },
-    { key: 'requested', header: 'Requested', cell: p => <span className={s.secondary}>{fmtDate(p.created_at)}</span> },
+    {
+      key: 'period', header: 'Period', cell: p => (
+        <div style={{ display: 'grid', gap: 2 }}>
+          <span>{p.period_end ? fmtPayoutPeriod(p.period_start, p.period_end) : '-'}</span>
+          <span className={s.secondary}>{p.frequency || 'Monthly'} · created {fmtDate(p.created_at)}</span>
+        </div>
+      ),
+    },
     {
       key: 'status', header: 'Status', cell: p => {
         const st = payoutStatus(p.status)
@@ -90,9 +113,10 @@ export function PayoutsTab() {
 
   return (
     <>
-      <AdminHead title="Payouts" lede="Partner payout requests. Send the money, then mark the request paid." />
+      <AdminHead title="Payouts" lede="Created on each partner’s schedule. Send the money, then mark the payout paid."
+        actions={<Button size="sm" variant="secondary" loading={running} onClick={runDue}>Create due payouts</Button>} />
       <DataTable
-        caption="Payout requests"
+        caption="Partner payouts"
         columns={columns}
         rows={list.rows}
         rowKey={p => p.id}
@@ -102,9 +126,9 @@ export function PayoutsTab() {
         pagination={list.pagination}
         onPage={p => list.setParams({ page: String(p) })}
         toolbar={<Filters label="Status" value={status} onChange={v => list.setParams({ status: v })} options={[
-          { value: '', label: 'All' }, { value: 'pending', label: 'Requested' }, { value: 'paid', label: 'Paid' }, { value: 'rejected', label: 'Declined' },
+          { value: '', label: 'All' }, { value: 'pending', label: 'Processing' }, { value: 'paid', label: 'Paid' }, { value: 'rejected', label: 'Declined' },
         ]} />}
-        empty={<TableState title={status === 'pending' ? 'Nothing waiting' : status ? 'No payouts with this status' : 'No payout requests yet'}>Partners request payouts from their portal once they have enough available.</TableState>}
+        empty={<TableState title={status === 'pending' ? 'Nothing waiting' : status ? 'No payouts with this status' : 'No payouts yet'}>Payouts appear here when a partner’s period ends and they’ve earned at least the minimum.</TableState>}
       />
       <ConfirmDialog open={dialog?.kind === 'paid'} title={dialog ? `Mark ${fmtNGN(dialog.p.amount_ngn)} to ${name(dialog.p)} as paid?` : ''}
         confirmLabel="Mark paid" reasonLabel="Transfer reference (optional)" reasonHint="Shown to the partner."
@@ -114,7 +138,7 @@ export function PayoutsTab() {
       <ConfirmDialog open={dialog?.kind === 'rejected'} title="Decline this payout?" confirmLabel="Decline" danger
         reasonLabel="Reason" reasonRequired reasonHint="The partner sees this, so say what to fix."
         onConfirm={settle} onClose={() => setDialog(null)}>
-        <p>The commission goes back to the partner’s available balance to request again.</p>
+        <p>The commission rolls into the partner’s next payout.</p>
       </ConfirmDialog>
     </>
   )

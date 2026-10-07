@@ -1,6 +1,6 @@
 'use client'
 
-// Save for later (this browser only, lib/saved.ts). Outline heart, filled when saved.
+// Save for later (lib/saved.ts: this browser, and the account when signed in). Outline heart, filled when saved.
 
 import { toast } from 'sonner'
 import { Button, IconButton } from '@/components/ui'

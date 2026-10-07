@@ -38,7 +38,7 @@ const LABELS: Record<string, { label: string; hint: string }> = {
   renewal_reminders: { label: 'Renewal reminders', hint: 'One email and notification per subscription before it ends. Sent daily at 9am.' },
   reviews: { label: 'Reviews and sold counts', hint: 'Ratings on product cards and reviews on product pages. Only buyers can review.' },
   customer_referrals: { label: 'Refer and earn', hint: 'Customers share a link and get wallet credit when a new customer’s first order is paid.' },
-  partner_payouts: { label: 'Partner payout requests', hint: 'Partners request what they’ve earned; you pay it and mark it paid in Payouts.' },
+  partner_payouts: { label: 'Partner payouts', hint: 'Created on each partner’s chosen schedule; you pay them and mark them paid in Payouts.' },
   partner_tiers: { label: 'Partner tiers', hint: 'Partners move to a higher commission rate as their lifetime referred sales grow. Applies to new orders.' },
 }
 
@@ -168,7 +168,7 @@ export function ServiceSettings() {
           <Row {...common('partner_payouts')} dirty={dirty('partner_payouts')} onSave={save('partner_payouts', ['min_ngn', 'hold_days'])}>
             <div className={s.cols2}>
               <TextField label="Minimum payout (₦)" type="number" value={num(draft.partner_payouts?.min_ngn)} onChange={set('partner_payouts', 'min_ngn')} />
-              <TextField label="Hold period (days)" type="number" hint="Commission becomes requestable this long after the order is paid." value={num(draft.partner_payouts?.hold_days)} onChange={set('partner_payouts', 'hold_days')} />
+              <TextField label="Hold period (days)" type="number" hint="Commission earned this close to a payout date waits for the next one." value={num(draft.partner_payouts?.hold_days)} onChange={set('partner_payouts', 'hold_days')} />
             </div>
           </Row>
           <Row {...common('partner_tiers')} dirty={dirty('partner_tiers')} onSave={async () => {

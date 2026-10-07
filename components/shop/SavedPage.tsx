@@ -1,13 +1,17 @@
 'use client'
 
-// /saved: products saved with the heart, and recently viewed. Both live in
-// this browser only (lib/saved.ts), so this page works signed out too.
+// /saved: products saved with the heart, and recently viewed. Saved items
+// follow the account when signed in and stay in this browser when not
+// (lib/saved.ts), so this page works signed out too. Recently viewed is
+// always this browser only.
 
 import { useEffect, useState } from 'react'
 import { Button, ButtonLink, EmptyState, PageHeader } from '@/components/ui'
 import { clearRecent, useRecentIds, useSavedIds } from '@/lib/saved'
 import { useProducts } from '@/lib/useProducts'
 import { ROUTES } from '@/lib/routes'
+import { useSession } from '@/lib/useSession'
+import { loginUrl } from '@/lib/apiAuth'
 import { ProductCard, ProductCardSkeleton } from './ProductCard'
 import { useProductsById } from './Saved'
 import s from './shop.module.css'
@@ -18,11 +22,14 @@ export default function SavedPage() {
   const { loading } = useProducts()
   const saved = useProductsById(useSavedIds())
   const recent = useProductsById(useRecentIds())
+  const session = useSession()
 
   return (
     <div className={s.page}>
       <PageHeader crumbs={[{ label: 'Shop', href: ROUTES.shop }, { label: 'Saved' }]} title="Saved"
-        description="Products you’ve saved on this device, and what you looked at recently." />
+        description={session.status === 'signed_out'
+          ? <>Saved on this device. <a href={loginUrl(ROUTES.saved)} className={s.inlineLink}>Sign in</a> to keep them on every device.</>
+          : 'Products you’ve saved, and what you looked at recently.'} />
       {!mounted || loading ? (
         <div className={s.grid}>{Array.from({ length: 4 }, (_, i) => <ProductCardSkeleton key={i} />)}</div>
       ) : (

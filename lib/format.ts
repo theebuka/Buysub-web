@@ -69,3 +69,17 @@ const CATEGORY_LABELS: Record<string, string> = { ai: 'AI', vpn: 'VPN' }
 export function categoryLabel(key: string): string {
   return CATEGORY_LABELS[key] ?? titleCase(key)
 }
+
+/**
+ * A payout period from its boundary dates ('YYYY-MM-DD'; the end is the 1st
+ * that closes it): "September 2026" for one month, "Jul – Sep 2026" for longer.
+ */
+export function fmtPayoutPeriod(start: string | null | undefined, end: string): string {
+  const cal = (d: string) => new Date(d + 'T12:00:00Z')
+  const last = cal(end); last.setUTCMonth(last.getUTCMonth() - 1)
+  const first = start ? cal(start) : last
+  const mon = (d: Date) => d.toLocaleDateString('en-NG', { month: 'short', timeZone: 'UTC' })
+  if (first.getTime() === last.getTime()) return last.toLocaleDateString('en-NG', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const sameYear = first.getUTCFullYear() === last.getUTCFullYear()
+  return `${mon(first)}${sameYear ? '' : ` ${first.getUTCFullYear()}`} – ${mon(last)} ${last.getUTCFullYear()}`
+}

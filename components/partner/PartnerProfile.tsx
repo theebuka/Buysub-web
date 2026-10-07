@@ -126,7 +126,7 @@ export default function PartnerProfile() {
                   {opts(['Bank Transfer', 'Crypto'], d.payout_method).map(o => <option key={o}>{o}</option>)}
                 </Select>
               )}</Field>
-              <Field label="Frequency">{p => (
+              <Field label="Frequency" hint="We pay you on the 1st of the month each period ends.">{p => (
                 <Select {...p} value={d.payout_frequency || ''} onChange={set('payout_frequency')}>
                   <option value="">Choose…</option>
                   {opts(['Monthly', 'Quarterly', 'Biannual', 'Annual'], d.payout_frequency).map(o => <option key={o}>{o}</option>)}

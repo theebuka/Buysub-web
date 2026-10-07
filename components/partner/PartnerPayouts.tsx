@@ -1,61 +1,67 @@
 'use client'
 
-// Balance, payout requests and the details payouts go to
-// (buysub-api-deploy/src/features/payouts.ts). Commissions become available
-// to request once their order has been paid for hold_days (the refund
-// window). A request takes everything available; BuySub pays it and marks it
-// paid, or declines it with a reason and the money becomes available again.
+// Scheduled payouts (buysub-api-deploy/src/features/payouts.ts). Partners are
+// paid on the frequency they chose (Monthly, Quarterly, Biannual, Annual) on
+// the 1st of the month a new period starts. A payout includes commission
+// earned at least hold_days before that date; newer commission rolls into the
+// following one, and so does a total under min_ngn. BuySub pays it and marks
+// it paid, or declines it with a reason and the money rolls forward.
 
 import Link from 'next/link'
-import { useState } from 'react'
-import { toast } from 'sonner'
-import { Badge, Button, Skeleton } from '@/components/ui'
-import { useApi, invalidate } from '@/lib/useApi'
-import { authFetch } from '@/lib/apiAuth'
-import { fmtDate, fmtNGN } from '@/lib/format'
+import { Badge, Skeleton } from '@/components/ui'
+import { useApi } from '@/lib/useApi'
+import { fmtDate, fmtNGN, fmtPayoutPeriod } from '@/lib/format'
 import { payoutStatus } from '@/lib/status'
 import { ROUTES } from '@/lib/routes'
 import { PageHead, PanelEmpty, PanelError, RowsSkeleton } from '@/components/account/AccountShell'
 import { usePartner, type Commission } from './usePartner'
 import s from '@/components/account/account.module.css'
 
-type Payout = { id: string; amount_ngn: number; status: string; created_at: string; processed_at: string | null; admin_note: string | null; reference: string | null }
+type Payout = {
+  id: string; amount_ngn: number; status: string; created_at: string; processed_at: string | null
+  period_start: string | null; period_end: string; frequency: string
+  admin_note: string | null; reference: string | null
+}
 type Payouts = {
   enabled: boolean; min_ngn: number; hold_days: number
-  available_ngn: number; on_hold_ngn: number
-  open: Payout | null; history: Payout[]
+  frequency: string; next_payout_date: string; cutoff_at: string
+  next_ngn: number; later_ngn: number; has_details: boolean
+  open: Payout[]; history: Payout[]
+}
+
+const SCHEDULE: Record<string, string> = {
+  Monthly: 'on the 1st of every month',
+  Quarterly: 'on 1 January, April, July and October',
+  Biannual: 'on 1 January and 1 July',
+  Annual: 'on 1 January',
 }
 
 const mask = (n?: string | null) => (n ? `•••• ${String(n).slice(-4)}` : '')
 const shortAddr = (a?: string | null) => (a && a.length > 14 ? `${a.slice(0, 6)}…${a.slice(-4)}` : a || '')
 
-function RequestPanel({ p, hasDetails, onDone }: { p: Payouts; hasDetails: boolean; onDone: () => void }) {
-  const [busy, setBusy] = useState(false)
-  const request = async () => {
-    setBusy(true)
-    const r = await authFetch('/v2/partners/me/payouts', { method: 'POST' })
-    setBusy(false)
-    if (!r.ok) { toast.error(r.error || 'Couldn’t request the payout'); return }
-    toast.success('Payout requested')
-    onDone()
-  }
+// Dates are 'YYYY-MM-DD' period boundaries; read them as calendar dates, not instants.
+const cal = (d: string) => new Date(d + 'T12:00:00Z')
+const periodLabel = (p: Payout) => fmtPayoutPeriod(p.period_start, p.period_end)
 
-  let body: React.ReactNode
-  if (!p.enabled) body = <p className={s.secondary}>Payout requests are paused right now. Approved commission is still paid by BuySub.</p>
-  else if (p.open) body = <p className={s.secondary}>You asked for <b className={s.num}>{fmtNGN(p.open.amount_ngn)}</b> on {fmtDate(p.open.created_at)}. We’ll send it to the account below and let you know.</p>
-  else if (!hasDetails) body = <p className={s.secondary}>Add your payout details below before requesting a payout.</p>
-  else if (p.available_ngn < p.min_ngn) body = <p className={s.secondary}>You can request a payout once you have {fmtNGN(p.min_ngn)} available.</p>
-  else body = (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--bs-space-3)', flexWrap: 'wrap' }}>
-      <Button loading={busy} onClick={request}>Request {fmtNGN(p.available_ngn)}</Button>
-      <span className={s.muted}>Usually paid within 3 working days.</span>
-    </div>
-  )
+function SchedulePanel({ p }: { p: Payouts }) {
+  let status: React.ReactNode = null
+  if (!p.enabled) status = <p className={s.secondary}>Payouts are paused right now. Your commission is safe and will be paid when they resume.</p>
+  else if (!p.has_details) status = <p className={s.secondary}>Add your payout details below so we can pay you on {fmtDate(cal(p.next_payout_date))}.</p>
+  else if (p.next_ngn < p.min_ngn) status = <p className={s.secondary}>Payouts start at {fmtNGN(p.min_ngn)}. Anything below that carries over to the next payout.</p>
 
   return (
     <div className={s.panelPad} style={{ borderTop: '1px solid var(--bs-border-subtle)', display: 'grid', gap: 'var(--bs-space-2)' }}>
-      {body}
-      <p className={s.muted}>Commission becomes available {p.hold_days} days after the order is paid, so refunds can settle first.</p>
+      {p.open.map(o => (
+        <p key={o.id} className={s.secondary}>
+          Your {periodLabel(o)} payout of <b className={s.num}>{fmtNGN(o.amount_ngn)}</b> is being processed. We’ll let you know when it’s sent.
+        </p>
+      ))}
+      {status}
+      <p className={s.muted}>
+        You’re paid {p.frequency.toLowerCase()}, {SCHEDULE[p.frequency] ?? SCHEDULE.Monthly}.{' '}
+        Each payout includes commission earned at least {p.hold_days} days before, so refunds can settle first.{' '}
+        <Link href={`${ROUTES.partner.profile}#payout`} className={s.textLink}>Change frequency</Link>
+      </p>
     </div>
   )
 }
@@ -70,29 +76,29 @@ export default function PartnerPayouts() {
   const hasDetails = isCrypto ? !!profile?.wallet_address : !!profile?.account_number
   const paidTotal = paid.reduce((sum, c) => sum + (Number(c.amount_ngn) || 0), 0)
   const money = (v: number | undefined) => payouts.loading && !p ? <Skeleton width={90} height={28} /> : fmtNGN(v ?? 0)
-  const refresh = () => { invalidate('/v2/partners/me/payouts'); invalidate('/v2/affiliates/me/commissions') }
 
   return (
     <>
-      <PageHead title="Payouts" lede="Request what you’ve earned. We pay it to the account on your profile." />
+      <PageHead title="Payouts" lede="We pay what you’ve earned on your schedule, to the account on your profile." />
       {payouts.error ? <div className={s.panel}><PanelError message={payouts.error} onRetry={payouts.reload} /></div> : (
         <div className={s.panel}>
           <div className={s.stats}>
             <div className={s.stat}>
-              <span className={s.statLabel}>Available to request</span>
-              <span className={s.statValue}>{money(p?.available_ngn)}</span>
+              <span className={s.statLabel}>Next payout</span>
+              <span className={s.statValue}>{money(p?.next_ngn)}</span>
+              <span className={s.statFoot}>{p ? `On ${fmtDate(cal(p.next_payout_date))}, so far` : ''}</span>
             </div>
             <div className={s.stat}>
-              <span className={s.statLabel}>On hold</span>
-              <span className={s.statValue}>{money(p?.on_hold_ngn)}</span>
-              <span className={s.statFoot}>{p ? `Released ${p.hold_days} days after payment` : ''}</span>
+              <span className={s.statLabel}>Rolls to the payout after</span>
+              <span className={s.statValue}>{money(p?.later_ngn)}</span>
+              <span className={s.statFoot}>{p ? `Earned within ${p.hold_days} days of the date` : ''}</span>
             </div>
             <div className={s.stat}>
               <span className={s.statLabel}>Paid to date</span>
               <span className={s.statValue}>{comms.loading && !comms.data ? <Skeleton width={90} height={28} /> : fmtNGN(paidTotal)}</span>
             </div>
           </div>
-          {p && <RequestPanel p={p} hasDetails={hasDetails} onDone={refresh} />}
+          {p && <SchedulePanel p={p} />}
         </div>
       )}
 
@@ -118,10 +124,10 @@ export default function PartnerPayouts() {
       </section>
 
       <section className={s.section}>
-        <h2 className={s.h2}>Requests</h2>
+        <h2 className={s.h2}>History</h2>
         <div className={s.panel}>
           {payouts.loading && !p ? <RowsSkeleton n={2} />
-            : !p?.history.length ? <PanelEmpty title="No requests yet">Your payout requests and their status show here.</PanelEmpty>
+            : !p?.history.length ? <PanelEmpty title="No payouts yet">Each payout and its status shows here.</PanelEmpty>
             : (
               <ul className={s.rows}>
                 {p.history.map(h => {
@@ -131,10 +137,10 @@ export default function PartnerPayouts() {
                       <div className={s.rowMain}>
                         <span className={s.rowTitle}>{fmtNGN(h.amount_ngn)}</span>
                         <span className={s.rowSub} style={{ whiteSpace: 'normal' }}>
-                          Requested {fmtDate(h.created_at)}
+                          {periodLabel(h)}
                           {h.status === 'paid' && h.processed_at ? ` · Paid ${fmtDate(h.processed_at)}` : ''}
                           {h.reference ? ` · Ref ${h.reference}` : ''}
-                          {h.status === 'rejected' && h.admin_note ? ` · ${h.admin_note}` : ''}
+                          {h.status === 'rejected' && h.admin_note ? ` · ${h.admin_note}. Moved to your next payout` : ''}
                         </span>
                       </div>
                       <Badge tone={st.tone}>{st.label}</Badge>
