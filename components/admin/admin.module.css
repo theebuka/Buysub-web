@@ -108,7 +108,7 @@ a.listRow:hover { background: var(--bs-bg-elevated); }
 .searchInput:focus { outline: none; border-color: var(--bs-accent); }
 .toolbarEnd { margin-left: auto; display: flex; gap: var(--bs-space-2); align-items: center; }
 
-.filters { display: flex; gap: 2px; padding: 2px; border-radius: var(--bs-radius-md); background: var(--bs-bg-elevated); overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.filters { display: flex; width: fit-content; gap: 2px; padding: 2px; border-radius: var(--bs-radius-md); background: var(--bs-bg-elevated); overflow-x: auto; scrollbar-width: none; max-width: 100%; }
 .filters::-webkit-scrollbar { display: none; }
 .filter { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 var(--bs-space-3); border: none; border-radius: var(--bs-radius-sm); background: transparent; color: var(--bs-text-secondary); font-family: inherit; font-size: var(--bs-text-xs); font-weight: var(--bs-weight-medium); cursor: pointer; white-space: nowrap; }
 .filter:hover { color: var(--bs-text-primary); }
