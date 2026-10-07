@@ -44,6 +44,10 @@
  *                              is the "No partner profile" branch.
  *   FIXTURE_VERIFY=failed      /v2/pay/verify outcome: verified (default) | failed
  *   FIXTURE_BANNER=short       AppShell's banner message: long (default) | short
+ *   FIXTURE_MAINTENANCE=on     /v2/status reports maintenance mode (the storefront
+ *                              shows the maintenance page; /admin does not)
+ *   FIXTURE_SERVICES=off       /v2/status reports Paystack, WhatsApp, wallet and
+ *                              partner applications switched off
  *   PORT=9001                  listen elsewhere
  *
  * The list endpoints always carry their awkward cases inline: a very long
@@ -60,6 +64,8 @@ const ZERO_WALLET = process.env.FIXTURE_WALLET === 'zero'
 const PARTNER = process.env.FIXTURE_PARTNER || 'approved'
 const VERIFY_OK = process.env.FIXTURE_VERIFY !== 'failed'
 const SHORT_BANNER = process.env.FIXTURE_BANNER === 'short'
+const MAINTENANCE = process.env.FIXTURE_MAINTENANCE === 'on'
+const SERVICES_ON = process.env.FIXTURE_SERVICES !== 'off'
 
 // ── awkward values, kept in one place so they are easy to reuse ──────────
 const LONG_NAME =
@@ -451,6 +457,7 @@ const AUTO_DISCOUNT = {
 // far. The list endpoints return a correctly-shaped empty page. Fill these in
 // at Phase 6, when each tab's row shape has actually been read.
 const ADMIN_STATS = {
+  payouts_pending: 2,
   revenue_today: 184500, revenue_this_month: 4820750, total_revenue: 61944210,
   orders_today: 12, orders_pending_manual: 3,
   products_active: 268, products_total: 275,
@@ -694,8 +701,143 @@ const SHELL_NOTIFICATIONS = [
     message: 'Admin-only banner. If this appears on a customer page the audience filter broke.' },
 ]
 
+// ── extra features (migrations 08-15) ───────────────────────────────────
+// Ratings and sold counts: one product with both, one with a rating only, one
+// with a single 1-star review, the rest with nothing (most of the catalog).
+Object.assign(PRODUCTS[0], { sold_count: 1240, rating_avg: 4.7, rating_count: 86 })
+Object.assign(PRODUCTS[1], { sold_count: null, rating_avg: 4.2, rating_count: 9 })
+Object.assign(PRODUCTS[2], { sold_count: 58, rating_avg: 1, rating_count: 1 })
+
+// Server-side expiry dates on the paid lines (migration 08), matching what
+// lib/subscriptions.ts derives, so both paths agree.
+for (const o of ORDERS) {
+  if (o.status !== 'paid') continue
+  for (const it of o.order_items) {
+    if (!it.duration_months || it.billing_type === 'one_time') continue
+    const start = new Date(o.paid_at || o.created_at)
+    const end = new Date(start); end.setUTCMonth(end.getUTCMonth() + it.duration_months)
+    it.starts_at = start.toISOString(); it.expires_at = end.toISOString()
+  }
+}
+
+const STATUS = {
+  maintenance: { enabled: MAINTENANCE, message: MAINTENANCE ? 'We’re upgrading checkout. Back by 2pm.' : '' },
+  services: {
+    paystack: SERVICES_ON, whatsapp: SERVICES_ON, wallet_pay: SERVICES_ON, wallet_funding: SERVICES_ON,
+    partner_applications: SERVICES_ON, reviews: true, referrals: true, payouts: true,
+  },
+  wallet_funding: { min_ngn: 1000, max_ngn: 500000 },
+}
+
+const REVIEWS = [
+  { id: 'rv1', rating: 5, body: 'Profile was set up in about 20 minutes. Works on my TV and phone.', display_name: 'Chidi E.', created_at: '2026-10-01T10:00:00Z' },
+  { id: 'rv2', rating: 4, body: 'Good value. Took a little over an hour the first time.', display_name: 'Funmi A.', created_at: '2026-09-22T14:00:00Z' },
+  { id: 'rv3', rating: 5, body: null, display_name: 'Tunde', created_at: '2026-09-15T08:30:00Z' },
+  { id: 'rv4', rating: 2, body: LONG_BANNER, display_name: 'Ngozi O.', created_at: '2026-08-30T19:10:00Z' },
+]
+const REVIEW_SUMMARY = { average: 4.7, count: 86, distribution: [2, 1, 4, 14, 65] }
+
+const INBOX = [
+  { id: 'n1', kind: 'order', title: 'Order BS-24301 confirmed', body: 'Payment received. Your receipt is in your email.', href: '/account/orders/BS-24301', read_at: null, created_at: '2026-10-06T09:42:00Z' },
+  { id: 'n2', kind: 'renewal', title: 'Spotify Duo ends on 10 October 2026', body: 'Renew now to keep it running without a gap.', href: '/account/subscriptions?renew=oi-spotify-duo-Quarterly', read_at: null, created_at: '2026-10-03T08:00:00Z' },
+  { id: 'n3', kind: 'wallet', title: '₦5,000 added to your wallet', body: 'Your top-up was successful.', href: '/account/wallet', read_at: '2026-09-20T10:00:00Z', created_at: '2026-09-20T09:00:00Z' },
+  { id: 'n4', kind: 'referral', title: 'You earned ₦500', body: 'A friend you invited made their first purchase. The reward is in your wallet.', href: '/account/referrals', read_at: '2026-09-11T10:00:00Z', created_at: '2026-09-11T09:00:00Z' },
+  { id: 'n5', kind: 'stock', title: 'NordVPN Plus is back in stock', body: null, href: '/shop/nordvpn-plus', read_at: '2026-09-01T10:00:00Z', created_at: '2026-09-01T09:00:00Z' },
+]
+
+const REFERRALS = {
+  enabled: true, reward_ngn: 500, friend_reward_ngn: 300, min_order_ngn: 2000,
+  code: 'BSK7Q2MX', link: 'https://app.buysub.ng/shop?ref=BSK7Q2MX',
+  earned_ngn: 1500, referred: 3, pending_orders: 1,
+  rewards: [
+    { id: 'rr1', friend: 'c•••@gmail.com', amount_ngn: 500, created_at: '2026-09-11T09:00:00Z' },
+    { id: 'rr2', friend: 'f•••@yahoo.com', amount_ngn: 500, created_at: '2026-08-24T12:00:00Z' },
+    { id: 'rr3', friend: 't•••••@outlook.com', amount_ngn: 500, created_at: '2026-08-02T15:00:00Z' },
+  ],
+}
+
+const PAYOUTS = {
+  enabled: true, min_ngn: 5000, hold_days: 7,
+  available_ngn: 12300, on_hold_ngn: 1850,
+  open: null,
+  history: [
+    { id: 'po2', amount_ngn: 10050, status: 'paid', created_at: '2026-08-29T10:00:00Z', processed_at: '2026-08-31T10:00:00Z', admin_note: null, reference: 'TRF-88213' },
+    { id: 'po1', amount_ngn: 4200, status: 'rejected', created_at: '2026-07-30T10:00:00Z', processed_at: '2026-07-31T09:00:00Z', admin_note: 'Account name doesn’t match the business name. Update it in your profile.', reference: null },
+  ],
+}
+PARTNER_STATS.tier = {
+  sales_ngn: 182000,
+  current: { name: 'Starter', min_sales_ngn: 0, rate: 0 },
+  next: { name: 'Silver', min_sales_ngn: 250000, rate: 7.5, remaining_ngn: 68000 },
+  effective_rate: 10,
+  tiers: [{ name: 'Starter', min_sales_ngn: 0, rate: 0 }, { name: 'Silver', min_sales_ngn: 250000, rate: 7.5 }, { name: 'Gold', min_sales_ngn: 1000000, rate: 10 }],
+}
+
+const ADMIN_FLAGS = {
+  maintenance_mode: { enabled: MAINTENANCE, config: { message: 'We will be back shortly.' }, exists: true },
+  paystack_checkout: { enabled: true, config: {}, exists: true },
+  whatsapp_checkout: { enabled: true, config: { number: '2348107872916' }, exists: true },
+  wallet_enabled: { enabled: true, config: {}, exists: true },
+  wallet_funding: { enabled: true, config: { min_ngn: 1000, max_ngn: 500000 }, exists: true },
+  partner_applications: { enabled: true, config: {}, exists: true },
+  reviews: { enabled: true, config: { show_sold_from: 10 }, exists: true },
+  renewal_reminders: { enabled: true, config: { days_before: 7 }, exists: true },
+  customer_referrals: { enabled: false, config: { reward_ngn: 500, friend_reward_ngn: 0, min_order_ngn: 2000 }, exists: true },
+  partner_payouts: { enabled: true, config: { min_ngn: 5000, hold_days: 7 }, exists: true },
+  partner_tiers: { enabled: false, config: { tiers: PARTNER_STATS.tier.tiers }, exists: true },
+}
+
+const ADMIN_REVIEWS = [
+  ...REVIEWS.map((r, i) => ({ ...r, status: i === 3 ? 'hidden' : 'published', product_id: 'p-netflix', products: { name: 'Netflix Premium', slug: 'netflix-premium' }, orders: { order_ref: ['BS-24301', 'BS-24118', 'BS-24002', 'BS-22650'][i] } })),
+  { id: 'rv5', rating: 1, body: 'Never received login details.', display_name: 'Kemi B.', status: 'published', created_at: '2026-09-09T11:00:00Z', product_id: 'p-claude', products: { name: 'Claude Pro', slug: 'claude-pro' }, orders: { order_ref: 'BS-24190' } },
+]
+
+const ADMIN_PAYOUTS = [
+  { id: 'apo1', amount_ngn: 12300, status: 'pending', created_at: '2026-10-05T09:00:00Z', processed_at: null, admin_note: null, reference: null,
+    payout_details: { payout_method: 'Bank Transfer', bank_name: 'GTBank', account_name: 'Okonkwo Digital Subscriptions Ltd', account_number: '0123456789' },
+    affiliate_id: 'aff-1', affiliates: { store_name: 'Okonkwo Digital Subscriptions', business_name: null, referral_code: 'OKONKWO-DIGITAL-2026' } },
+  { id: 'apo2', amount_ngn: HUGE, status: 'pending', created_at: '2026-10-04T09:00:00Z', processed_at: null, admin_note: null, reference: null,
+    payout_details: { payout_method: 'Crypto', crypto_token: 'USDT', crypto_chain: 'TRC20', wallet_address: 'TXk3m9QpX7aL2vR8sN4bW6cY1dE5fG0hJ' },
+    affiliates: { store_name: 'Lagos Gadget Hub', referral_code: 'LGH' } },
+  { id: 'apo3', amount_ngn: 10050, status: 'paid', created_at: '2026-08-29T10:00:00Z', processed_at: '2026-08-31T10:00:00Z', admin_note: null, reference: 'TRF-88213',
+    payout_details: { payout_method: 'Bank Transfer', bank_name: 'Access Bank', account_name: 'Ada Okonkwo', account_number: '0987654321' },
+    affiliates: { store_name: 'Okonkwo Digital Subscriptions', referral_code: 'OKONKWO-DIGITAL-2026' } },
+  { id: 'apo4', amount_ngn: 4200, status: 'rejected', created_at: '2026-07-30T10:00:00Z', processed_at: '2026-07-31T09:00:00Z', admin_note: 'Account name doesn’t match.', reference: null,
+    payout_details: { payout_method: 'Bank Transfer', bank_name: 'Zenith', account_name: 'B. Ade', account_number: '1122334455' },
+    affiliates: { store_name: 'Ade Stores', referral_code: 'ADE' } },
+]
+
+// Writes that the UI reads a response from. Everything else is acknowledged.
+const POST_ROUTES = [
+  // Sends the browser straight back as if Paystack had redirected.
+  [/^\/v2\/me\/wallet\/fund$/, () => ({ ok: true, data: { authorization_url: '/account/wallet?reference=FIXTURE-TOPUP', reference: 'FIXTURE-TOPUP' } })],
+  [/^\/v2\/partners\/me\/payouts$/, () => ({ ok: true, data: { id: 'po3', amount_ngn: 12300, status: 'pending', created_at: new Date().toISOString() } })],
+  [/^\/v2\/me\/reviews$/, (body) => ({ ok: true, data: { id: 'rv-mine', rating: body.rating, body: body.body || null, status: 'published', created_at: new Date().toISOString() } })],
+  [/^\/v2\/stock-alerts$/, () => ({ ok: true, data: { subscribed: true } })],
+]
+
 // ── routing ─────────────────────────────────────────────────────────────
 const ROUTES = [
+  [/^\/v2\/status$/,                    () => ({ ok: true, data: STATUS })],
+  [/^\/v2\/products\/[^/]+\/reviews$/, () => ({ ok: true, data: { enabled: true, items: REVIEWS, summary: REVIEW_SUMMARY },
+    meta: { pagination: { page: 1, limit: 10, total: REVIEWS.length, pages: 1 } } })],
+  [/^\/v2\/products\/[^/]+\/related$/, () => ({ ok: true, data: [{ product_id: 'p-spotify', count: 41 }, { product_id: 'p-yt', count: 17 }, { product_id: 'p-nord', count: 6 }] })],
+  [/^\/v2\/me\/notifications$/,        () => ({ ok: true, data: { items: INBOX, unread: INBOX.filter(n => !n.read_at).length, has_more: false } })],
+  [/^\/v2\/me\/reviews\/[^/]+$/,       () => ({ ok: true, data: { enabled: true, can_review: true, review: null } })],
+  [/^\/v2\/me\/referrals$/,            () => ({ ok: true, data: REFERRALS })],
+  [/^\/v2\/me\/wallet\/fund\/verify$/, () => ({ ok: true, data: { credited: true, amount_ngn: 5000, balance_ngn: 23300 } })],
+  [/^\/v2\/partners\/me\/payouts$/,   () => ({ ok: true, data: PAYOUTS })],
+  [/^\/v2\/admin\/flags$/,             () => ({ ok: true, data: ADMIN_FLAGS })],
+  [/^\/v2\/admin\/reviews$/, q => {
+    let rows = ADMIN_REVIEWS
+    const st = q.get('status'); if (st) rows = rows.filter(r => r.status === st)
+    const rt = Number(q.get('rating')); if (rt) rows = rows.filter(r => r.rating === rt)
+    return page(rows)
+  }],
+  [/^\/v2\/admin\/payouts$/, q => {
+    const st = q.get('status')
+    return page(st ? ADMIN_PAYOUTS.filter(p => p.status === st) : ADMIN_PAYOUTS)
+  }],
   [/^\/v2\/me$/,                        () => ({ ok: true, data: PROFILE })],
   // Mirrors the API: ?status= (raw or bucket), ?q= on the ref, page/limit.
   [/^\/v2\/me\/orders$/, q => {
@@ -852,8 +994,16 @@ const server = http.createServer((req, res) => {
 
   // Writes are acknowledged so optimistic UI paths complete.
   if (req.method !== 'GET') {
-    res.writeHead(200, headers)
-    return res.end(JSON.stringify({ ok: true }))
+    let raw = ''
+    req.on('data', c => { raw += c })
+    req.on('end', () => {
+      let body = {}
+      try { body = JSON.parse(raw || '{}') } catch { /* not JSON */ }
+      const post = POST_ROUTES.find(([re]) => re.test(path))
+      res.writeHead(200, headers)
+      res.end(JSON.stringify(post ? post[1](body, path) : { ok: true }))
+    })
+    return
   }
 
   const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?') + 1) : ''

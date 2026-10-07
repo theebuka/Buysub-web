@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation'
 import { cache } from 'react'
 import ProductPage from '@/components/shop/ProductPage'
-import { API_BASE } from '@/lib/config'
-import type { Product } from '@/lib/constants'
+import { API_BASE, SITE_URL } from '@/lib/config'
+import { getCategoryList, isInStock, type Product } from '@/lib/constants'
+import { availablePeriods, priceFor } from '@/lib/pricing'
+import { categoryLabel } from '@/lib/format'
 
 // Dynamic route: Cloudflare Pages (next-on-pages) needs the edge runtime.
 export const runtime = 'edge'
@@ -41,12 +43,62 @@ export async function generateMetadata({ params }: Params) {
   return {
     title,
     description,
-    openGraph: { title, description, type: 'website' },
+    openGraph: { title, description, type: 'website', url: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}` },
+    alternates: { canonical: `${SITE_URL}/shop/${encodeURIComponent(p.slug)}` },
   }
+}
+
+// schema.org Product + BreadcrumbList, so search results can show the price
+// range, stock and rating. Only facts the page itself shows.
+function structuredData(p: Product) {
+  const url = `${SITE_URL}/shop/${encodeURIComponent(p.slug)}`
+  const prices = availablePeriods(p).map(k => priceFor(p, k)).filter((n): n is number => n !== null)
+  const product: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': 'Product',
+    name: p.name,
+    description: p.seo_description || p.short_description || p.description || undefined,
+    sku: p.id,
+    url,
+    ...(p.image_url ? { image: p.image_url } : {}),
+    ...(p.category ? { category: categoryLabel(getCategoryList(p)[0] || p.category) } : {}),
+  }
+  if (prices.length) {
+    product.offers = {
+      '@type': 'AggregateOffer',
+      priceCurrency: 'NGN',
+      lowPrice: Math.min(...prices),
+      highPrice: Math.max(...prices),
+      offerCount: prices.length,
+      availability: isInStock(p.stock_status) ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+      seller: { '@type': 'Organization', name: 'BuySub' },
+      url,
+    }
+  }
+  if ((p.rating_count ?? 0) > 0 && p.rating_avg != null) {
+    product.aggregateRating = { '@type': 'AggregateRating', ratingValue: p.rating_avg, reviewCount: p.rating_count, bestRating: 5, worstRating: 1 }
+  }
+  const cat = getCategoryList(p)[0]
+  const crumbs = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Shop', item: `${SITE_URL}/shop` },
+      ...(cat ? [{ '@type': 'ListItem', position: 2, name: categoryLabel(cat), item: `${SITE_URL}/shop/c/${encodeURIComponent(cat)}` }] : []),
+      { '@type': 'ListItem', position: cat ? 3 : 2, name: p.name, item: url },
+    ],
+  }
+  // "<" escaped so product text can never close the script element.
+  return JSON.stringify([product, crumbs]).replace(/</g, '\\u003c')
 }
 
 export default async function Page({ params }: Params) {
   const p = await load(params.slug)
   if (p === 'missing') notFound()
-  return <ProductPage slug={params.slug} initial={p} />
+  return (
+    <>
+      {p && <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: structuredData(p) }} />}
+      <ProductPage slug={params.slug} initial={p} />
+    </>
+  )
 }

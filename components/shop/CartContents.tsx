@@ -72,7 +72,8 @@ function PromoBox() {
   )
 }
 
-export function Totals({ showPromo = true }: { showPromo?: boolean }) {
+/** walletNGN: wallet balance being applied at checkout, in Naira. */
+export function Totals({ showPromo = true, walletNGN = 0 }: { showPromo?: boolean; walletNGN?: number }) {
   const cart = useCart()
   const { currency, rate } = useCurrency()
   const promo = usePromo()
@@ -93,7 +94,11 @@ export function Totals({ showPromo = true }: { showPromo?: boolean }) {
             <dd>−{format(t.discount, currency)}</dd>
           </div>
         )}
-        <div className={s.sumTotal}><dt>Total</dt><dd>{format(t.total, currency)}</dd></div>
+        <div className={walletNGN > 0 ? undefined : s.sumTotal}><dt>Total</dt><dd>{format(t.total, currency)}</dd></div>
+        {walletNGN > 0 && <>
+          <div className={s.sumDiscount}><dt>From wallet</dt><dd>−{format(Math.min(walletNGN * rate, t.total), currency)}</dd></div>
+          <div className={s.sumTotal}><dt>To pay</dt><dd>{format(Math.max(0, t.total - walletNGN * rate), currency)}</dd></div>
+        </>}
       </dl>
       {t.partial && <p className={s.muted}>The promo applies to some items in your cart only.</p>}
       {currency !== 'NGN' && <p className={s.muted}>Charged in Naira. {currency} amounts are estimates.</p>}

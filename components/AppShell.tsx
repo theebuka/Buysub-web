@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 // refactor. They render on exactly the routes the old pair did.
 import SiteHeader from "./nav/SiteHeader"
 import SiteFooter from "./nav/SiteFooter"
+import MaintenanceGate from "./MaintenanceGate"
 import { toast } from "sonner"
 import { syncThemeToRoute } from "@/lib/theme"
 import { API_BASE } from "@/lib/config"
@@ -208,7 +209,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               }
         }
       >
-        {children}
+        <MaintenanceGate>{children}</MaintenanceGate>
       </div>
 
       {modal && (

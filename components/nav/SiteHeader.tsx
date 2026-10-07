@@ -10,9 +10,9 @@
 //   mobile   ☰ · Logo ·                      search · cart · account
 //
 // The cart drawer is mounted here, once, for the whole site. The currency
-// menu sets the display currency everywhere (lib/currency.ts). No
-// notification bell until there is a per-user notifications endpoint;
-// messages are in the account menu.
+// menu sets the display currency everywhere (lib/currency.ts). Signed-in
+// users get a notifications bell (lib/inbox.ts); messages from staff stay in
+// the account menu.
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
@@ -22,6 +22,7 @@ import {
   Popover, ProductLogo, Skeleton, type IconName,
 } from '@/components/ui'
 import { CommandPalette } from './CommandPalette'
+import { NotificationBell } from './NotificationBell'
 import { useCart, cartCount, setCartDrawer } from '@/lib/cart'
 import { useCurrency, setCurrency, CURRENCIES, CURRENCY_LABELS } from '@/lib/currency'
 import { productHref } from '@/lib/catalog'
@@ -178,6 +179,8 @@ function AccountLinks({ session, close }: { session: SessionState; close: () => 
     { href: ROUTES.account.home, label: 'My account', icon: 'user' },
     { href: ROUTES.account.orders, label: 'Orders', icon: 'receipt' },
     { href: ROUTES.account.wallet, label: 'Wallet', icon: 'wallet' },
+    { href: ROUTES.account.notifications, label: 'Notifications', icon: 'bell' },
+    { href: ROUTES.saved, label: 'Saved', icon: 'heart' },
     { href: ROUTES.account.messages, label: 'Messages', icon: 'message' },
     { href: ROUTES.account.settings, label: 'Settings', icon: 'settings' },
   ]
@@ -304,6 +307,7 @@ function MobileNav({ open, onClose, session, onSearch }: {
         <div className={css.drawerSection}>
           <MenuLabel>Shop</MenuLabel>
           <MenuItem href={ROUTES.shop} icon="store" onClick={onClose}>All products</MenuItem>
+          {!signedIn && <MenuItem href={ROUTES.saved} icon="heart" onClick={onClose}>Saved</MenuItem>}
           {cats.slice(0, 10).map(c => (
             <MenuItem key={c.key} icon="grid" onClick={() => { onClose(); shop.category(c.key) }}>{categoryLabel(c.key)}</MenuItem>
           ))}
@@ -435,6 +439,9 @@ export default function SiteHeader() {
           </span>
           <span className="bs-desktop-only"><ThemeToggle /></span>
           <span className="bs-desktop-only"><CurrencyMenu /></span>
+          {/* Desktop only: a 360px panel doesn't fit beside the phone header's
+              icons. On phones, Notifications is in the account section tabs. */}
+          {session.status === 'signed_in' && <span className="bs-desktop-only"><NotificationBell /></span>}
           <IconButton icon="cart" label="Cart" count={count} onClick={() => setCartDrawer(true)} />
           <AccountMenu session={session} />
         </div>

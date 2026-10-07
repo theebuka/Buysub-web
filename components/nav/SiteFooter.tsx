@@ -34,6 +34,7 @@ const COLUMNS: { title: string; links: L[] }[] = [
       { label: 'Create an account', href: ROUTES.signup },
       { label: 'Orders', href: ROUTES.account.orders },
       { label: 'Wallet', href: ROUTES.account.wallet },
+      { label: 'Saved', href: ROUTES.saved },
     ],
   },
   {

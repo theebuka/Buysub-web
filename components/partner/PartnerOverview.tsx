@@ -8,7 +8,7 @@ import { ROUTES } from '@/lib/routes'
 import { PageHead, PanelEmpty, PanelError, RowsSkeleton } from '@/components/account/AccountShell'
 import { MainLink } from './PartnerShell'
 import { ClicksChart } from './ClicksChart'
-import { usePartner, type Commission, type PartnerStats } from './usePartner'
+import { usePartner, type Commission, type PartnerStats, type Tier } from './usePartner'
 import s from '@/components/account/account.module.css'
 
 export function CommissionRow({ c }: { c: Commission }) {
@@ -23,6 +23,30 @@ export function CommissionRow({ c }: { c: Commission }) {
         <CommissionBadge status={c.status} />
       </div>
     </li>
+  )
+}
+
+/** Lifetime referred sales against the tier ladder. Only when tiers are on. */
+function TierCard({ tier }: { tier: Tier }) {
+  const next = tier.next
+  const from = tier.current?.min_sales_ngn ?? 0
+  const pct = next ? Math.min(100, Math.max(0, ((tier.sales_ngn - from) / Math.max(1, next.min_sales_ngn - from)) * 100)) : 100
+  return (
+    <div className={`${s.panel} ${s.panelPad}`} style={{ display: 'grid', gap: 'var(--bs-space-3)' }}>
+      <div className={s.sectionHead}>
+        <h2 className={s.h2}>{tier.current ? `${tier.current.name} tier` : 'Partner tier'}</h2>
+        <span className={s.muted}>{tier.effective_rate}% commission</span>
+      </div>
+      <div className={s.meter} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(pct)}
+        aria-label={next ? `Progress to ${next.name}` : 'Top tier reached'}>
+        <span style={{ width: `${pct}%` }} />
+      </div>
+      <p className={s.secondary}>
+        {next
+          ? <>{fmtNGN(next.remaining_ngn)} more in referred sales to reach <b>{next.name}</b> ({next.rate}%).</>
+          : <>You’re on the top tier. {fmtNGN(tier.sales_ngn)} in referred sales so far.</>}
+      </p>
+    </div>
   )
 }
 
@@ -45,7 +69,7 @@ export default function PartnerOverview() {
     <>
       <PageHead
         title="Overview"
-        lede={st?.commission_rate != null ? `You earn ${st.commission_rate}% on every order placed through your link.` : 'Share your link. Every order placed through it earns you commission.'}
+        lede={(st?.tier?.effective_rate ?? st?.commission_rate) != null ? `You earn ${st?.tier?.effective_rate ?? st?.commission_rate}% on every order placed through your link.` : 'Share your link. Every order placed through it earns you commission.'}
       />
 
       <section className={s.section}>
@@ -73,6 +97,8 @@ export default function PartnerOverview() {
           </div>
         </div>
       )}
+
+      {st?.tier && <TierCard tier={st.tier} />}
 
       <section className={s.section}>
         <div className={s.sectionHead}>

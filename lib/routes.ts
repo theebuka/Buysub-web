@@ -26,8 +26,11 @@ export const ROUTES = {
     subscriptions: '/account/subscriptions',
     wallet: '/account/wallet',
     messages: '/account/messages',
+    notifications: '/account/notifications',
+    referrals: '/account/referrals',
     settings: '/account/settings',
   },
+  saved: '/saved',
   partner: {
     apply: '/partners',
     home: '/partner',

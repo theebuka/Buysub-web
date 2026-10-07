@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Button, ButtonLink, SegmentedControl } from '@/components/ui'
 import { useApi } from '@/lib/useApi'
 import { fmtDate } from '@/lib/format'
@@ -33,12 +33,31 @@ function Row({ sub }: { sub: Subscription }) {
   )
 }
 
+/**
+ * ?renew=<order item id>: the "Renew now" link in the reminder email and the
+ * inbox. Adds that plan to the cart and goes to checkout, once.
+ */
+function useRenewLink(subs: Subscription[], ready: boolean) {
+  const reorder = useReorder()
+  const done = useRef(false)
+  useEffect(() => {
+    if (done.current || !ready) return
+    const id = new URLSearchParams(window.location.search).get('renew')
+    if (!id) return
+    done.current = true
+    window.history.replaceState({}, '', window.location.pathname)
+    const hit = subs.find(x => x.item.id === id)
+    if (hit) reorder([hit.item])
+  }, [subs, ready, reorder])
+}
+
 export default function Subscriptions() {
   // One page of up to 100 orders covers any realistic account; subscriptions
   // are derived client-side from paid orders (lib/subscriptions.ts).
   const { data, error, loading, reload } = useApi<MyOrder[]>('/v2/me/orders?limit=100&status=completed')
   const [view, setView] = useState<'active' | 'ended'>('active')
   const subs = useMemo(() => subscriptionsFrom(data || []), [data])
+  useRenewLink(subs, !loading && !!data)
   const live = subs.filter(x => x.state !== 'ended')
   const ended = subs.filter(x => x.state === 'ended')
   const list = view === 'active' ? live : ended

@@ -17,6 +17,8 @@
 .formGrid { display: grid; gap: var(--bs-space-4); }
 .orRow { display: flex; align-items: center; gap: var(--bs-space-3); margin: var(--bs-space-4) 0; font-size: var(--bs-text-xs); color: var(--bs-text-muted); }
 .orRow span { flex: 1; height: 1px; background: var(--bs-border-default); }
+.walletRow { display: flex; align-items: center; justify-content: space-between; gap: var(--bs-space-3); padding: var(--bs-space-3) var(--bs-space-4); margin-bottom: var(--bs-space-4); border: 1px solid var(--bs-border-default); border-radius: var(--bs-radius-lg); }
+.walletTitle { display: flex; align-items: center; gap: var(--bs-space-2); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); }
 
 .notice, .noticeWarn { display: flex; align-items: center; gap: var(--bs-space-3); padding: var(--bs-space-3) var(--bs-space-4); border-radius: var(--bs-radius-md); font-size: var(--bs-text-sm); line-height: var(--bs-leading-snug); margin-bottom: var(--bs-space-4); }
 .notice { background: var(--bs-badge-neutral-bg); color: var(--bs-text-secondary); }
@@ -109,7 +111,6 @@
 .cardCat { font-size: var(--bs-text-xs); color: var(--bs-text-muted); margin-top: 2px; }
 .cardDesc { font-size: var(--bs-text-sm); color: var(--bs-text-secondary); line-height: var(--bs-leading-relaxed); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: calc(2 * 1.6em); }
 .cardFoot { margin-top: auto; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--bs-space-2); padding-top: var(--bs-space-3); border-top: 1px solid var(--bs-border-subtle); }
-.cardBadge { position: absolute; top: var(--bs-space-3); right: var(--bs-space-3); }
 
 .skelCard { display: flex; flex-direction: column; gap: var(--bs-space-3); padding: var(--bs-space-4); border: 1px solid var(--bs-border-default); border-radius: var(--bs-radius-xl); background: var(--bs-bg-card); }
 
@@ -182,3 +183,49 @@ a.metaChip:hover { color: var(--bs-text-primary); }
 .buyBar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; display: flex; align-items: center; gap: var(--bs-space-3); padding: var(--bs-space-3) var(--bs-space-4) calc(var(--bs-space-3) + env(safe-area-inset-bottom)); background: var(--bs-bg-card); border-top: 1px solid var(--bs-border-default); box-shadow: 0 -8px 24px rgba(0,0,0,.18); }
 @media (min-width: 1024px) { .buyBar { display: none; } }
 .buyBarPrice { flex: 1; min-width: 0; }
+
+/* Ratings and reviews */
+.ratingLine > span { white-space: nowrap; }
+.stars { position: relative; display: inline-flex; color: var(--bs-text-primary); line-height: 0; vertical-align: -2px; }
+.starsEmpty { color: var(--bs-border-strong); }
+.starsFill { position: absolute; inset: 0 auto 0 0; overflow: hidden; white-space: nowrap; }
+.ratingLine { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; font-size: var(--bs-text-xs); color: var(--bs-text-secondary); font-variant-numeric: tabular-nums; margin-top: 4px; }
+.reviewSummary { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: var(--bs-space-6); align-items: center; padding: var(--bs-space-4) 0; border-top: 1px solid var(--bs-border-subtle); border-bottom: 1px solid var(--bs-border-subtle); }
+.reviewAvg { font-size: var(--bs-text-3xl); font-weight: var(--bs-weight-bold); line-height: 1; color: var(--bs-text-primary); font-variant-numeric: tabular-nums; margin-bottom: 6px; }
+.dist { display: grid; gap: 4px; max-width: 320px; }
+.distRow { display: grid; grid-template-columns: 12px minmax(0, 1fr) 32px; gap: var(--bs-space-2); align-items: center; font-size: var(--bs-text-xs); color: var(--bs-text-secondary); font-variant-numeric: tabular-nums; }
+.distBar { height: 6px; border-radius: 3px; background: var(--bs-bg-elevated); overflow: hidden; }
+.distBar span { display: block; height: 100%; background: var(--bs-text-secondary); border-radius: 3px; }
+.distCount { text-align: right; color: var(--bs-text-muted); }
+.reviewList { list-style: none; display: grid; }
+.reviewList > li { display: grid; gap: var(--bs-space-2); padding: var(--bs-space-4) 0; }
+.reviewList > li + li { border-top: 1px solid var(--bs-border-subtle); }
+.reviewHead { display: flex; align-items: center; gap: var(--bs-space-2); flex-wrap: wrap; }
+.reviewName { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); }
+.reviewForm { display: grid; gap: var(--bs-space-3); padding: var(--bs-space-4); border: 1px solid var(--bs-border-default); border-radius: var(--bs-radius-lg); }
+.starInput { display: inline-flex; gap: 2px; color: var(--bs-text-primary); }
+.starInput button { display: grid; place-items: center; width: 40px; height: 40px; padding: 0; border: none; background: none; color: inherit; cursor: pointer; border-radius: var(--bs-radius-md); }
+.starInput button:focus-visible { outline: none; box-shadow: var(--bs-ring); }
+.heroRating { display: inline-block; border-radius: var(--bs-radius-sm); }
+.heroRating:hover { text-decoration: underline; text-decoration-color: var(--bs-border-strong); }
+
+/* Saved and back-in-stock */
+.saveBtn { color: var(--bs-text-muted); }
+.savedOn, .savedOn svg { color: var(--bs-text-primary); }
+.savedOn svg { fill: currentColor; }
+.alertBox { display: grid; gap: var(--bs-space-3); padding-top: var(--bs-space-2); }
+.alertDone { font-size: var(--bs-text-sm); color: var(--bs-text-secondary); padding: var(--bs-space-3) 0; }
+.cardSave { position: absolute; top: var(--bs-space-2); right: var(--bs-space-2); z-index: 1; }
+
+/* Frequently bought together */
+.fbt { border: 1px solid var(--bs-border-default); border-radius: var(--bs-radius-lg); overflow: hidden; }
+.fbtList { list-style: none; }
+.fbtItem { display: flex; align-items: center; gap: var(--bs-space-3); padding: var(--bs-space-3) var(--bs-space-4); }
+.fbtItem + .fbtItem { border-top: 1px solid var(--bs-border-subtle); }
+.fbtCheck { width: 18px; height: 18px; flex-shrink: 0; accent-color: var(--bs-accent); cursor: pointer; }
+.fbtName { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; font-size: var(--bs-text-sm); color: var(--bs-text-primary); cursor: pointer; }
+.fbtName b { font-weight: var(--bs-weight-semibold); }
+.fbtView { font-size: var(--bs-text-xs); color: var(--bs-text-secondary); text-decoration: underline; text-decoration-color: var(--bs-border-strong); }
+.fbtPrice { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-semibold); font-variant-numeric: tabular-nums; color: var(--bs-text-primary); white-space: nowrap; }
+.fbtFoot { display: flex; align-items: center; justify-content: space-between; gap: var(--bs-space-3); padding: var(--bs-space-3) var(--bs-space-4); background: var(--bs-bg-elevated); border-top: 1px solid var(--bs-border-subtle); flex-wrap: wrap; }
+.fbtTotal { font-size: var(--bs-text-lg); font-weight: var(--bs-weight-bold); font-variant-numeric: tabular-nums; color: var(--bs-text-primary); }

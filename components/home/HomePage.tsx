@@ -12,6 +12,8 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 import { ButtonLink, Icon, ProductLogo, Skeleton, type IconName } from '@/components/ui'
 import { ProductCard, ProductCardSkeleton } from '@/components/shop/ProductCard'
+import { useProductsById } from '@/components/shop/Saved'
+import { useRecentIds } from '@/lib/saved'
 import { useProducts } from '@/lib/useProducts'
 import { useReferral } from '@/lib/useReferral'
 import { getCategoryList, isInStock, TAB_ORDER, type Product } from '@/lib/constants'
@@ -47,6 +49,21 @@ function useHomeData(products: Product[]) {
       .slice(0, 8)
     return { cats, popular, count: sellable.length }
   }, [products])
+}
+
+/** Products this browser looked at, most recent first (lib/saved.ts). */
+function RecentStrip() {
+  const recent = useProductsById(useRecentIds()).slice(0, 4)
+  if (!recent.length) return null
+  return (
+    <section className={s.section}>
+      <div className={s.sectionHead}>
+        <h2 className={s.sectionTitle}>Pick up where you left off</h2>
+        <Link href={ROUTES.saved} className={s.more}>Saved and recent <Icon name="arrowRight" size={14} /></Link>
+      </div>
+      <div className={s.grid}>{recent.map(p => <ProductCard key={p.id} product={p} />)}</div>
+    </section>
+  )
 }
 
 export default function HomePage() {
@@ -117,6 +134,8 @@ export default function HomePage() {
             : popular.map(p => <ProductCard key={p.id} product={p} />)}
         </div>
       </section>
+
+      <RecentStrip />
 
       <section className={s.section}>
         <h2 className={s.sectionTitle}>How it works</h2>

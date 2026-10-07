@@ -1,6 +1,7 @@
 'use client'
 
 import { useApi } from '@/lib/useApi'
+import { SITE_URL } from '@/lib/config'
 
 export type PartnerProfile = {
   id: string; status: string; legal_name: string; store_name: string; reviewer_notes: string | null
@@ -19,6 +20,15 @@ export type PartnerStats = {
   affiliate_id: string | null; clicks: number; conversions: number
   earnings_ngn: number; pending_ngn: number; approved_ngn?: number
   commission_rate?: number | null; daily?: DailyPoint[]
+  /** Present when partner tiers are on (buysub-api-deploy/src/features/payouts.ts). */
+  tier?: Tier | null
+}
+export type Tier = {
+  sales_ngn: number
+  current: { name: string; min_sales_ngn: number; rate: number } | null
+  next: { name: string; min_sales_ngn: number; rate: number; remaining_ngn: number } | null
+  effective_rate: number
+  tiers: { name: string; min_sales_ngn: number; rate: number }[]
 }
 export type Commission = {
   id: string; amount_ngn: number | string; status: string; created_at: string; paid_at?: string | null
@@ -33,7 +43,7 @@ export function usePartner() {
   return { ...r, error: none ? '' : r.error, profile: r.data?.profile ?? null, affiliate: r.data?.affiliate ?? null }
 }
 
-export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://app.buysub.ng').replace(/\/+$/, '')
+export { SITE_URL }
 
 /** A shareable app URL carrying the partner's code. */
 export function referralLink(code: string, path = '/') {

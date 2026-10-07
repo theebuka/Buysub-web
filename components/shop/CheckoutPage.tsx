@@ -6,13 +6,15 @@
 // the order exists, as before.
 
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Button, ButtonLink, Card, EmptyState, Field, Icon, Input, PageHeader, WhatsAppGlyph } from '@/components/ui'
+import { Button, ButtonLink, Card, EmptyState, Field, Icon, Input, PageHeader, Switch, WhatsAppGlyph } from '@/components/ui'
 import { useCart, cartCount, clearCart } from '@/lib/cart'
 import { useCurrency } from '@/lib/currency'
 import { usePromo, computeTotals, validateDetails, startPaystackCheckout, startWhatsAppOrder, clearManualPromo, type CustomerDetails } from '@/lib/checkout'
-import { useSession } from '@/lib/useSession'
+import { loadWallet, useSession } from '@/lib/useSession'
+import { useSiteStatus } from '@/lib/siteStatus'
 import { useReferral } from '@/lib/useReferral'
 import { format } from '@/lib/constants'
 import { ROUTES } from '@/lib/routes'
@@ -40,6 +42,8 @@ function WhatsAppDone({ done }: { done: Done }) {
 }
 
 export default function CheckoutPage() {
+  const router = useRouter()
+  const status = useSiteStatus()
   const cart = useCart()
   const promo = usePromo()
   const session = useSession()
@@ -51,6 +55,7 @@ export default function CheckoutPage() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState<'' | 'paystack' | 'whatsapp'>('')
   const [done, setDone] = useState<Done | null>(null)
+  const [useWallet, setUseWallet] = useState(false)
 
   useEffect(() => setMounted(true), [])
 
@@ -59,7 +64,8 @@ export default function CheckoutPage() {
     if (session.status !== 'signed_in' || !session.user) return
     const u = session.user
     setC(prev => ({ email: prev.email || u.email, name: prev.name || u.full_name, phone: prev.phone || u.phone }))
-  }, [session.status, session.user])
+    if (status.services.wallet_pay) loadWallet()
+  }, [session.status, session.user, status.services.wallet_pay])
 
   if (done) return <WhatsAppDone done={done} />
 
@@ -67,12 +73,32 @@ export default function CheckoutPage() {
   const t = computeTotals(cart, rate, promo)
   const args = { cart, customer: c, currency, fxRate: rate, discountCode: t.active?.code, referralCode }
 
+  // The wallet can pay only for an order placed under the account's own
+  // email: the API matches the order's customer to the signed-in user.
+  const balance = session.walletNGN ?? 0
+  const sameEmail = !!session.user && c.email.trim().toLowerCase() === session.user.email.toLowerCase()
+  const walletAvailable = status.services.wallet_pay && session.status === 'signed_in' && balance > 0
+  const walletApplied = walletAvailable && useWallet && sameEmail ? balance : 0
+  const totalNGN = rate > 0 ? t.total / rate : t.total
+  const coveredByWallet = walletApplied > 0 && walletApplied >= totalNGN
+  const toPay = Math.max(0, t.total - walletApplied * rate)
+  const canPay = coveredByWallet || status.services.paystack
+  const nothingOpen = !canPay && !status.services.whatsapp
+
   const pay = async () => {
     const v = validateDetails(c); setError(v); if (v) return
     setBusy('paystack')
     try {
-      const r = await startPaystackCheckout(args)
+      const r = await startPaystackCheckout(args, walletApplied > 0)
       if (r.error) { toast.error(r.error); return }
+      if (r.paidRef) {
+        clearCart()
+        clearManualPromo()
+        loadWallet()
+        toast.success('Paid from your wallet')
+        router.push(`${ROUTES.account.order(r.paidRef)}`)
+        return
+      }
       toast.success('Redirecting to payment…')
       window.location.href = r.url!
     } catch {
@@ -118,22 +144,47 @@ export default function CheckoutPage() {
             </Card>
             <Card>
               <h2 className={s.cardTitle}>Payment</h2>
-              <Button size="xl" full icon="lock" loading={busy === 'paystack'} disabled={!!busy} onClick={pay}>
-                Pay {format(t.total, currency)} with Paystack
-              </Button>
-              <div className={s.orRow}><span /> or <span /></div>
-              <Button size="xl" variant="secondary" full loading={busy === 'whatsapp'} disabled={!!busy} onClick={whatsapp}>
-                <WhatsAppGlyph /> Order on WhatsApp
-              </Button>
-              <p className={s.muted} style={{ textAlign: 'center', marginTop: 'var(--bs-space-3)' }}>
-                WhatsApp opens with your order filled in. Our team confirms it and tells you how to pay.
-              </p>
+              {walletAvailable && (
+                <div className={s.walletRow}>
+                  <div style={{ minWidth: 0 }}>
+                    <div className={s.walletTitle}><Icon name="wallet" size={16} /> Use wallet balance</div>
+                    <div className={s.muted}>
+                      {sameEmail
+                        ? <>{format(balance * rate, currency)} available{currency !== 'NGN' ? ' (estimate)' : ''}</>
+                        : <>Only for orders placed with {session.user?.email}</>}
+                    </div>
+                  </div>
+                  <Switch label="Use wallet balance" checked={useWallet && sameEmail} disabled={!sameEmail || !!busy} onChange={setUseWallet} />
+                </div>
+              )}
+              {nothingOpen && (
+                <Notice tone="warn">Checkout is paused right now. Please try again shortly.</Notice>
+              )}
+              {canPay && (
+                <Button size="xl" full icon={coveredByWallet ? 'wallet' : 'lock'} loading={busy === 'paystack'} disabled={!!busy} onClick={pay}>
+                  {coveredByWallet
+                    ? `Pay ${format(t.total, currency)} from wallet`
+                    : `Pay ${format(toPay, currency)} with Paystack`}
+                </Button>
+              )}
+              {!canPay && status.services.whatsapp && (
+                <p className={s.muted} style={{ marginBottom: 'var(--bs-space-3)' }}>Card and bank payments are paused right now. You can still order on WhatsApp.</p>
+              )}
+              {canPay && status.services.whatsapp && <div className={s.orRow}><span /> or <span /></div>}
+              {status.services.whatsapp && <>
+                <Button size="xl" variant="secondary" full loading={busy === 'whatsapp'} disabled={!!busy} onClick={whatsapp}>
+                  <WhatsAppGlyph /> Order on WhatsApp
+                </Button>
+                <p className={s.muted} style={{ textAlign: 'center', marginTop: 'var(--bs-space-3)' }}>
+                  WhatsApp opens with your order filled in. Our team confirms it and tells you how to pay.
+                </p>
+              </>}
             </Card>
           </div>
           <Card className={s.sticky}>
             <h2 className={s.cardTitle}>Order summary</h2>
             <CartLines compact />
-            <Totals />
+            <Totals walletNGN={walletApplied} />
             <Link href="/cart" className={s.inlineLink}>Edit cart</Link>
           </Card>
         </div>

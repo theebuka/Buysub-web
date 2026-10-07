@@ -90,3 +90,13 @@ const COMMISSION: Record<string, Def> = {
 export function commissionStatus(status: string | null | undefined): { label: string; tone: Tone } {
   return COMMISSION[String(status || '')] ?? { label: humanise(String(status || '')), tone: 'neutral' }
 }
+
+/** Partner payout requests (migration 15). Pending is with BuySub, not the partner. */
+const PAYOUT: Record<string, Def> = {
+  pending:  { label: 'Requested', tone: 'warning' },
+  paid:     { label: 'Paid',      tone: 'success' },
+  rejected: { label: 'Declined',  tone: 'error' },
+}
+export function payoutStatus(status: string | null | undefined): { label: string; tone: Tone } {
+  return PAYOUT[String(status || '')] ?? { label: humanise(String(status || '')), tone: 'neutral' }
+}

@@ -7,6 +7,8 @@
 // next-on-pages.
 
 import { useEffect, useRef } from 'react'
+import { recordView } from '@/lib/saved'
+import { SaveButton } from './SaveButton'
 import { Button, IconButton, Modal } from '@/components/ui'
 import type { Product } from '@/lib/constants'
 import { productHref } from '@/lib/catalog'
@@ -39,6 +41,7 @@ export function useQuickView(onChange: (p: Product | null) => void, current: Pro
 }
 
 export function QuickView({ product, onClose }: { product: Product | null; onClose: () => void }) {
+  useEffect(() => { if (product) recordView(product.id) }, [product])
   return (
     <Modal open={!!product} onClose={onClose} wide hideHeader labelledBy="qv-title">
       {product && (
@@ -58,6 +61,7 @@ export function QuickView({ product, onClose }: { product: Product | null; onClo
                   Full details & FAQs
                 </Button>
                 <ShareButton product={product} />
+                <SaveButton product={product} variant="button" />
               </div>
             </div>
             {/* Close first, so the cart drawer isn't stacked on the quick view. */}

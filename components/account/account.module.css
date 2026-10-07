@@ -156,3 +156,23 @@ a.row:hover, button.row:hover { background: var(--bs-bg-elevated); }
   /* Order rows: amount over status, so the title keeps its width. */
   .rowStack .rowEnd { flex-direction: column; align-items: flex-end; gap: var(--bs-space-1); }
 }
+
+/* Wallet top-up */
+.chips { display: flex; flex-wrap: wrap; gap: var(--bs-space-2); }
+.chip { height: 34px; padding: 0 var(--bs-space-3); border-radius: var(--bs-radius-full); border: 1px solid var(--bs-border-default); background: var(--bs-bg-card); color: var(--bs-text-primary); font: inherit; font-size: var(--bs-text-sm); font-variant-numeric: tabular-nums; cursor: pointer; }
+.chip:hover { border-color: var(--bs-border-strong); }
+.chip[aria-pressed="true"] { border-color: var(--bs-accent); color: var(--bs-accent-on-surface); }
+.chip:focus-visible { outline: none; box-shadow: var(--bs-ring); }
+.fundRow { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--bs-space-3); }
+@media (min-width: 560px) { .fundRow { grid-template-columns: minmax(0, 280px) max-content; justify-content: start; } }
+
+/* Notifications */
+.inboxIcon { flex-shrink: 0; display: grid; place-items: center; width: 36px; height: 36px; border-radius: var(--bs-radius-md); background: var(--bs-bg-elevated); color: var(--bs-text-secondary); }
+.unreadDot { flex-shrink: 0; width: 8px; height: 8px; margin-top: 8px; border-radius: 50%; background: var(--bs-accent); }
+
+/* Refer and earn */
+.howList { list-style: decimal; padding-left: var(--bs-space-5); display: grid; gap: var(--bs-space-2); font-size: var(--bs-text-sm); color: var(--bs-text-secondary); line-height: var(--bs-leading-normal, 1.5); }
+
+/* Progress meter (partner tier) */
+.meter { height: 8px; border-radius: 4px; background: var(--bs-bg-elevated); overflow: hidden; }
+.meter span { display: block; height: 100%; border-radius: 4px; background: var(--bs-accent); }

@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../buysub-api-deploy"
+		},
+		{
+			"path": "../buysub-shortener"
+		}
+	],
+	"settings": {}
+}

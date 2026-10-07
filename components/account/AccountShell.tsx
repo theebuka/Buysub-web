@@ -9,16 +9,21 @@ import type { ReactNode } from 'react'
 import { Icon, Skeleton, type IconName } from '@/components/ui'
 import { RequireRole, useSession } from '@/lib/useSession'
 import { useApi } from '@/lib/useApi'
+import { useInbox } from '@/lib/inbox'
+import { useSiteStatus } from '@/lib/siteStatus'
 import { ROUTES } from '@/lib/routes'
 import { markedRead } from './readState'
 import s from './account.module.css'
 
-const LINKS: { href: string; label: string; icon: IconName; exact?: boolean }[] = [
+type NavLink = { href: string; label: string; icon: IconName; exact?: boolean; flag?: 'referrals' }
+const LINKS: NavLink[] = [
   { href: ROUTES.account.home, label: 'Overview', icon: 'home', exact: true },
   { href: ROUTES.account.orders, label: 'Orders', icon: 'receipt' },
   { href: ROUTES.account.subscriptions, label: 'Subscriptions', icon: 'clock' },
   { href: ROUTES.account.wallet, label: 'Wallet', icon: 'wallet' },
+  { href: ROUTES.account.notifications, label: 'Notifications', icon: 'bell' },
   { href: ROUTES.account.messages, label: 'Messages', icon: 'message' },
+  { href: ROUTES.account.referrals, label: 'Refer and earn', icon: 'gift', flag: 'referrals' },
   { href: ROUTES.account.settings, label: 'Settings', icon: 'settings' },
 ]
 
@@ -35,8 +40,15 @@ export function useUnreadCount(): number {
 function Nav() {
   const pathname = usePathname()
   const session = useSession()
-  const unread = useUnreadCount()
+  const unreadMessages = useUnreadCount()
+  const inbox = useInbox(session.status === 'signed_in')
+  const status = useSiteStatus()
   const u = session.user
+  const links = LINKS.filter(l => !l.flag || status.services[l.flag])
+  const countFor = (href: string) =>
+    href === ROUTES.account.messages ? unreadMessages
+      : href === ROUTES.account.notifications ? (inbox.data?.unread ?? 0)
+      : 0
   return (
     <>
       <aside className={s.side} aria-label="Account">
@@ -48,11 +60,11 @@ function Nav() {
         </div>
         <nav>
           <ul className={s.nav}>
-            {LINKS.map(l => (
+            {links.map(l => (
               <li key={l.href}>
                 <Link href={l.href} className={s.navLink} aria-current={isActive(pathname, l.href, l.exact) ? 'page' : undefined}>
                   <Icon name={l.icon} size={16} />{l.label}
-                  {l.href === ROUTES.account.messages && unread > 0 && <span className={s.navCount}>{unread}</span>}
+                  {countFor(l.href) > 0 && <span className={s.navCount}>{countFor(l.href)}</span>}
                 </Link>
               </li>
             ))}
@@ -62,9 +74,9 @@ function Nav() {
         </nav>
       </aside>
       <nav className={s.tabs} aria-label="Account sections">
-        {LINKS.map(l => (
+        {links.map(l => (
           <Link key={l.href} href={l.href} className={s.tabLink} aria-current={isActive(pathname, l.href, l.exact) ? 'page' : undefined}>
-            {l.label}{l.href === ROUTES.account.messages && unread > 0 ? ` (${unread})` : ''}
+            {l.label}{countFor(l.href) > 0 ? ` (${countFor(l.href)})` : ''}
           </Link>
         ))}
       </nav>

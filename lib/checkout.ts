@@ -23,6 +23,7 @@ import {
   createOrder, createWhatsAppOrder, initPaystackPayment,
   getAutoApplyDiscounts, validateDiscount,
 } from './api'
+import { authFetch } from './apiAuth'
 import type { Cart } from './cart'
 
 // ── Promo state ───────────────────────────────────────────────
@@ -223,12 +224,25 @@ function payload({ cart, customer, currency, fxRate, discountCode, referralCode 
 
 const SUPPORT = 'Please try again. If the problem persists, please contact support.'
 
-/** Creates the order, then returns the Paystack URL to send the shopper to. */
-export async function startPaystackCheckout(args: PlaceArgs): Promise<{ url?: string; error?: string }> {
+/**
+ * Creates the order, then returns the Paystack URL to send the shopper to, or
+ * `paidRef` when the wallet covered it all (or an earlier attempt had paid).
+ * Spending the wallet needs the account's token, so that call goes through
+ * authFetch; the API checks the token belongs to the order's customer.
+ */
+export async function startPaystackCheckout(args: PlaceArgs, useWallet = false): Promise<{ url?: string; paidRef?: string; error?: string }> {
   const orderRes = await createOrder(payload(args, 'paystack'))
   if (!orderRes.ok || !orderRes.data?.order_id) return { error: orderRes.error || `Failed to create order. ${SUPPORT}` }
   const callbackUrl = `${window.location.origin}/order/verify`
-  const payRes = await initPaystackPayment(orderRes.data.order_id, callbackUrl)
+  const payRes = useWallet
+    ? await authFetch<any>('/v2/pay/init', {
+        method: 'POST', redirectOnAuth: false,
+        body: { order_id: orderRes.data.order_id, callback_url: callbackUrl, use_wallet: true },
+      })
+    : await initPaystackPayment(orderRes.data.order_id, callbackUrl)
+  if (payRes.ok && (payRes.data?.fully_paid_by_wallet || payRes.data?.already_paid)) {
+    return { paidRef: payRes.data.order_ref || orderRes.data.order_ref }
+  }
   if (!payRes.ok || !payRes.data?.authorization_url) return { error: payRes.error || `Failed to initialize payment. ${SUPPORT}` }
   return { url: payRes.data.authorization_url }
 }

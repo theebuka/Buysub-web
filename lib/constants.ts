@@ -66,6 +66,11 @@ export interface Product {
   faqs?: { q: string; a: string }[] | null;
   seo_title?: string | null;
   seo_description?: string | null;
+  // From the API's product_public_stats (migration 11). sold_count is null
+  // below the admin's "show sold from" threshold; absent before the migration.
+  sold_count?: number | null;
+  rating_avg?: number | null;
+  rating_count?: number;
 }
 
 export interface CartItem {

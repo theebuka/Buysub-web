@@ -15,3 +15,6 @@ export const API_BASE: string = (
   || process.env.NEXT_PUBLIC_API_URL
   || 'https://buysub-api-v2.ebuka-nwaju.workers.dev'
 ).replace(/\/+$/, '')
+
+/** The app's public origin, for absolute links (share links, sitemap, structured data). */
+export const SITE_URL: string = (process.env.NEXT_PUBLIC_SITE_URL || 'https://app.buysub.ng').replace(/\/+$/, '')

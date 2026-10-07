@@ -9,6 +9,8 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { ButtonLink, EmptyState } from '@/components/ui'
+import { useSiteStatus } from '@/lib/siteStatus'
 import { T } from '@/lib/constants'
 import { useTheme } from '@/lib/theme'
 import { API_BASE } from '@/lib/config'
@@ -94,7 +96,7 @@ const TermsContent = () => (
 /* ===============================================================
    MAIN COMPONENT
 =============================================================== */
-export default function PartnerSignupForm() {
+function PartnerSignupForm() {
   const [step, setStep] = useState(1)
   const [touched, setTouched] = useState<any>({})
   const [showTerms, setShowTerms] = useState(false)
@@ -1294,4 +1296,22 @@ const S: Record<string, React.CSSProperties> = {
     flexShrink: 0,
     fontFamily: 'inherit',
   },
+}
+
+
+// Admins can close applications (Settings → Service switches); the API
+// refuses them too. A saved draft stays in this browser for when they reopen.
+export default function PartnersPage() {
+  const status = useSiteStatus()
+  if (status.loaded && !status.services.partner_applications) {
+    return (
+      <div style={{ maxWidth: 560, margin: '0 auto', padding: 'var(--bs-space-12) var(--bs-space-4)' }}>
+        <EmptyState icon="users" title="Applications are closed for now"
+          action={<ButtonLink href="/login?as=partner" variant="secondary">Partner sign in</ButtonLink>}>
+          We’re not taking new partner applications at the moment. Please check back soon.
+        </EmptyState>
+      </div>
+    )
+  }
+  return <PartnerSignupForm />
 }

@@ -12,6 +12,7 @@ import { useCurrency } from '@/lib/currency'
 import { PERIODS, format, isInStock, type Product } from '@/lib/constants'
 import { priceFor, savingsVs } from '@/lib/pricing'
 import { defaultPeriod, isOneTime, toOffers } from '@/lib/catalog'
+import { StockAlert } from './Saved'
 import s from './shop.module.css'
 
 // A per-month estimate. Whole Naira: "₦5,833.5" reads like an error.
@@ -103,6 +104,7 @@ export function BuyBox({ product: p, onAdded }: { product: Product; onAdded?: ()
         </Button>
         {canBuy && <Button size="xl" variant="secondary" full onClick={() => add('checkout')}>Buy now</Button>}
       </div>
+      {!stock && <StockAlert product={p} />}
       {currency !== 'NGN' && <p className={s.muted}>Charged in Naira. {currency} prices are estimates.</p>}
 
       <div className={s.seller}>

@@ -12,6 +12,8 @@ import { fromPrice } from '@/lib/pricing'
 import { isOneTime, productHref } from '@/lib/catalog'
 import { categoryLabel } from '@/lib/format'
 import { useCurrency } from '@/lib/currency'
+import { RatingLine } from './Reviews'
+import { SaveButton } from './SaveButton'
 import s from './shop.module.css'
 
 export function ProductCard({ product: p, onOpen }: { product: Product; onOpen?: (p: Product) => void }) {
@@ -28,14 +30,16 @@ export function ProductCard({ product: p, onOpen }: { product: Product; onOpen?:
 
   return (
     <article className={`${s.card} ${!stock || !fp ? s.cardDim : ''}`}>
-      {p.badge && <span className={s.cardBadge}><Badge tone="info">{p.badge}</Badge></span>}
+      <span className={s.cardSave}><SaveButton product={p} /></span>
       <div className={s.cardTop}>
         <ProductLogo product={p} size={48} />
-        <div style={{ minWidth: 0, paddingRight: p.badge ? 'var(--bs-space-12)' : undefined }}>
+        <div style={{ minWidth: 0, paddingRight: 'var(--bs-space-8)' }}>
           <h3 className={s.cardName}>
             <Link href={productHref(p)} className={s.cardLink} onClick={onClick}>{p.name}</Link>
           </h3>
           {cat && <div className={s.cardCat}>{categoryLabel(cat)}</div>}
+          <RatingLine product={p} />
+          {p.badge && <div style={{ marginTop: 6 }}><Badge tone="info">{p.badge}</Badge></div>}
         </div>
       </div>
       <p className={s.cardDesc}>{p.short_description || p.category_tagline || p.description || ''}</p>

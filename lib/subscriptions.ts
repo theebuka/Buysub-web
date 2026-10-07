@@ -2,7 +2,9 @@
 // BUYSUB — Subscriptions, derived from paid orders
 // ============================================================
 // There is no subscriptions table. A subscription is a paid order line with a
-// duration: it starts when the order was paid (created_at when paid_at is
+// duration. Since migration 08 the API stores each line's starts_at and
+// expires_at (what the renewal reminders read); those win when present.
+// Otherwise it starts when the order was paid (created_at when paid_at is
 // missing, as on older orders) and ends `duration_months` later. One-time
 // lines (top-ups, gift cards) have no duration and are not subscriptions.
 
@@ -17,6 +19,8 @@ export type OrderItem = {
   quantity: number
   unit_price_ngn: number | string
   total_price_ngn: number | string
+  starts_at?: string | null
+  expires_at?: string | null
   products?: { slug: string; domain: string | null; image_url: string | null } | null
 }
 
@@ -68,9 +72,10 @@ export function subscriptionsFrom(orders: MyOrder[], now = Date.now()): Subscrip
     for (const item of order.order_items || []) {
       const months = Number(item.duration_months)
       if (!months || item.billing_type === 'one_time') continue
-      const start = new Date(order.paid_at || order.created_at)
+      const start = new Date(item.starts_at || order.paid_at || order.created_at)
       if (Number.isNaN(start.getTime())) continue
-      const end = addMonths(start, months)
+      const stored = item.expires_at ? new Date(item.expires_at) : null
+      const end = stored && !Number.isNaN(stored.getTime()) ? stored : addMonths(start, months)
       const daysLeft = Math.ceil((end.getTime() - now) / DAY)
       out.push({
         key: `${order.order_ref}-${item.id}`,

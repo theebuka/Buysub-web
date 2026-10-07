@@ -11,6 +11,7 @@ import { categoryHref, faqs, features, howItWorks, productHref, TRUST_POINTS } f
 import { categoryLabel } from '@/lib/format'
 import { useSession, loadPartner } from '@/lib/useSession'
 import { copyText } from '@/components/ui'
+import { RatingLine } from './Reviews'
 import s from './shop.module.css'
 
 export function ProductHero({ product: p, headingId, as = 'h1' }: { product: Product; headingId?: string; as?: 'h1' | 'h2' }) {
@@ -22,6 +23,10 @@ export function ProductHero({ product: p, headingId, as = 'h1' }: { product: Pro
       <div style={{ minWidth: 0 }}>
         <H id={headingId} className={s.heroName}>{p.name}</H>
         {(p.short_description || p.category_tagline) && <p className={s.heroTag}>{p.short_description || p.category_tagline}</p>}
+        {/* Links to the reviews on the full page; the quick view (h2) has none. */}
+        {((p.rating_count ?? 0) > 0 || (p.sold_count ?? 0) > 0) && (as === 'h1'
+          ? <a href="#reviews" className={s.heroRating}><RatingLine product={p} size={14} /></a>
+          : <div><RatingLine product={p} size={14} /></div>)}
         <div className={s.heroMeta}>
           {p.badge && <Badge tone="info">{p.badge}</Badge>}
           {isInStock(p.stock_status) ? <Badge tone="success" dot>In stock</Badge> : <Badge tone="error" dot>Out of stock</Badge>}

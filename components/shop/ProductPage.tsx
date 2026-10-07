@@ -17,6 +17,11 @@ import { useReferral } from '@/lib/useReferral'
 import { BuyBox } from './BuyBox'
 import { Description, Faqs, Features, HowItWorks, ProductHero, ShareButton, Trust } from './ProductDetail'
 import { ProductCard } from './ProductCard'
+import { ReviewsSection } from './Reviews'
+import { SaveButton } from './SaveButton'
+import { RecentlyViewed } from './Saved'
+import { BoughtTogether } from './BoughtTogether'
+import { recordView } from '@/lib/saved'
 import s from './shop.module.css'
 
 function MobileBuyBar({ product }: { product: Product }) {
@@ -39,6 +44,8 @@ export default function ProductPage({ slug, initial }: { slug: string; initial: 
   const [product, setProduct] = useState<Product | null>(initial)
   const [missing, setMissing] = useState(false)
   const { products } = useProducts()
+
+  useEffect(() => { if (product) recordView(product.id) }, [product])
 
   useEffect(() => {
     if (initial) return
@@ -78,12 +85,17 @@ export default function ProductPage({ slug, initial }: { slug: string; initial: 
         <div className={s.productMain}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-3)' }}>
             <ProductHero product={product} />
-            <div><ShareButton product={product} /></div>
+            <div style={{ display: 'flex', gap: 'var(--bs-space-1)', flexWrap: 'wrap' }}>
+              <ShareButton product={product} />
+              <SaveButton product={product} variant="button" />
+            </div>
           </div>
           <Features product={product} />
+          <BoughtTogether product={product} />
           <Description product={product} />
           <HowItWorks product={product} />
           <Faqs product={product} />
+          <ReviewsSection product={product} />
           <Trust />
         </div>
         <Card id="buy" className={s.sticky} style={{ scrollMarginTop: 'calc(var(--bs-header-h) + 16px)' }}>
@@ -96,6 +108,7 @@ export default function ProductPage({ slug, initial }: { slug: string; initial: 
           <div className={s.grid}>{more.map(p => <ProductCard key={p.id} product={p} />)}</div>
         </section>
       )}
+      <RecentlyViewed exclude={product.id} />
       <MobileBuyBar product={product} />
     </div>
   )
