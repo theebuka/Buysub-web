@@ -10,7 +10,7 @@ import { Button, ButtonLink, Skeleton, StatusBadge } from '@/components/ui'
 import { fmtDate, fmtNGN, categoryLabel } from '@/lib/format'
 import { endsLabel, type MyOrder, type Subscription } from '@/lib/subscriptions'
 import { ROUTES } from '@/lib/routes'
-import { ItemLogo, PAYMENT_LABEL, useReorder } from './orderBits'
+import { ItemLogo, orderValue, paymentLabel, useReorder } from './orderBits'
 import s from './cards.module.css'
 
 // ── Subscription ─────────────────────────────────────────────
@@ -82,8 +82,8 @@ export function OrderCard({ o }: { o: MyOrder }) {
       <header className={s.orderHead}>
         <dl className={s.orderFacts}>
           <div><dt>Order placed</dt><dd>{fmtDate(o.created_at)}</dd></div>
-          <div><dt>Total</dt><dd className={s.num}>{fmtNGN(o.total_ngn)}</dd></div>
-          <div className={s.hideSm}><dt>Payment</dt><dd>{PAYMENT_LABEL[o.payment_method] || o.payment_method}</dd></div>
+          <div><dt>Total</dt><dd className={s.num}>{fmtNGN(orderValue(o))}</dd></div>
+          <div className={s.hideSm}><dt>Payment</dt><dd>{paymentLabel(o)}</dd></div>
         </dl>
         <div className={s.orderRef}>
           <span className={s.refLabel}>Order <span className={s.num}>{o.order_ref}</span></span>
@@ -147,7 +147,7 @@ export function OrderLine({ o }: { o: MyOrder }) {
           <span className={s.lineSub}>{o.order_ref} · {fmtDate(o.created_at)}</span>
         </span>
         <span className={s.lineEnd}>
-          <span className={`${s.lineAmount} ${s.num}`}>{fmtNGN(o.total_ngn)}</span>
+          <span className={`${s.lineAmount} ${s.num}`}>{fmtNGN(orderValue(o))}</span>
           <StatusBadge status={o.status} />
         </span>
       </Link>

@@ -8,7 +8,7 @@ import { WHATSAPP_NUMBER } from '@/lib/constants'
 import { subscriptionsFrom, endsLabel, type MyOrder } from '@/lib/subscriptions'
 import { ROUTES } from '@/lib/routes'
 import { PageHead, PanelError, RowsSkeleton } from './AccountShell'
-import { ItemLogo, PAYMENT_LABEL, useReorder } from './orderBits'
+import { ItemLogo, orderValue, paymentLabel, useReorder } from './orderBits'
 import s from './account.module.css'
 
 type Step = { title: string; when?: string | null; note?: string; tone: 'done' | 'now' | 'stop' | 'todo' }
@@ -94,7 +94,7 @@ export default function OrderDetail({ orderRef }: { orderRef: string }) {
       <PageHead
         back={back}
         title={`Order ${o.order_ref}`}
-        lede={<>Placed {fmtDateTime(o.created_at)} · {PAYMENT_LABEL[o.payment_method] || o.payment_method}</>}
+        lede={<>Placed {fmtDateTime(o.created_at)} · {paymentLabel(o)}</>}
         actions={<StatusBadge status={o.status} />}
       />
       <div className={s.detail}>
@@ -124,8 +124,9 @@ export default function OrderDetail({ orderRef }: { orderRef: string }) {
           <dl className={s.totals}>
             <div><dt>Subtotal</dt><dd>{fmtNGN(o.subtotal_ngn)}</dd></div>
             {discount > 0 && <div><dt>Discount{o.discount_code ? ` (${o.discount_code})` : ''}</dt><dd className={s.pos}>−{fmtNGN(discount)}</dd></div>}
-            {wallet > 0 && <div><dt>Paid from wallet</dt><dd>−{fmtNGN(wallet)}</dd></div>}
-            <div className={s.totalLine}><dt>Total</dt><dd>{fmtNGN(o.total_ngn)}</dd></div>
+            <div className={s.totalLine}><dt>Total</dt><dd>{fmtNGN(orderValue(o))}</dd></div>
+            {wallet > 0 && <div><dt>Paid from wallet</dt><dd>{fmtNGN(wallet)}</dd></div>}
+            {wallet > 0 && Number(o.total_ngn) > 0 && <div><dt>{o.payment_method === 'paystack' ? 'Paid via Paystack' : 'Balance'}</dt><dd>{fmtNGN(o.total_ngn)}</dd></div>}
             {o.currency && o.currency !== 'NGN' && o.display_total ? (
               <div><dt>Shown at checkout</dt><dd>{new Intl.NumberFormat(undefined, { style: 'currency', currency: o.currency }).format(Number(o.display_total))}</dd></div>
             ) : null}

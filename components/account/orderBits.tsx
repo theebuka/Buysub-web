@@ -31,6 +31,17 @@ export const PAYMENT_LABEL: Record<string, string> = {
   cash: 'Cash', wallet: 'Wallet', free: 'No charge',
 }
 
+/** What the order cost: total_ngn is only what was charged after the wallet part. */
+export function orderValue(o: Pick<MyOrder, 'total_ngn' | 'wallet_ngn'>): number {
+  return (Number(o.total_ngn) || 0) + (Number(o.wallet_ngn) || 0)
+}
+
+/** "Wallet", or "Paystack and wallet" when the wallet covered part of it. */
+export function paymentLabel(o: Pick<MyOrder, 'payment_method' | 'wallet_ngn'>): string {
+  const base = PAYMENT_LABEL[o.payment_method] || o.payment_method
+  return Number(o.wallet_ngn) > 0 && o.payment_method !== 'wallet' ? `${base} and wallet` : base
+}
+
 /**
  * Puts order lines back in the cart at today's price and goes to checkout.
  * Lines the shop no longer sells for that period are skipped and named.
