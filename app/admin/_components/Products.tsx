@@ -8,7 +8,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { toast } from 'sonner'
-import { Badge, Button, ProductLogo, StatusBadge } from '@/components/ui'
+import { Badge, Button, Icon, ProductLogo, StatusBadge } from '@/components/ui'
 import { DataTable, Filters, SearchBox, TableState, type DTColumn } from '@/components/admin/DataTable'
 import { AdminHead, CellTitle, adminStyles as s } from '@/components/admin/AdminUI'
 import { authFetch } from '@/lib/apiAuth'
@@ -172,12 +172,52 @@ export function ProductsTab() {
   ]
 
   const categories = useMemo(() => ALL_CATEGORIES.filter(c => c !== 'all'), [])
+  const layout = search.get('layout') === 'table' ? 'table' : 'grid'
+
+  // The product as it looks in the shop, with the admin's state and actions.
+  const card = (p: Product, sel: { checked: boolean; toggle: () => void }) => {
+    const fp = fromPrice(p as any)
+    const n = availablePeriods(p as any).length
+    const cat = String(p.category || '').split(',')[0].trim()
+    const hidden = p.status !== 'active'
+    const out = p.stock_status === 'out_of_stock'
+    return (
+      <article className={`${s.pcard} ${sel.checked ? s.pcardOn : ''} ${hidden ? s.pcardDim : ''}`}>
+        <input type="checkbox" className={s.pcardCheck} aria-label={`Select ${p.name}`} checked={sel.checked} onChange={sel.toggle} />
+        <div className={s.pcardTop}>
+          <ProductLogo product={p} size={40} />
+          <div className={s.pcardHead}>
+            <button type="button" className={s.pcardName} title={p.name} onClick={() => setEditing({ id: p.id, form: toForm(p) })}>{p.name}</button>
+            <span className={s.pcardCat}>{cat ? categoryLabel(cat) : 'No category'}</span>
+          </div>
+        </div>
+        <p className={s.pcardDesc}>{p.short_description || p.category_tagline || p.description || <span className={s.muted}>No description</span>}</p>
+        <div className={s.pcardTags}>
+          {hidden && <Badge dot tone="neutral">Hidden</Badge>}
+          {out && <Badge dot tone="error">Out of stock</Badge>}
+          {!fp && <Badge dot tone="warning">No price</Badge>}
+          {p.featured && <Badge>Featured</Badge>}
+          {(p as any).badge && <Badge>{(p as any).badge}</Badge>}
+          {!hidden && !out && fp && !p.featured && !(p as any).badge && <Badge dot tone="success">Live</Badge>}
+        </div>
+        <div className={s.pcardFoot}>
+          {fp
+            ? <span className={s.pcardPrice}><b>{fmtNGN(fp.price)}</b><span>{p.billing_type === 'one_time' ? 'one-time' : `${n} ${n === 1 ? 'plan' : 'plans'}`}</span></span>
+            : <span className={s.muted}>Not priced</span>}
+          <span className={s.pcardActions}>
+            <Link href={`/shop/${p.slug}`} target="_blank" className={s.panelLink}>View</Link>
+            <Button size="sm" variant="secondary" onClick={() => setEditing({ id: p.id, form: toForm(p) })}>Edit</Button>
+          </span>
+        </div>
+      </article>
+    )
+  }
 
   return (
     <>
       <AdminHead title="Products"
         lede={`${counts.all.toLocaleString()} products, ${counts.active.toLocaleString()} live in the shop.`}
-        actions={<Button size="md" icon="plus" onClick={() => setEditing({ id: null, form: EMPTY_PRODUCT() })}>New product</Button>} />
+        actions={<Button size="sm" icon="plus" onClick={() => setEditing({ id: null, form: EMPTY_PRODUCT() })}>New product</Button>} />
       <DataTable
         caption="Products"
         columns={columns}
@@ -187,6 +227,7 @@ export function ProductsTab() {
         error={error}
         onRetry={() => load(true)}
         selectable
+        card={layout === 'grid' ? card : undefined}
         bulkActions={(sel, clear) => (
           <>
             <Button size="sm" variant="secondary" disabled={busy} onClick={async () => { await patch(sel, { status: 'hidden' }, 'Product hidden'); clear() }}>Hide</Button>
@@ -212,6 +253,10 @@ export function ProductsTab() {
                 <option value="">All categories</option>
                 {categories.map(c => <option key={c} value={c}>{categoryLabel(c)}</option>)}
               </select>
+              <span className={s.viewToggle} role="group" aria-label="Layout">
+                <button type="button" aria-pressed={layout === 'grid'} aria-label="Cards" onClick={() => setParams({ layout: '' })}><Icon name="grid" size={14} /></button>
+                <button type="button" aria-pressed={layout === 'table'} aria-label="Table" onClick={() => setParams({ layout: 'table' })}><Icon name="menu" size={14} /></button>
+              </span>
             </div>
           </>
         }

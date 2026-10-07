@@ -242,7 +242,7 @@ export function LinksTab() {
   return (
     <>
       <AdminHead title="Short links" lede={<>Redirects on <span className={s.mono}>go.buysub.ng</span>, with targeting rules, passwords and QR codes.</>}
-        actions={<Button size="md" icon="plus" onClick={openCreate}>New link</Button>} />
+        actions={<Button size="sm" icon="plus" onClick={openCreate}>New link</Button>} />
       <DataTable caption="Short links" columns={columns} rows={list.rows} rowKey={l => l.id}
         loading={list.loading} error={list.error} onRetry={list.reload}
         pagination={list.pagination} onPage={p => list.setParams({ page: String(p) })}

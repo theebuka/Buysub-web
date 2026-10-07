@@ -3,10 +3,14 @@
 // A catalog card. The whole card is one link to /shop/[slug] (a stretched
 // ::after on the name link), so it works with middle-click, open-in-new-tab
 // and no JS. A plain click opens the quick view instead when onOpen is given.
+//
+// Proportions and type follow the original storefront card: landscape, 16px
+// name, the category in violet, 12px description, a 20px price. Stock is a
+// dot and a word, not a pill.
 
 import Link from 'next/link'
 import type { MouseEvent } from 'react'
-import { Badge, ProductLogo, Skeleton } from '@/components/ui'
+import { ProductLogo, Skeleton } from '@/components/ui'
 import { format, getCategoryList, isInStock, PERIODS, type Product } from '@/lib/constants'
 import { fromPrice } from '@/lib/pricing'
 import { isOneTime, productHref } from '@/lib/catalog'
@@ -15,6 +19,13 @@ import { useCurrency } from '@/lib/currency'
 import { RatingLine } from './Reviews'
 import { SaveButton } from './SaveButton'
 import s from './shop.module.css'
+
+export function StockLine({ inStock, available }: { inStock: boolean; available: boolean }) {
+  if (!available) return <span className={s.stock}>Unavailable</span>
+  return inStock
+    ? <span className={`${s.stock} ${s.stockOn}`}><span className={s.stockDot} aria-hidden="true" />In stock</span>
+    : <span className={s.stock}><span className={s.stockDot} aria-hidden="true" />Out of stock</span>
+}
 
 export function ProductCard({ product: p, onOpen }: { product: Product; onOpen?: (p: Product) => void }) {
   const { currency, rate } = useCurrency()
@@ -33,29 +44,26 @@ export function ProductCard({ product: p, onOpen }: { product: Product; onOpen?:
       <span className={s.cardSave}><SaveButton product={p} /></span>
       <div className={s.cardTop}>
         <ProductLogo product={p} size={48} />
-        <div style={{ minWidth: 0, paddingRight: 'var(--bs-space-8)' }}>
-          <h3 className={s.cardName}>
+        <div className={s.cardHead}>
+          <h3 className={s.cardName} title={p.name}>
             <Link href={productHref(p)} className={s.cardLink} onClick={onClick}>{p.name}</Link>
           </h3>
           {cat && <div className={s.cardCat}>{categoryLabel(cat)}</div>}
           <RatingLine product={p} />
-          {p.badge && <div style={{ marginTop: 6 }}><Badge tone="info">{p.badge}</Badge></div>}
         </div>
       </div>
-      <p className={s.cardDesc}>{p.short_description || p.category_tagline || p.description || ''}</p>
+      {(p.short_description || p.category_tagline || p.description) && (
+        <p className={s.cardDesc}>{p.short_description || p.category_tagline || p.description}</p>
+      )}
+      {p.badge && <div><span className={s.tag}>{p.badge}</span></div>}
       <div className={s.cardFoot}>
         {fp ? (
-          <div>
-            <div className={s.muted}>{isOneTime(p) ? 'One-time' : 'From'}</div>
-            <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-              <span style={{ fontSize: 'var(--bs-text-lg)', fontWeight: 'var(--bs-weight-bold)' as any, fontVariantNumeric: 'tabular-nums' }}>
-                {format(fp.price * rate, currency)}
-              </span>
-              {!isOneTime(p) && <span className={s.muted}>{PERIODS[fp.period]?.label}</span>}
-            </div>
+          <div className={s.cardPrice}>
+            <span className={s.cardPriceNow}>{format(fp.price * rate, currency)}</span>
+            <span className={s.cardPricePer}>{isOneTime(p) ? 'one-time' : `${PERIODS[fp.period]?.label}`}</span>
           </div>
-        ) : <span className={s.muted}>Currently unavailable</span>}
-        {!stock ? <Badge tone="error">Out of stock</Badge> : fp ? <Badge tone="success">In stock</Badge> : null}
+        ) : <span className={s.cardPricePer}>Not available</span>}
+        <StockLine inStock={stock} available={!!fp} />
       </div>
     </article>
   )
@@ -64,12 +72,12 @@ export function ProductCard({ product: p, onOpen }: { product: Product; onOpen?:
 export function ProductCardSkeleton() {
   return (
     <div className={s.skelCard} aria-hidden="true">
-      <div style={{ display: 'flex', gap: 12 }}>
+      <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
         <Skeleton width={48} height={48} radius="var(--bs-radius-lg)" />
-        <div style={{ flex: 1, display: 'grid', gap: 8 }}><Skeleton height={16} /><Skeleton width="50%" height={12} /></div>
+        <div style={{ flex: 1, display: 'grid', gap: 8 }}><Skeleton width="60%" height={16} /><Skeleton width="35%" height={12} /></div>
       </div>
-      <Skeleton height={12} /><Skeleton width="80%" height={12} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 12 }}><Skeleton width={90} height={24} /><Skeleton width={64} height={22} /></div>
+      <Skeleton width="90%" height={12} />
+      <div className={s.skelFoot}><Skeleton width={110} height={20} /><Skeleton width={64} height={14} /></div>
     </div>
   )
 }

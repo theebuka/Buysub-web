@@ -1,16 +1,14 @@
 'use client'
 
-import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { ButtonLink, Input, Pagination, StatusBadge, Table, Tabs, type Column } from '@/components/ui'
+import { ButtonLink, Input, Pagination, Tabs } from '@/components/ui'
 import { useApi } from '@/lib/useApi'
-import { fmtDate, fmtNGN } from '@/lib/format'
 import type { MyOrder } from '@/lib/subscriptions'
 import { ROUTES } from '@/lib/routes'
-import { PageHead, PanelEmpty, PanelError, RowsSkeleton } from './AccountShell'
-import { itemsSummary, PAYMENT_LABEL } from './orderBits'
-import { OrderRow } from './Overview'
+import { PageHead, PanelEmpty, PanelError } from './AccountShell'
+import { OrderCard, OrderCardSkeleton } from './cards'
+import c from './cards.module.css'
 import s from './account.module.css'
 
 const TABS = [
@@ -48,19 +46,6 @@ export default function Orders() {
   const { data, meta, error, loading, reload } = useApi<MyOrder[]>(`/v2/me/orders?${qs}`)
   const pg = meta?.pagination
 
-  const cols: Column<MyOrder>[] = [
-    { key: 'order', header: 'Order', hideOnCard: true, cell: o => (
-      <div className={s.orderCell}>
-        <Link href={ROUTES.account.order(o.order_ref)} className={s.rowTitle} style={{ color: 'var(--bs-text-primary)' }}>{o.order_items?.length ? itemsSummary(o) : `Order ${o.order_ref}`}</Link>
-        <span className={s.rowSub}>{o.order_items?.length ? o.order_ref : 'Items not recorded'}</span>
-      </div>
-    ) },
-    { key: 'date', header: 'Date', cell: o => <span className={s.secondary}>{fmtDate(o.created_at)}</span> },
-    { key: 'pay', header: 'Payment', cell: o => <span className={s.secondary}>{PAYMENT_LABEL[o.payment_method] || o.payment_method}</span> },
-    { key: 'total', header: 'Total', align: 'right', cell: o => <span className={s.rowAmount}>{fmtNGN(o.total_ngn)}</span> },
-    { key: 'status', header: 'Status', align: 'right', cell: o => <StatusBadge status={o.status} /> },
-  ]
-
   return (
     <>
       <PageHead title="Orders" lede="Everything you’ve ordered, newest first." />
@@ -71,24 +56,15 @@ export default function Orders() {
             <Input icon="search" fieldSize="md" placeholder="Search by order number" aria-label="Search by order number" value={q} onChange={e => setQ(e.target.value)} />
           </div>
         </div>
-        <div className={s.panel}>
-          {loading ? <RowsSkeleton n={5} />
-            : error ? <PanelError message={error} onRetry={reload} />
-            : !data?.length ? (
-              debounced || status
+        {loading ? <div className={c.orders}>{[0, 1, 2].map(i => <OrderCardSkeleton key={i} />)}</div>
+          : error ? <div className={s.panel}><PanelError message={error} onRetry={reload} /></div>
+          : !data?.length ? (
+            <div className={s.panel}>
+              {debounced || status
                 ? <PanelEmpty title="No matching orders">Try another tab or clear the search.</PanelEmpty>
-                : <PanelEmpty title="No orders yet" action={<ButtonLink href={ROUTES.shop} variant="secondary" size="md">Browse the shop</ButtonLink>}>Orders you place will show here with their status.</PanelEmpty>
-            ) : (
-              <>
-                {/* A table on desktop; on phones the same compact rows as the overview. */}
-                <div className="bs-desktop-only" style={{ padding: '0 var(--bs-space-2)' }}>
-                  <Table caption="Your orders" columns={cols} rows={data} rowKey={o => o.id} responsive={false}
-                    onRowClick={o => router.push(ROUTES.account.order(o.order_ref))} />
-                </div>
-                <ul className={`${s.rows} bs-mobile-only`}>{data.map(o => <OrderRow key={o.id} o={o} />)}</ul>
-              </>
-            )}
-        </div>
+                : <PanelEmpty title="No orders yet" action={<ButtonLink href={ROUTES.shop} variant="secondary" size="md">Browse the shop</ButtonLink>}>Orders you place will show here with their status.</PanelEmpty>}
+            </div>
+          ) : <div className={c.orders}>{data.map(o => <OrderCard key={o.id} o={o} />)}</div>}
         {pg && <Pagination page={pg.page} pages={pg.pages} total={pg.total} size="md" onPage={p => router.push(href({ page: p > 1 ? p : null }))} />}
       </div>
     </>

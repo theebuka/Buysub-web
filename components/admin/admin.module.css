@@ -120,8 +120,8 @@ a.listRow:hover { background: var(--bs-bg-elevated); }
 /* ── Data table ────────────────────────────────────────────── */
 .tableWrap { width: 100%; overflow-x: auto; }
 .table { width: 100%; border-collapse: collapse; font-size: var(--bs-text-sm); }
-.table th { position: sticky; top: 0; text-align: left; font-size: var(--bs-text-xs); font-weight: var(--bs-weight-medium); color: var(--bs-text-muted); padding: 0 var(--bs-space-3); height: 36px; border-bottom: 1px solid var(--bs-border-subtle); white-space: nowrap; background: var(--bs-bg-card); }
-.table td { white-space: nowrap; padding: var(--bs-space-2) var(--bs-space-3); height: 44px; border-bottom: 1px solid var(--bs-border-subtle); color: var(--bs-text-primary); vertical-align: middle; font-variant-numeric: tabular-nums; }
+.table th { position: sticky; top: 0; text-align: left; font-size: var(--bs-text-xs); font-weight: var(--bs-weight-medium); color: var(--bs-text-secondary); padding: 0 var(--bs-space-3); height: 36px; border-bottom: 1px solid var(--bs-border-subtle); white-space: nowrap; background: color-mix(in srgb, var(--bs-bg-elevated) 55%, var(--bs-bg-card)); }
+.table td { white-space: nowrap; padding: var(--bs-space-2) var(--bs-space-3); height: 52px; border-bottom: 1px solid var(--bs-border-subtle); color: var(--bs-text-primary); vertical-align: middle; font-variant-numeric: tabular-nums; transition: background var(--bs-dur-1) var(--bs-ease-out); }
 .table tbody tr:last-child td { border-bottom: none; }
 .table th:first-child, .table td:first-child { padding-left: var(--bs-space-4); }
 .table th:last-child, .table td:last-child { padding-right: var(--bs-space-4); }
@@ -129,10 +129,8 @@ a.listRow:hover { background: var(--bs-bg-elevated); }
 .table tbody tr:hover td { background: var(--bs-bg-elevated); }
 .rowSelected td { background: color-mix(in srgb, var(--bs-accent) 8%, var(--bs-bg-card)); }
 .checkCell { width: 36px; padding-right: 0 !important; }
-.check { appearance: none; -webkit-appearance: none; margin: 0; width: 16px; height: 16px; border-radius: 4px; border: 1px solid var(--bs-border-strong); background: var(--bs-bg-input); cursor: pointer; vertical-align: middle; display: inline-grid; place-content: center; }
-.check:hover { border-color: var(--bs-text-muted); }
-.check:checked { background: var(--bs-accent-fill); border-color: var(--bs-accent-fill); }
-.check:checked::after { content: ""; width: 9px; height: 5px; border: 2px solid #fff; border-top: none; border-right: none; transform: translateY(-1px) rotate(-45deg); }
+.check { width: 16px; height: 16px; border-radius: 4px; }
+.check::before { width: 9px; height: 9px; }
 .cellTitle { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .cellTitle > :first-child { color: var(--bs-text-primary); font-weight: var(--bs-weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cellTitle > :nth-child(2) { font-size: var(--bs-text-xs); color: var(--bs-text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -214,3 +212,31 @@ a.listRow:hover { background: var(--bs-bg-elevated); }
 .link:hover { text-decoration: underline; }
 /* A cell whose text may run to a few lines (review bodies). */
 .wrapCell { white-space: normal; line-height: var(--bs-leading-snug); padding: var(--bs-space-1) 0; }
+
+/* ── Card grid (DataTable `card`) ─────────────────────────── */
+.cardGrid { display: grid; gap: var(--bs-space-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); padding: var(--bs-space-3); }
+.cardCell { min-width: 0; display: flex; }
+.cardCell > * { flex: 1; }
+.cardSkel { display: flex; flex-direction: column; gap: var(--bs-space-3); padding: var(--bs-space-4); border: 1px solid var(--bs-border-subtle); border-radius: var(--bs-radius-lg); min-height: 168px; }
+
+/* Product card (admin): the shop card's shape at admin density. */
+.pcard { position: relative; display: flex; flex-direction: column; gap: var(--bs-space-3); padding: var(--bs-space-4); border: 1px solid var(--bs-border-subtle); border-radius: var(--bs-radius-lg); background: var(--bs-bg-base); min-width: 0; transition: border-color var(--bs-dur-1) var(--bs-ease-out); }
+.pcard:hover { border-color: var(--bs-border-strong); }
+.pcardOn { border-color: var(--bs-accent) !important; box-shadow: 0 0 0 1px var(--bs-accent); }
+.pcardDim { opacity: .72; }
+.pcardTop { display: flex; align-items: center; gap: var(--bs-space-3); min-width: 0; padding-right: 28px; }
+.pcardCheck { position: absolute; top: var(--bs-space-3); right: var(--bs-space-3); }
+.pcardHead { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pcardName { font-size: var(--bs-text-md); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; background: none; border: none; padding: 0; font-family: inherit; text-align: left; cursor: pointer; }
+.pcardName:hover { text-decoration: underline; text-underline-offset: 2px; }
+.pcardCat { font-size: var(--bs-text-xs); color: var(--bs-accent-on-surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pcardDesc { font-size: var(--bs-text-xs); color: var(--bs-text-secondary); line-height: 1.5; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: 3em; }
+.pcardTags { display: flex; flex-wrap: wrap; gap: 6px; }
+.pcardFoot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--bs-space-2); padding-top: var(--bs-space-3); border-top: 1px solid var(--bs-border-subtle); }
+.pcardPrice { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; min-width: 0; }
+.pcardPrice b { font-size: var(--bs-text-base); font-weight: var(--bs-weight-bold); font-variant-numeric: tabular-nums; color: var(--bs-text-primary); }
+.pcardPrice span { font-size: var(--bs-text-xs); color: var(--bs-text-muted); }
+.pcardActions { display: flex; align-items: center; gap: var(--bs-space-2); }
+.viewToggle { display: inline-flex; gap: 2px; padding: 2px; border-radius: var(--bs-radius-md); background: var(--bs-bg-elevated); }
+.viewToggle button { display: grid; place-items: center; width: 28px; height: 28px; border: none; border-radius: var(--bs-radius-sm); background: transparent; color: var(--bs-text-muted); cursor: pointer; }
+.viewToggle button[aria-pressed="true"] { background: var(--bs-bg-card); color: var(--bs-text-primary); box-shadow: 0 0 0 1px var(--bs-border-default); }

@@ -1,37 +1,14 @@
 'use client'
 
-import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Button, ButtonLink, SegmentedControl } from '@/components/ui'
+import { ButtonLink, SegmentedControl } from '@/components/ui'
 import { useApi } from '@/lib/useApi'
-import { fmtDate } from '@/lib/format'
-import { subscriptionsFrom, endsLabel, ENDING_SOON_DAYS, type MyOrder, type Subscription } from '@/lib/subscriptions'
+import { subscriptionsFrom, ENDING_SOON_DAYS, type MyOrder, type Subscription } from '@/lib/subscriptions'
 import { ROUTES } from '@/lib/routes'
-import { PageHead, PanelEmpty, PanelError, RowsSkeleton } from './AccountShell'
-import { ItemLogo, useReorder } from './orderBits'
+import { PageHead, PanelEmpty, PanelError } from './AccountShell'
+import { useReorder } from './orderBits'
+import { PlanCard, PlanCardSkeleton, PlanGrid } from './cards'
 import s from './account.module.css'
-
-function Row({ sub }: { sub: Subscription }) {
-  const reorder = useReorder()
-  const ended = sub.state === 'ended'
-  return (
-    <li className={`${s.row} ${s.rowWrap}`}>
-      <ItemLogo item={sub.item} />
-      <div className={s.rowMain}>
-        <span className={s.rowTitle}>{sub.item.product_name}</span>
-        <span className={s.rowSub}>
-          {sub.item.billing_period} · {fmtDate(sub.start)} to {fmtDate(sub.end)} · <Link href={ROUTES.account.order(sub.order.order_ref)} style={{ color: 'inherit', textDecoration: 'underline' }}>{sub.order.order_ref}</Link>
-        </span>
-      </div>
-      <div className={s.rowEnd}>
-        <span className={`${s.muted} ${sub.state === 'ending' ? s.warn : ''}`}>{endsLabel(sub)}</span>
-        <Button variant={sub.state === 'ending' ? 'primary' : 'secondary'} size="md" onClick={() => reorder([sub.item])}>
-          {ended ? 'Buy again' : 'Renew'}
-        </Button>
-      </div>
-    </li>
-  )
-}
 
 /**
  * ?renew=<order item id>: the "Renew now" link in the reminder email and the
@@ -73,15 +50,15 @@ export default function Subscriptions() {
           <SegmentedControl label="Show" value={view} onChange={setView}
             options={[{ value: 'active', label: `Active (${live.length})` }, { value: 'ended', label: `Ended (${ended.length})` }]} />
         </div>
-        <div className={s.panel}>
-          {loading ? <RowsSkeleton n={3} />
-            : error ? <PanelError message={error} onRetry={reload} />
-            : list.length === 0 ? (
-              view === 'active'
+        {loading ? <PlanGrid>{[0, 1, 2].map(i => <PlanCardSkeleton key={i} />)}</PlanGrid>
+          : error ? <div className={s.panel}><PanelError message={error} onRetry={reload} /></div>
+          : list.length === 0 ? (
+            <div className={s.panel}>
+              {view === 'active'
                 ? <PanelEmpty title="No active plans" action={<ButtonLink href={ROUTES.shop} variant="secondary" size="md">Browse the shop</ButtonLink>}>Paid subscriptions appear here with their end date.</PanelEmpty>
-                : <PanelEmpty title="Nothing has ended yet">Plans that run out move here, with a quick way to buy them again.</PanelEmpty>
-            ) : <ul className={s.rows}>{list.map(x => <Row key={x.key} sub={x} />)}</ul>}
-        </div>
+                : <PanelEmpty title="Nothing has ended yet">Plans that run out move here, with a quick way to buy them again.</PanelEmpty>}
+            </div>
+          ) : <PlanGrid>{list.map(x => <PlanCard key={x.key} sub={x} />)}</PlanGrid>}
         <p className={s.muted}>Renewing adds the same plan to your cart at today’s price. Nothing renews automatically.</p>
       </div>
     </>

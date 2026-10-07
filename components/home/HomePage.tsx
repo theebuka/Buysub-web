@@ -74,9 +74,7 @@ export default function HomePage() {
   return (
     <div className={s.home}>
       <section className={s.hero}>
-        <div className={s.heroGlow} aria-hidden="true" />
-        <p className={s.eyebrow}><Icon name="sparkles" size={14} /> Digital subscriptions, paid in Naira</p>
-        <h1 className={s.heroTitle}>Every subscription you use, <span>in one place.</span></h1>
+        <h1 className={s.heroTitle}>Every subscription you use, in one place.</h1>
         <p className={s.heroText}>
           Streaming, AI tools, productivity apps, games and more. Pay in Naira with Paystack or order on WhatsApp.
         </p>

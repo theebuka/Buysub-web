@@ -14,10 +14,13 @@
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { -webkit-text-size-adjust: 100%; }
+/* scrollbar-gutter: the page keeps its scrollbar lane whether or not it can
+   scroll, so locking scroll for a modal (Overlay.tsx) or a short page no
+   longer shifts the layout sideways. */
+html { -webkit-text-size-adjust: 100%; scrollbar-gutter: stable; }
 
 body {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--bs-font-sans);
   background: var(--bs-bg-base);
   color: var(--bs-text-primary);
   -webkit-font-smoothing: antialiased;
@@ -25,6 +28,57 @@ body {
 }
 
 a { color: inherit; text-decoration: none; }
+
+/* Headings balance their lines, prose avoids a one-word last line. Labels,
+   buttons, badges and table cells set nowrap where they must not wrap. */
+h1, h2, h3, h4 { text-wrap: balance; }
+p, li, dd { text-wrap: pretty; }
+
+/* ── Scrollbars ─────────────────────────────────────────────────
+   Thin and quiet everywhere, in both themes. Firefox reads the standard
+   properties, Chromium and Safari the ::-webkit ones. */
+* { scrollbar-width: thin; scrollbar-color: var(--bs-scroll-thumb) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--bs-scroll-thumb); border-radius: 10px; border: 3px solid transparent; background-clip: padding-box; }
+::-webkit-scrollbar-thumb:hover { background-color: var(--bs-scroll-thumb-hover); }
+::-webkit-scrollbar-corner { background: transparent; }
+
+/* ── Checkboxes and radios ──────────────────────────────────────
+   One look for every native checkbox in the app: a bordered box that reads
+   as a control when empty, filled violet with a white tick when checked. */
+input[type="checkbox"], input[type="radio"] {
+  -webkit-appearance: none; appearance: none;
+  flex-shrink: 0;
+  width: 18px; height: 18px; margin: 0;
+  display: inline-grid; place-content: center;
+  border: 1.5px solid var(--bs-border-strong);
+  border-radius: 5px;
+  background: var(--bs-bg-input);
+  cursor: pointer;
+  vertical-align: middle;
+  transition: background var(--bs-dur-1) var(--bs-ease-out), border-color var(--bs-dur-1) var(--bs-ease-out), box-shadow var(--bs-dur-1) var(--bs-ease-out);
+}
+input[type="radio"] { border-radius: 50%; }
+input[type="checkbox"]:hover:not(:disabled), input[type="radio"]:hover:not(:disabled) { border-color: var(--bs-text-muted); }
+input[type="checkbox"]::before {
+  content: ""; width: 10px; height: 10px;
+  transform: scale(0); transition: transform var(--bs-dur-1) var(--bs-ease-out);
+  background: #fff;
+  clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+}
+input[type="radio"]::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #fff; transform: scale(0); transition: transform var(--bs-dur-1) var(--bs-ease-out); }
+input[type="checkbox"]:checked, input[type="checkbox"]:indeterminate, input[type="radio"]:checked { background: var(--bs-accent-fill); border-color: var(--bs-accent-fill); }
+input[type="checkbox"]:checked::before, input[type="radio"]:checked::before { transform: scale(1); }
+input[type="checkbox"]:indeterminate::before { transform: scale(1); clip-path: none; height: 2px; border-radius: 1px; }
+input[type="checkbox"]:focus-visible, input[type="radio"]:focus-visible { outline: none; box-shadow: var(--bs-ring); }
+input[type="checkbox"]:disabled, input[type="radio"]:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ── Motion ─────────────────────────────────────────────────────
+   Content entering a page fades up a few pixels; lists stagger lightly.
+   Reduced motion is honoured globally (see CSS_VARS). */
+.bs-enter { animation: bs-rise var(--bs-dur-3) var(--bs-ease-out) both; }
+.bs-fade { animation: fadeIn var(--bs-dur-2) var(--bs-ease-out) both; }
 
 /* Deliberately no global img/svg/button/focus rules: the older surfaces were
    tuned against UA defaults, and this phase must not move them. New
@@ -35,7 +89,7 @@ a { color: inherit; text-decoration: none; }
 @keyframes fadeIn  { from { opacity: 0 } to { opacity: 1 } }
 @keyframes scroll  { from { transform: translateX(100%) } to { transform: translateX(-100%) } }
 @keyframes bs-pop  { from { opacity: 0; transform: translateY(-4px) scale(.98) } to { opacity: 1; transform: none } }
-@keyframes bs-rise { from { opacity: 0; transform: translateY(12px) } to { opacity: 1; transform: none } }
+@keyframes bs-rise { from { opacity: 0; transform: translateY(6px) } to { opacity: 1; transform: none } }
 @keyframes bs-slide-left  { from { transform: translateX(-100%) } to { transform: none } }
 @keyframes bs-slide-right { from { transform: translateX(100%) } to { transform: none } }
 @keyframes bs-spin { to { transform: rotate(360deg) } }
@@ -53,11 +107,10 @@ a { color: inherit; text-decoration: none; }
 /* Page-width wrapper for new surfaces. */
 .bs-container {
   width: 100%;
-  max-width: 1280px;
+  max-width: var(--bs-page-max);
   margin: 0 auto;
-  padding: 0 var(--bs-space-4);
+  padding: 0 var(--bs-page-gutter);
 }
-@media (min-width: 768px) { .bs-container { padding: 0 var(--bs-space-6); } }
 
 /* Show/hide by width. md (768) is the phone/desktop split for chrome. */
 @media (max-width: 767.98px) { .bs-desktop-only { display: none !important; } }

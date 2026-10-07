@@ -344,6 +344,7 @@ export const CSS_VARS = `
     --bs-text-2xs: 11px;   /* badges, table column headers, timestamps */
     --bs-text-xs: 12px;    /* metadata, helper text, captions */
     --bs-text-sm: 13px;    /* admin body + table cells — dense default */
+    --bs-text-md: 14px;    /* account and partner body, list titles */
     --bs-text-base: 15px;  /* customer body — mobile legibility default */
     --bs-text-lg: 17px;    /* card titles, section leads */
     --bs-text-xl: 20px;    /* panel titles, prices */
@@ -373,7 +374,7 @@ export const CSS_VARS = `
     /* Customer surfaces use lg or taller. 44px is the touch-target floor. */
     --bs-control-sm: 32px;  /* admin inline actions */
     --bs-control-md: 40px;  /* admin inputs and buttons */
-    --bs-control-lg: 44px;  /* customer minimum touch target */
+    --bs-control-lg: 48px;  /* customer inputs and buttons (44px is the touch floor) */
     --bs-control-xl: 52px;  /* primary CTA */
 
     /* ── Radius: 6 steps, mirroring Marketplace ─────────────── */
@@ -387,6 +388,21 @@ export const CSS_VARS = `
     /* ── Chrome ─────────────────────────────────────────────── */
     /* Site header height. Anything sticky under the header docks at this. */
     --bs-header-h: 64px;
+    /* Page width for the storefront, header, footer and the account and
+       partner shells. One value so the logo, the filter pane and the
+       sidebars all share a left edge. */
+    --bs-page-max: 1600px;
+    --bs-page-gutter: 16px;
+
+    /* ── Type family ────────────────────────────────────────── */
+    /* Public Sans: neutral grotesque with tabular figures and a real ₦
+       glyph (most UI faces fall back to the system font for it). Loaded in
+       app/layout.tsx. */
+    --bs-font-sans: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+    /* ── Scrollbar ──────────────────────────────────────────── */
+    --bs-scroll-thumb: #2A2A33;
+    --bs-scroll-thumb-hover: #3A3A46;
 
     /* ── Elevation ──────────────────────────────────────────── */
     /* Dark separates by surface + border, not shadow. Reach for elev-2 and
@@ -460,6 +476,9 @@ export const CSS_VARS = `
     --bs-warning-rgb: 217, 119, 6;
     --bs-text-muted-rgb: 102, 113, 127;
 
+    --bs-scroll-thumb: #CDD1D7;
+    --bs-scroll-thumb-hover: #AEB4BC;
+
     --bs-elev-1: 0 1px 3px rgba(0,0,0,0.06);
     --bs-elev-2: 0 4px 12px rgba(0,0,0,0.08);
     --bs-elev-3: 0 16px 40px rgba(0,0,0,0.12);
@@ -467,6 +486,9 @@ export const CSS_VARS = `
     /* --bs-brand-slab-* and --bs-accent-rgb are deliberately absent here.
        They must stay dark/identical under light — see the note in :root. */
   }
+
+  @media (min-width: 768px)  { :root { --bs-page-gutter: 24px; } }
+  @media (min-width: 1280px) { :root { --bs-page-gutter: 32px; } }
 
   /* Deliberately global, and it does reach into Marketplace.tsx: an instant
      drawer is the correct result for someone who asked the OS for reduced
@@ -492,6 +514,7 @@ export const T = {
     '2xs': 'var(--bs-text-2xs)',
     xs: 'var(--bs-text-xs)',
     sm: 'var(--bs-text-sm)',
+    md: 'var(--bs-text-md)',
     base: 'var(--bs-text-base)',
     lg: 'var(--bs-text-lg)',
     xl: 'var(--bs-text-xl)',

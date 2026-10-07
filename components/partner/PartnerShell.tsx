@@ -8,8 +8,9 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { ButtonLink, CopyField, Icon, Skeleton, StatusBadge, type IconName } from '@/components/ui'
-import { RequireRole } from '@/lib/useSession'
-import { fmtDate } from '@/lib/format'
+import { RequireRole, useSession } from '@/lib/useSession'
+import { useSupportUnread } from '@/lib/support'
+import { fmtDate, initials } from '@/lib/format'
 import { ROUTES } from '@/lib/routes'
 import { PageHead, PanelError } from '@/components/account/AccountShell'
 import { usePartner, referralLink } from './usePartner'
@@ -21,12 +22,15 @@ const LINKS: { href: string; label: string; icon: IconName; exact?: boolean }[] 
   { href: ROUTES.partner.conversions, label: 'Conversions', icon: 'trend' },
   { href: ROUTES.partner.payouts, label: 'Payouts', icon: 'wallet' },
   { href: ROUTES.partner.profile, label: 'Profile', icon: 'settings' },
+  { href: ROUTES.partner.support, label: 'Support', icon: 'help' },
 ]
 
 const active = (p: string, href: string, exact?: boolean) => exact ? p === href : p === href || p.startsWith(href + '/')
 
 function Nav({ name, code, sections = true }: { name?: string; code?: string; sections?: boolean }) {
   const pathname = usePathname()
+  const session = useSession()
+  const unread = useSupportUnread(session.status === 'signed_in', 'partner')
   // Before approval every section shows the same status screen, so only
   // the way out (account, help) is offered.
   const links = sections ? LINKS : []
@@ -34,8 +38,11 @@ function Nav({ name, code, sections = true }: { name?: string; code?: string; se
     <>
       <aside className={s.side} aria-label="Partner portal">
         <div className={s.who}>
-          {name ? <span className={s.whoName}>{name}</span> : <Skeleton width={120} height={14} />}
-          <span className={s.whoEmail}>{code ? `Code ${code}` : 'Partner portal'}</span>
+          {name ? <span className={s.whoAvatar} aria-hidden="true">{initials(name)}</span> : <Skeleton width={36} height={36} radius="50%" />}
+          <span className={s.whoText}>
+            {name ? <span className={s.whoName}>{name}</span> : <Skeleton width={120} height={14} />}
+            <span className={s.whoEmail}>{code ? `Code ${code}` : 'Partner portal'}</span>
+          </span>
         </div>
         <nav>
           <ul className={s.nav}>
@@ -43,6 +50,7 @@ function Nav({ name, code, sections = true }: { name?: string; code?: string; se
               <li key={l.href}>
                 <Link href={l.href} className={s.navLink} aria-current={active(pathname, l.href, l.exact) ? 'page' : undefined}>
                   <Icon name={l.icon} size={16} />{l.label}
+                  {l.href === ROUTES.partner.support && unread > 0 && <span className={s.navCount} aria-label={`${unread} unread`}>{unread}</span>}
                 </Link>
               </li>
             ))}
@@ -54,7 +62,9 @@ function Nav({ name, code, sections = true }: { name?: string; code?: string; se
       </aside>
       <nav className={s.tabs} aria-label="Partner sections">
         {links.map(l => (
-          <Link key={l.href} href={l.href} className={s.tabLink} aria-current={active(pathname, l.href, l.exact) ? 'page' : undefined}>{l.label}</Link>
+          <Link key={l.href} href={l.href} className={s.tabLink} aria-current={active(pathname, l.href, l.exact) ? 'page' : undefined}>
+            {l.label}{l.href === ROUTES.partner.support && unread > 0 && <span className={s.tabCount}>{unread}</span>}
+          </Link>
         ))}
       </nav>
     </>
@@ -65,7 +75,7 @@ function StatusScreen({ title, children, action }: { title: string; children: Re
   return (
     <div className={s.main}>
       <PageHead title={title} />
-      <div className={`${s.panel} ${s.panelPad}`} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-3)', maxWidth: 620 }}>
+      <div className={`${s.panel} ${s.panelPad}`} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-3)', maxWidth: 640 }}>
         {children}
         {action && <div style={{ marginTop: 'var(--bs-space-2)' }}>{action}</div>}
       </div>

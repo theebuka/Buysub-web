@@ -39,7 +39,7 @@ export default function PartnerConversions() {
             </PanelEmpty>
           ) : (
             <>
-              <div className="bs-desktop-only" style={{ padding: '0 var(--bs-space-2)' }}>
+              <div className="bs-desktop-only">
                 <Table caption="Your conversions" columns={cols} rows={data} rowKey={c => c.id} responsive={false} />
               </div>
               <ul className={`${s.rows} bs-mobile-only`}>{data.map(c => <CommissionRow key={c.id} c={c} />)}</ul>

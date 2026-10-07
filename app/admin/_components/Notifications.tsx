@@ -235,7 +235,7 @@ export function NotificationsTab() {
   return (
     <>
       <AdminHead title="Notifications" lede="Announcements shown across the site. The newest five live ones are shown to each visitor."
-        actions={<Button size="md" icon="plus" onClick={() => setEditing({ id: null, form: BLANK })}>New notification</Button>} />
+        actions={<Button size="sm" icon="plus" onClick={() => setEditing({ id: null, form: BLANK })}>New notification</Button>} />
       <DataTable caption="Notifications" columns={columns} rows={list.rows} rowKey={n => n.id}
         loading={list.loading} error={list.error} onRetry={list.reload}
         empty={<TableState title="No notifications yet" action={<Button size="sm" icon="plus" onClick={() => setEditing({ id: null, form: BLANK })}>New notification</Button>}>Use one for sales, outages or new products.</TableState>} />

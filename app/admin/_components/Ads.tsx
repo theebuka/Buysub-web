@@ -87,7 +87,7 @@ export function AdsTab() {
 
   return (
     <>
-      <AdminHead title="Ads" lede="Banners and sponsored cards in the shop." actions={<Button size="md" icon="plus" onClick={() => setForm({ ...BLANK })}>New ad</Button>} />
+      <AdminHead title="Ads" lede="Banners and sponsored cards in the shop." actions={<Button size="sm" icon="plus" onClick={() => setForm({ ...BLANK })}>New ad</Button>} />
       <DataTable caption="Ads" columns={columns} rows={list.rows} rowKey={a => a.id}
         loading={list.loading} error={list.error} onRetry={list.reload}
         pagination={list.pagination} onPage={p => list.setParams({ page: String(p) })}

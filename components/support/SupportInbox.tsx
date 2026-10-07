@@ -192,7 +192,7 @@ function Conversation({ id, mode, onBack }: { id: string; mode: Mode; onBack: ()
         </div>
         {(admin || t.status === 'open') && (
           <Button variant="secondary" size="sm" icon={t.status === 'open' ? 'check' : undefined} onClick={toggle}>
-            {t.status === 'open' ? 'Mark resolved' : 'Reopen'}
+            {t.status === 'open' ? 'Resolve' : 'Reopen'}
           </Button>
         )}
       </div>

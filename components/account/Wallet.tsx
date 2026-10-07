@@ -61,7 +61,7 @@ function AddMoney({ min, max }: { min: number; max: number }) {
             onChange={e => { setAmount(e.target.value); setError('') }}
             onKeyDown={e => { if (e.key === 'Enter') go() }} />}
         </Field>
-        <Button size="lg" icon="lock" loading={busy} onClick={go} style={{ alignSelf: 'start', marginTop: 26 }}>Continue</Button>
+        <Button size="lg" icon="lock" loading={busy} onClick={go} style={{ alignSelf: 'start', marginTop: 22 }}>Continue</Button>
       </div>
     </div>
   )

@@ -14,7 +14,7 @@
 // ?max=, ?tag=, ?ref= (useReferral) and ?currency= (lib/currency.ts). ?period=
 // is ignored: cards now show each product's lowest available price.
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Button, Drawer, DrawerBody, EmptyState, Icon, IconButton, Input, Select } from '@/components/ui'
 import { useShopAds, ShopBanner, ShopSidebar, SponsoredProductCard, ReferralBanner, interleaveAds } from '@/components/ShopAds'
 import { useProducts } from '@/lib/useProducts'
@@ -22,7 +22,8 @@ import { useReferral } from '@/lib/useReferral'
 import { useCurrency } from '@/lib/currency'
 import { getCategoryList, isInStock, norm, TAB_ORDER, type Product } from '@/lib/constants'
 import { fromPrice } from '@/lib/pricing'
-import { categoryLabel } from '@/lib/format'
+import { categoryLabel, fmtNGN } from '@/lib/format'
+import { isOneTime } from '@/lib/catalog'
 import { SHOP_EVENTS } from '@/lib/shopBus'
 import { ProductCard, ProductCardSkeleton } from './ProductCard'
 import { QuickView, useQuickView } from './QuickView'
@@ -30,9 +31,15 @@ import { Notice, useCartReconcile } from './CartContents'
 import s from './shop.module.css'
 
 type Sort = 'featured' | 'alpha' | 'price_asc' | 'price_desc'
-type Filters = { category: string; q: string; sort: Sort; min: string; max: string; stock: boolean; tag: string }
+type Billing = '' | 'recurring' | 'one_time'
+type Filters = { category: string; q: string; sort: Sort; min: string; max: string; stock: boolean; tag: string; billing: Billing }
 
-const DEFAULTS: Filters = { category: 'all', q: '', sort: 'featured', min: '', max: '', stock: false, tag: '' }
+const DEFAULTS: Filters = { category: 'all', q: '', sort: 'featured', min: '', max: '', stock: false, tag: '', billing: '' }
+const PRICE_BANDS: { label: string; min: string; max: string }[] = [
+  { label: 'Under ₦10,000', min: '', max: '10000' },
+  { label: '₦10,000 to ₦50,000', min: '10000', max: '50000' },
+  { label: '₦50,000 and above', min: '50000', max: '' },
+]
 const PAGE = 24
 const SORTS: { value: Sort; label: string }[] = [
   { value: 'featured', label: 'Recommended' },
@@ -53,6 +60,7 @@ function readUrl(initialCategory?: string): Filters {
     max: q.get('max') || '',
     stock: q.get('stock') === '1',
     tag: q.get('tag') || '',
+    billing: (['recurring', 'one_time'].includes(q.get('billing') || '') ? q.get('billing') : '') as Billing,
   }
 }
 
@@ -64,6 +72,7 @@ function writeUrl(f: Filters) {
   if (f.max) q.set('max', f.max)
   if (f.stock) q.set('stock', '1')
   if (f.tag) q.set('tag', f.tag)
+  if (f.billing) q.set('billing', f.billing)
   const path = f.category === 'all' ? '/shop' : `/shop/c/${encodeURIComponent(f.category)}`
   const qs = q.toString()
   const next = qs ? `${path}?${qs}` : path
@@ -81,6 +90,7 @@ function applyFilters(products: Product[], f: Filters, query: string): Product[]
   const list = products.filter(p => {
     if (f.category !== 'all' && !getCategoryList(p).includes(f.category)) return false
     if (f.stock && (!isInStock(p.stock_status) || !fromPrice(p))) return false
+    if (f.billing && (f.billing === 'one_time') !== isOneTime(p)) return false
     if (f.tag && !String(p.tags || '').toLowerCase().split(',').map(t => t.trim()).includes(f.tag.toLowerCase())) return false
     if (words.length) {
       const hay = norm(`${p.name} ${p.description || ''} ${p.short_description || ''} ${p.tags || ''} ${getCategoryList(p).join(' ')}`)
@@ -110,42 +120,80 @@ function applyFilters(products: Product[], f: Filters, query: string): Product[]
 }
 
 // ── Filter panel (sidebar on desktop, drawer on mobile) ──────
-function FilterPanel({ f, set, cats, counts, total }: {
+// One bordered panel of collapsible sections, in the shape marketplaces use
+// (g2g, Amazon): category as a radio list with counts, price as a range plus
+// quick bands, billing and availability as checkboxes.
+
+function Section({ title, note, children }: { title: string; note?: string; children: ReactNode }) {
+  return (
+    <details className={s.fSection} open>
+      <summary className={s.fSummary}>
+        <span>{title}</span>
+        {note && <span className={s.fSummaryNote}>{note}</span>}
+        <Icon name="chevronDown" size={16} />
+      </summary>
+      <div className={s.fBody}>{children}</div>
+    </details>
+  )
+}
+
+function FilterPanel({ f, set, cats, counts, total, activeCount, onClear, footer }: {
   f: Filters; set: (p: Partial<Filters>) => void; cats: string[]; counts: Record<string, number>; total: number
+  activeCount: number; onClear: () => void; footer?: ReactNode
 }) {
   const [min, setMin] = useState(f.min)
   const [max, setMax] = useState(f.max)
   useEffect(() => { setMin(f.min); setMax(f.max) }, [f.min, f.max])
+  const band = PRICE_BANDS.find(b => b.min === f.min && b.max === f.max)
+  const priceNote = f.min || f.max ? (band?.label || `${f.min ? fmtNGN(Number(f.min)) : '₦0'} to ${f.max ? fmtNGN(Number(f.max)) : 'any'}`) : undefined
+  const toggleBilling = (b: Billing) => set({ billing: f.billing === b ? '' : b })
   return (
-    <>
-      <div className={s.filterGroup}>
-        <div className={s.filterTitle}>Categories</div>
+    <div className={s.filters}>
+      <div className={s.filtersHead}>
+        <h2 className={s.filtersTitle}>Filters</h2>
+        {activeCount > 0 && <button type="button" className={s.linkBtn} onClick={onClear}>Clear all</button>}
+      </div>
+      <Section title="Category" note={f.category !== 'all' ? categoryLabel(f.category) : undefined}>
         {['all', ...cats].map(c => (
-          <button key={c} type="button" className={s.catBtn} aria-current={f.category === c ? 'true' : undefined}
-            onClick={() => set({ category: c })}>
-            <span>{c === 'all' ? 'All products' : categoryLabel(c)}</span>
-            <span className={s.catCount}>{c === 'all' ? total : counts[c] || 0}</span>
-          </button>
+          <label key={c} className={s.fOpt}>
+            <input type="radio" name="bs-category" checked={f.category === c} onChange={() => set({ category: c })} />
+            <span className={s.fOptLabel}>{c === 'all' ? 'All products' : categoryLabel(c)}</span>
+            <span className={s.fCount}>{c === 'all' ? total : counts[c] || 0}</span>
+          </label>
         ))}
-      </div>
-      <form className={s.filterGroup} onSubmit={e => { e.preventDefault(); set({ min, max }) }}>
-        <div className={s.filterTitle}>Price (₦, lowest plan)</div>
-        <div className={s.priceRow}>
-          <Input fieldSize="md" inputMode="numeric" placeholder="Min" aria-label="Minimum price" value={min} onChange={e => setMin(e.target.value.replace(/\D/g, ''))} />
-          <Input fieldSize="md" inputMode="numeric" placeholder="Max" aria-label="Maximum price" value={max} onChange={e => setMax(e.target.value.replace(/\D/g, ''))} />
-        </div>
-        <div style={{ padding: '0 var(--bs-space-1)', marginTop: 'var(--bs-space-2)' }}>
-          <Button type="submit" variant="secondary" size="md" full>Apply price</Button>
-        </div>
-      </form>
-      <div className={s.filterGroup}>
-        <div className={s.filterTitle}>Availability</div>
-        <label className={s.catBtn} style={{ cursor: 'pointer' }}>
-          <span>In stock only</span>
-          <input type="checkbox" checked={f.stock} onChange={e => set({ stock: e.target.checked })} style={{ width: 18, height: 18, accentColor: 'var(--bs-accent)' }} />
+      </Section>
+      <Section title="Price" note={priceNote}>
+        <form className={s.priceRow} onSubmit={e => { e.preventDefault(); set({ min, max }) }}>
+          <span className={s.priceInput}><span>₦</span><Input fieldSize="md" inputMode="numeric" placeholder="Min" aria-label="Minimum price" value={min} onChange={e => setMin(e.target.value.replace(/\D/g, ''))} /></span>
+          <span className={s.priceDash} aria-hidden="true">–</span>
+          <span className={s.priceInput}><span>₦</span><Input fieldSize="md" inputMode="numeric" placeholder="Max" aria-label="Maximum price" value={max} onChange={e => setMax(e.target.value.replace(/\D/g, ''))} /></span>
+          <IconButton type="submit" icon="arrowRight" label="Apply price" size="md" outline />
+        </form>
+        {PRICE_BANDS.map(b => (
+          <label key={b.label} className={s.fOpt}>
+            <input type="radio" name="bs-price" checked={band === b} onChange={() => set({ min: b.min, max: b.max })} />
+            <span className={s.fOptLabel}>{b.label}</span>
+          </label>
+        ))}
+      </Section>
+      <Section title="Billing">
+        <label className={s.fOpt}>
+          <input type="checkbox" checked={f.billing === 'recurring'} onChange={() => toggleBilling('recurring')} />
+          <span className={s.fOptLabel}>Subscription</span>
         </label>
-      </div>
-    </>
+        <label className={s.fOpt}>
+          <input type="checkbox" checked={f.billing === 'one_time'} onChange={() => toggleBilling('one_time')} />
+          <span className={s.fOptLabel}>One-time purchase</span>
+        </label>
+      </Section>
+      <Section title="Availability">
+        <label className={s.fOpt}>
+          <input type="checkbox" checked={f.stock} onChange={e => set({ stock: e.target.checked })} />
+          <span className={s.fOptLabel}>In stock only</span>
+        </label>
+      </Section>
+      {footer && <div className={s.fFoot}>{footer}</div>}
+    </div>
   )
 }
 
@@ -169,7 +217,7 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
   // state → URL, except while a quick view owns the address bar.
   useEffect(() => { if (ready && !quick) writeUrl(f) }, [f, ready, quick])
   useEffect(() => { const t = setTimeout(() => setQuery(f.q), 250); return () => clearTimeout(t) }, [f.q])
-  useEffect(() => { setLimit(PAGE) }, [f.category, query, f.sort, f.min, f.max, f.stock, f.tag])
+  useEffect(() => { setLimit(PAGE) }, [f.category, query, f.sort, f.min, f.max, f.stock, f.tag, f.billing])
 
   const set = useCallback((patch: Partial<Filters>) => setF(prev => ({ ...prev, ...patch })), [])
 
@@ -197,10 +245,13 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
   if (f.q) active.push({ label: `“${f.q}”`, clear: { q: '' } })
   if (f.tag) active.push({ label: `Tag: ${f.tag}`, clear: { tag: '' } })
   if (f.min || f.max) active.push({ label: `₦${f.min || '0'} – ${f.max ? `₦${f.max}` : 'any'}`, clear: { min: '', max: '' } })
+  if (f.billing) active.push({ label: f.billing === 'one_time' ? 'One-time' : 'Subscription', clear: { billing: '' } })
   if (f.stock) active.push({ label: 'In stock', clear: { stock: false } })
+  if (f.category !== 'all') active.push({ label: categoryLabel(f.category), clear: { category: 'all' } })
+  const clearAll = () => set({ q: '', tag: '', min: '', max: '', stock: false, billing: '', category: 'all' })
 
   const title = f.q && f.category === 'all' ? `Results for “${f.q}”` : f.category === 'all' ? 'All products' : categoryLabel(f.category)
-  const panel = <FilterPanel f={f} set={p => { set(p); setFiltersOpen(false) }} cats={cats} counts={counts} total={products.length} />
+  const panelProps = { f, set, cats, counts, total: products.length, activeCount: active.length, onClear: clearAll }
 
   return (
     <div className={s.page}>
@@ -213,7 +264,7 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
 
       <div className={s.catalog}>
         <aside className={s.sidebar} aria-label="Filters">
-          {panel}
+          <FilterPanel {...panelProps} />
           {sidebarAds.length > 0 && <ShopSidebar ads={sidebarAds} />}
         </aside>
 
@@ -224,8 +275,9 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
               <p className={s.titleSub} aria-live="polite">{loading ? 'Loading products…' : `${results.length} product${results.length === 1 ? '' : 's'}`}{currency !== 'NGN' ? ` · prices in ${currency}` : ''}</p>
             </div>
             <div className={s.toolbarRight}>
-              <span className="bs-mobile-only"><IconButton icon="filter" label="Filters" outline onClick={() => setFiltersOpen(true)} /></span>
-              <Select fieldSize="md" aria-label="Sort by" value={f.sort} onChange={e => set({ sort: e.target.value as Sort })} style={{ width: 'auto', minWidth: 180 }}>
+              <span className={s.filterBtn}><Button variant="secondary" size="md" icon="filter" onClick={() => setFiltersOpen(true)}>Filters{active.length ? ` (${active.length})` : ''}</Button></span>
+              <span className={`${s.sortLabel} bs-desktop-only`}>Sort by</span>
+              <Select fieldSize="md" aria-label="Sort by" value={f.sort} onChange={e => set({ sort: e.target.value as Sort })} style={{ width: 'auto', minWidth: 190 }}>
                 {SORTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Select>
             </div>
@@ -246,7 +298,7 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
                   {a.label} <Icon name="close" size={12} />
                 </button>
               ))}
-              <button type="button" className={s.linkBtn} onClick={() => set({ q: '', tag: '', min: '', max: '', stock: false })}>Clear all</button>
+              <button type="button" className={s.linkBtn} onClick={clearAll}>Clear all</button>
             </div>
           )}
 
@@ -264,7 +316,7 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
               <div className={s.grid}>
                 {items.map((it: any) => it._isAd
                   ? <SponsoredProductCard key={`ad-${it.ad.id}`} ad={it.ad} isMobile={false}
-                      cardStyle={{ background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-default)', borderRadius: 'var(--bs-radius-xl)', padding: 'var(--bs-space-4)', height: '100%' }} />
+                      cardStyle={{ background: 'var(--bs-bg-card)', border: '1px solid var(--bs-border-default)', borderRadius: 'var(--bs-radius-2xl)', padding: 'var(--bs-space-6)', height: '100%', display: 'flex', flexDirection: 'column' }} />
                   : <ProductCard key={it.id} product={it} onOpen={qv.open} />)}
               </div>
               {results.length > limit && (
@@ -283,7 +335,9 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
           <h2 className={s.drawerTitle}>Filters</h2>
           <IconButton icon="close" label="Close filters" onClick={() => setFiltersOpen(false)} />
         </div>
-        <DrawerBody><div style={{ padding: 'var(--bs-space-3)', display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-4)' }}>{panel}</div></DrawerBody>
+        <DrawerBody><div style={{ padding: 'var(--bs-space-3)' }}>
+          <FilterPanel {...panelProps} footer={<Button full onClick={() => setFiltersOpen(false)}>Show {results.length} product{results.length === 1 ? '' : 's'}</Button>} />
+        </div></DrawerBody>
       </Drawer>
 
       <QuickView product={quick} onClose={qv.close} />

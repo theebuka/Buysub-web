@@ -153,7 +153,7 @@ export function DiscountsTab() {
 
   return (
     <>
-      <AdminHead title="Discounts" actions={<Button size="md" icon="plus" onClick={() => setEditing({ id: null, form: EMPTY_DISCOUNT() })}>New code</Button>} />
+      <AdminHead title="Discounts" actions={<Button size="sm" icon="plus" onClick={() => setEditing({ id: null, form: EMPTY_DISCOUNT() })}>New code</Button>} />
       <DataTable
         caption="Discount codes"
         columns={columns}

@@ -5,16 +5,77 @@
 // useReferral records on arrival (home, catalog and product pages all read it).
 
 import { useMemo, useState } from 'react'
-import { ButtonLink, CopyField, Field, Select } from '@/components/ui'
+import { toast } from 'sonner'
+import { Button, ButtonLink, CopyField, Field, Input, ProductLogo, Select, Skeleton, copyText } from '@/components/ui'
 import { useProducts } from '@/lib/useProducts'
-import { getCategoryList, isInStock, TAB_ORDER } from '@/lib/constants'
-import { categoryHref, productHref } from '@/lib/catalog'
-import { categoryLabel } from '@/lib/format'
+import { getCategoryList, isInStock, norm, TAB_ORDER, type Product } from '@/lib/constants'
+import { categoryHref, isOneTime, productHref } from '@/lib/catalog'
+import { fromPrice } from '@/lib/pricing'
+import { categoryLabel, fmtNGN } from '@/lib/format'
+import c from './share.module.css'
 import { PageHead } from '@/components/account/AccountShell'
 import { usePartner, referralLink } from './usePartner'
 import s from '@/components/account/account.module.css'
 
 type Kind = 'shop' | 'home' | 'category' | 'product'
+
+// A product as it looks in the shop, with the partner's link and what one
+// sale of its cheapest plan would earn them.
+function ShareCard({ p, code, rate }: { p: Product; code: string; rate: number | null }) {
+  const url = referralLink(code, productHref(p))
+  const fp = fromPrice(p)
+  const cat = getCategoryList(p)[0]
+  const earn = fp && rate ? Math.floor(fp.price * rate / 100) : null
+  const wa = `https://wa.me/?text=${encodeURIComponent(`${p.name} on BuySub: ${url}`)}`
+  const copy = async () => { if (await copyText(url)) toast.success(`Link to ${p.name} copied`); else toast.error('Couldn’t copy the link') }
+  return (
+    <article className={c.card}>
+      <div className={c.top}>
+        <ProductLogo product={p} size={40} />
+        <div className={c.head}>
+          <h3 className={c.name} title={p.name}>{p.name}</h3>
+          {cat && <span className={c.cat}>{categoryLabel(cat)}</span>}
+        </div>
+      </div>
+      <div className={c.figures}>
+        <div><span className={c.k}>{isOneTime(p) ? 'Price' : 'From'}</span><span className={c.v}>{fp ? fmtNGN(fp.price) : '–'}</span></div>
+        <div><span className={c.k}>You earn</span><span className={c.v}>{earn != null ? `~${fmtNGN(earn)}` : '–'}</span></div>
+      </div>
+      <div className={c.actions}>
+        <Button variant="secondary" size="md" icon="copy" onClick={copy} full>Copy link</Button>
+        <ButtonLink href={wa} external variant="ghost" size="md" aria-label={`Share ${p.name} on WhatsApp`}>Share</ButtonLink>
+      </div>
+    </article>
+  )
+}
+
+function ShareGrid({ code, rate }: { code: string; rate: number | null }) {
+  const { products, loading } = useProducts()
+  const [q, setQ] = useState('')
+  const list = useMemo(() => {
+    const words = norm(q).split(/\s+/).filter(Boolean)
+    return products
+      .filter(p => isInStock(p.stock_status) && fromPrice(p))
+      .filter(p => !words.length || words.every(w => norm(`${p.name} ${getCategoryList(p).join(' ')}`).includes(w)))
+      .sort((a, b) => Number(!!b.featured) - Number(!!a.featured) || (b.sold_count ?? 0) - (a.sold_count ?? 0) || a.name.localeCompare(b.name))
+  }, [products, q])
+  return (
+    <section className={s.section}>
+      <div className={s.sectionHead} style={{ alignItems: 'center' }}>
+        <h2 className={s.h2}>Products to share</h2>
+        <div style={{ width: 260, maxWidth: '50%' }}><Input icon="search" fieldSize="md" placeholder="Find a product" aria-label="Find a product" value={q} onChange={e => setQ(e.target.value)} /></div>
+      </div>
+      {loading ? (
+        <div className={c.grid}>{[0, 1, 2, 3, 4, 5].map(i => <Skeleton key={i} height={184} radius="var(--bs-radius-xl)" />)}</div>
+      ) : list.length === 0 ? (
+        <p className={s.muted}>No products match “{q}”.</p>
+      ) : (
+        <div className={c.grid}>{list.slice(0, 24).map(p => <ShareCard key={p.id} p={p} code={code} rate={rate} />)}</div>
+      )}
+      {rate != null && <p className={s.muted}>Estimates use the cheapest plan at your {rate}% rate. Longer plans earn more.</p>}
+    </section>
+  )
+}
 
 export default function PartnerLinks() {
   const { affiliate } = usePartner()
@@ -91,6 +152,7 @@ export default function PartnerLinks() {
           </div>
         </div>
       </div>
+      <ShareGrid code={code} rate={affiliate.commission_rate ?? null} />
       <section className={s.section}>
         <h2 className={s.h2}>How referrals are counted</h2>
         <div className={`${s.panel} ${s.panelPad}`}>

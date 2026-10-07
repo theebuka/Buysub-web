@@ -39,7 +39,7 @@ export function NotificationBell() {
   return (
     <Popover
       align="end"
-      width={360}
+      width="min(440px, calc(100vw - 24px))"
       panelLabel="Notifications"
       trigger={({ toggle, props }) => <IconButton icon="bell" label="Notifications" count={unread} onClick={toggle} {...props} />}
     >

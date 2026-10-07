@@ -2,52 +2,18 @@
 
 import Link from 'next/link'
 import { useMemo } from 'react'
-import { Button, ButtonLink, Icon, Skeleton, StatusBadge } from '@/components/ui'
+import { ButtonLink, Icon, Skeleton } from '@/components/ui'
 import { useApi } from '@/lib/useApi'
 import { useSession } from '@/lib/useSession'
-import { fmtDate, fmtNGN } from '@/lib/format'
+import { fmtNGN } from '@/lib/format'
 import { orderBucket } from '@/lib/status'
-import { subscriptionsFrom, endsLabel, type MyOrder, type Subscription } from '@/lib/subscriptions'
+import { subscriptionsFrom, type MyOrder } from '@/lib/subscriptions'
 import { ROUTES } from '@/lib/routes'
 import { PageHead, PanelEmpty, PanelError, RowsSkeleton } from './AccountShell'
-import { ItemLogo, itemsSummary, useReorder } from './orderBits'
 import s from './account.module.css'
+import c from './cards.module.css'
+import { OrderLine, PlanCard, PlanCardSkeleton, PlanGrid } from './cards'
 import { markedRead } from './readState'
-
-function PlanRow({ sub }: { sub: Subscription }) {
-  const reorder = useReorder()
-  const ending = sub.state === 'ending'
-  return (
-    <li className={`${s.row} ${s.rowWrap}`}>
-      <ItemLogo item={sub.item} />
-      <div className={s.rowMain}>
-        <span className={s.rowTitle}>{sub.item.product_name}</span>
-        <span className={s.rowSub}>{sub.item.billing_period} · until {fmtDate(sub.end)}</span>
-      </div>
-      <div className={s.rowEnd}>
-        <span className={`${s.muted} ${ending ? s.warn : ''}`}>{endsLabel(sub)}</span>
-        <Button variant={ending ? 'primary' : 'secondary'} size="md" onClick={() => reorder([sub.item])}>Renew</Button>
-      </div>
-    </li>
-  )
-}
-
-export function OrderRow({ o }: { o: MyOrder }) {
-  return (
-    <li>
-      <Link href={ROUTES.account.order(o.order_ref)} className={`${s.row} ${s.rowStack}`}>
-        <div className={s.rowMain}>
-          <span className={s.rowTitle}>{o.order_items?.length ? itemsSummary(o) : `Order ${o.order_ref}`}</span>
-          <span className={s.rowSub}>{o.order_items?.length ? `${o.order_ref} · ` : ''}{fmtDate(o.created_at)}</span>
-        </div>
-        <div className={s.rowEnd}>
-          <span className={s.rowAmount}>{fmtNGN(o.total_ngn)}</span>
-          <StatusBadge status={o.status} />
-        </div>
-      </Link>
-    </li>
-  )
-}
 
 export default function Overview() {
   const session = useSession()
@@ -101,15 +67,15 @@ export default function Overview() {
           <h2 className={s.h2}>Your plans</h2>
           {subs.length > 0 && <Link href={ROUTES.account.subscriptions} className={s.textLink}>All subscriptions</Link>}
         </div>
-        <div className={s.panel}>
-          {orders.loading ? <RowsSkeleton n={2} />
-            : orders.error ? <PanelError message={orders.error} onRetry={orders.reload} />
-            : live.length === 0 ? (
+        {orders.loading ? <PlanGrid>{[0, 1, 2].map(i => <PlanCardSkeleton key={i} />)}</PlanGrid>
+          : orders.error ? <div className={s.panel}><PanelError message={orders.error} onRetry={orders.reload} /></div>
+          : live.length === 0 ? (
+            <div className={s.panel}>
               <PanelEmpty title="No active plans" action={<ButtonLink href={ROUTES.shop} variant="secondary" size="md">Browse the shop</ButtonLink>}>
                 Subscriptions you pay for show here with their end date, so you can renew in time.
               </PanelEmpty>
-            ) : <ul className={s.rows}>{live.slice(0, 4).map(x => <PlanRow key={x.key} sub={x} />)}</ul>}
-        </div>
+            </div>
+          ) : <PlanGrid>{live.slice(0, 3).map(x => <PlanCard key={x.key} sub={x} />)}</PlanGrid>}
       </section>
 
       <section className={s.section}>
@@ -121,7 +87,7 @@ export default function Overview() {
           {orders.loading ? <RowsSkeleton n={4} />
             : orders.error ? <PanelError message={orders.error} onRetry={orders.reload} />
             : !orders.data?.length ? <PanelEmpty title="No orders yet">Orders you place on BuySub will appear here.</PanelEmpty>
-            : <ul className={s.rows}>{orders.data.slice(0, 5).map(o => <OrderRow key={o.id} o={o} />)}</ul>}
+            : <ul className={c.lines}>{orders.data.slice(0, 5).map(o => <OrderLine key={o.id} o={o} />)}</ul>}
         </div>
       </section>
     </>

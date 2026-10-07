@@ -5,27 +5,31 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import type { ReactNode } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { Icon, Skeleton, type IconName } from '@/components/ui'
 import { RequireRole, useSession } from '@/lib/useSession'
 import { useApi } from '@/lib/useApi'
 import { useInbox } from '@/lib/inbox'
 import { useSiteStatus } from '@/lib/siteStatus'
 import { ROUTES } from '@/lib/routes'
+import { initials } from '@/lib/format'
 import { markedRead } from './readState'
+import { useSupportUnread } from '@/lib/support'
 import s from './account.module.css'
 
-type NavLink = { href: string; label: string; icon: IconName; exact?: boolean; flag?: 'referrals' }
+type NavLink = { href: string; label: string; icon: IconName; exact?: boolean; flag?: 'referrals'; sep?: boolean }
 const LINKS: NavLink[] = [
   { href: ROUTES.account.home, label: 'Overview', icon: 'home', exact: true },
   { href: ROUTES.account.orders, label: 'Orders', icon: 'receipt' },
   { href: ROUTES.account.subscriptions, label: 'Subscriptions', icon: 'clock' },
   { href: ROUTES.account.wallet, label: 'Wallet', icon: 'wallet' },
-  { href: ROUTES.account.notifications, label: 'Notifications', icon: 'bell' },
+  { href: ROUTES.account.notifications, label: 'Notifications', icon: 'bell', sep: true },
   { href: ROUTES.account.messages, label: 'Messages', icon: 'message' },
-  { href: ROUTES.account.referrals, label: 'Refer and earn', icon: 'gift', flag: 'referrals' },
+  { href: ROUTES.account.support, label: 'Support', icon: 'help' },
+  { href: ROUTES.account.referrals, label: 'Refer and earn', icon: 'gift', flag: 'referrals', sep: true },
   { href: ROUTES.account.settings, label: 'Settings', icon: 'settings' },
 ]
+
 
 function isActive(pathname: string, href: string, exact?: boolean) {
   return exact ? pathname === href : pathname === href || pathname.startsWith(href + '/')
@@ -45,38 +49,44 @@ function Nav() {
   const status = useSiteStatus()
   const u = session.user
   const links = LINKS.filter(l => !l.flag || status.services[l.flag])
+  const support = useSupportUnread(session.status === 'signed_in', 'customer')
   const countFor = (href: string) =>
     href === ROUTES.account.messages ? unreadMessages
       : href === ROUTES.account.notifications ? (inbox.data?.unread ?? 0)
+      : href === ROUTES.account.support ? support
       : 0
   return (
     <>
       <aside className={s.side} aria-label="Account">
         <div className={s.who}>
           {u ? <>
-            <span className={s.whoName}>{u.full_name || 'Your account'}</span>
-            <span className={s.whoEmail}>{u.email}</span>
-          </> : <><Skeleton width={120} height={14} /><Skeleton width={160} height={12} /></>}
+            <span className={s.whoAvatar} aria-hidden="true">{initials(u.full_name || u.email)}</span>
+            <span className={s.whoText}>
+              <span className={s.whoName}>{u.full_name || 'Your account'}</span>
+              <span className={s.whoEmail}>{u.email}</span>
+            </span>
+          </> : <><Skeleton width={36} height={36} radius="50%" /><span className={s.whoText}><Skeleton width={110} height={14} /><Skeleton width={150} height={12} /></span></>}
         </div>
         <nav>
           <ul className={s.nav}>
             {links.map(l => (
-              <li key={l.href}>
-                <Link href={l.href} className={s.navLink} aria-current={isActive(pathname, l.href, l.exact) ? 'page' : undefined}>
-                  <Icon name={l.icon} size={16} />{l.label}
-                  {countFor(l.href) > 0 && <span className={s.navCount}>{countFor(l.href)}</span>}
-                </Link>
-              </li>
+              <Fragment key={l.href}>
+                {l.sep && <li className={s.navSep} role="separator" />}
+                <li>
+                  <Link href={l.href} className={s.navLink} aria-current={isActive(pathname, l.href, l.exact) ? 'page' : undefined}>
+                    <Icon name={l.icon} size={16} />{l.label}
+                    {countFor(l.href) > 0 && <span className={s.navCount} aria-label={`${countFor(l.href)} unread`}>{countFor(l.href)}</span>}
+                  </Link>
+                </li>
+              </Fragment>
             ))}
-            <li className={s.navSep} role="separator" />
-            <li><Link href={ROUTES.help} className={s.navLink}><Icon name="help" size={16} />Help</Link></li>
           </ul>
         </nav>
       </aside>
       <nav className={s.tabs} aria-label="Account sections">
         {links.map(l => (
           <Link key={l.href} href={l.href} className={s.tabLink} aria-current={isActive(pathname, l.href, l.exact) ? 'page' : undefined}>
-            {l.label}{countFor(l.href) > 0 ? ` (${countFor(l.href)})` : ''}
+            {l.label}{countFor(l.href) > 0 && <span className={s.tabCount}>{countFor(l.href)}</span>}
           </Link>
         ))}
       </nav>
@@ -87,9 +97,9 @@ function Nav() {
 function Loading() {
   return (
     <div className={s.main} aria-busy="true">
-      <Skeleton width={180} height={28} />
-      <Skeleton height={104} radius="var(--bs-radius-lg)" />
-      <Skeleton height={220} radius="var(--bs-radius-lg)" />
+      <div style={{ display: 'grid', gap: 8 }}><Skeleton width={180} height={28} /><Skeleton width={280} height={14} /></div>
+      <Skeleton height={112} radius="var(--bs-radius-lg)" />
+      <Skeleton height={240} radius="var(--bs-radius-lg)" />
     </div>
   )
 }
@@ -146,7 +156,7 @@ export function RowsSkeleton({ n = 3 }: { n?: number }) {
     <ul className={s.rows} aria-hidden="true">
       {Array.from({ length: n }, (_, i) => (
         <li key={i} className={s.row}>
-          <Skeleton width={36} height={36} radius="var(--bs-radius-md)" />
+          <Skeleton width={40} height={40} radius="var(--bs-radius-md)" />
           <div className={s.rowMain}><Skeleton width="40%" height={14} /><Skeleton width="25%" height={12} /></div>
           <Skeleton width={70} height={14} />
         </li>

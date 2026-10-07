@@ -43,11 +43,16 @@ interface Ad {
 // selectors on the box inside it.
 const AD_CSS = `
 .bs-ad-link:focus-visible { outline: none; box-shadow: var(--bs-ring); border-radius: var(--bs-radius-md); }
-.bs-ad-link:hover .bs-ad-frame,
 .bs-ad-link:focus-visible .bs-ad-frame { border-color: var(--bs-accent); }
 .bs-ad-dot:focus-visible,
 .bs-ad-btn:focus-visible { outline: none; box-shadow: var(--bs-ring); }
-.bs-ad-dot:hover .bs-ad-dot-mark { background: var(--bs-accent); }
+.bs-ad-link:hover .bs-ad-frame { border-color: var(--bs-border-strong); }
+.bs-ad-dots { position: absolute; left: 50%; bottom: 10px; transform: translateX(-50%); display: flex; align-items: center; gap: 2px; padding: 2px 4px; border-radius: 999px; background: rgba(0,0,0,.45); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.bs-ad-dot { display: grid; place-items: center; width: 20px; height: 20px; padding: 0; border: none; background: transparent; border-radius: 999px; cursor: pointer; }
+.bs-ad-dot[aria-current="true"] { width: 28px; }
+.bs-ad-dot-mark { display: block; width: 6px; height: 6px; border-radius: 999px; background: rgba(255,255,255,.5); transition: width var(--bs-dur-2) var(--bs-ease-out), background var(--bs-dur-1) var(--bs-ease-out); }
+.bs-ad-dot[aria-current="true"] .bs-ad-dot-mark { width: 18px; background: #fff; }
+.bs-ad-dot:hover .bs-ad-dot-mark { background: #fff; }
 .bs-ad-btn:hover { color: var(--bs-text-primary); }
 `
 
@@ -141,18 +146,13 @@ const trackClick = (adId: string) => {
   }).catch(() => {})
 }
 
-// The disclosure label shared by the banner and the sponsored card. Kept
-// uppercase and tracked, a deliberate exception to the sentence-case
-// convention Phases 1-5 applied to customer surfaces: this is an advertising
-// disclosure, where a conventional and visually distinct label is the function
-// rather than decoration. Same standing as admin's micro-labels — do not
-// "fix" it in a later pass.
+// The disclosure label shared by the banner and the sponsored card. Sentence
+// case like every other label; it stays distinct through its solid backing.
 const DISCLOSURE: React.CSSProperties = {
   fontSize: 'var(--bs-text-2xs)',
-  padding: 'var(--bs-space-1) var(--bs-space-2)',
+  fontWeight: 500,
+  padding: '2px var(--bs-space-2)',
   borderRadius: 'var(--bs-radius-sm)',
-  textTransform: 'uppercase',
-  letterSpacing: '0.06em',
 }
 
 // ════════════════════════════════════════════════════════════
@@ -194,7 +194,8 @@ export function ShopBanner({ ads }: { ads: Ad[] }) {
 
   return (
     <div
-      style={{ marginBottom: 'var(--bs-space-4)' }}
+      className="bs-ad-banner"
+      style={{ position: 'relative', marginBottom: 'var(--bs-space-4)' }}
       onMouseEnter={() => setEngaged(true)}
       onMouseLeave={() => setEngaged(false)}
       onFocus={() => setEngaged(true)}
@@ -213,9 +214,6 @@ export function ShopBanner({ ads }: { ads: Ad[] }) {
           className="bs-ad-frame"
           style={{
             position: 'relative',
-            // Nearest step would be radius-lg, but this sits directly above a
-            // grid of 20/28-radius cards and would read as sharper-cornered
-            // than everything below it.
             borderRadius: 'var(--bs-radius-xl)',
             overflow: 'hidden',
             border: '1px solid var(--bs-border-subtle)',
@@ -223,21 +221,19 @@ export function ShopBanner({ ads }: { ads: Ad[] }) {
           }}
         >
           <img
+            key={ad.id}
             src={ad.image_url}
             alt={ad.title}
+            className="bs-fade"
             style={{
               width: '100%',
-              height: 'auto',
-              maxHeight: 180,
+              height: 'clamp(120px, 15vw, 200px)',
               objectFit: 'cover',
               display: 'block',
             }}
           />
-          {/* Disclosure label. Was #888 on a rgba(0,0,0,0.6) scrim, so its
-              contrast depended entirely on the image underneath — over a pale
-              image the composite lands near 1.9:1. An opaque fill cannot
-              composite with what sits beneath it, which is the same reasoning
-              Phase 6 used to make the admin badges opaque. */}
+          {/* Disclosure label on an opaque fill, so its contrast never
+              depends on the image underneath. */}
           <span style={{
             ...DISCLOSURE,
             position: 'absolute',
@@ -251,14 +247,11 @@ export function ShopBanner({ ads }: { ads: Ad[] }) {
         </div>
       </a>
 
-      {/* Slide picker. Also the WCAG 2.2.2 stop mechanism — see the effect. */}
+      {/* Slide picker, inside the banner on a dark pill: short bars, tight
+          spacing, the current one longer. Also the WCAG 2.2.2 stop mechanism
+          (see the effect). Siblings of the link, never inside it. */}
       {ads.length > 1 && (
-        <div style={{
-          display: 'flex',
-          justifyContent: 'center',
-          gap: 'var(--bs-space-1)',
-          marginTop: 'var(--bs-space-2)',
-        }}>
+        <div className="bs-ad-dots" role="group" aria-label="Choose ad">
           {ads.map((_, i) => (
             <button
               key={i}
@@ -267,32 +260,8 @@ export function ShopBanner({ ads }: { ads: Ad[] }) {
               aria-label={`Show ad ${i + 1} of ${ads.length}`}
               aria-current={i === current}
               onClick={() => { setCurrent(i); setTookControl(true) }}
-              style={{
-                // The visible dot stays small; the button carries the 44px
-                // target. It was 6x6 — the whole control, on a mobile-first
-                // surface — with no accessible name at all.
-                width: 'var(--bs-control-lg)',
-                height: 'var(--bs-control-lg)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                background: 'transparent',
-                border: 'none',
-                borderRadius: 'var(--bs-radius-full)',
-                cursor: 'pointer',
-                padding: 0,
-              }}
             >
-              <span
-                className="bs-ad-dot-mark"
-                style={{
-                  width: 8,
-                  height: 8,
-                  borderRadius: 'var(--bs-radius-full)',
-                  background: i === current ? 'var(--bs-accent)' : 'var(--bs-border-strong)',
-                  transition: 'background var(--bs-dur-1) var(--bs-ease-out)',
-                }}
-              />
+              <span className="bs-ad-dot-mark" />
             </button>
           ))}
         </div>
@@ -322,10 +291,8 @@ export function ShopSidebar({ ads }: { ads: Ad[] }) {
           use only, never for text a user has to read. A disclosure is exactly
           text a user has to read. */}
       <div style={{
-        fontSize: 'var(--bs-text-2xs)',
+        fontSize: 'var(--bs-text-xs)',
         color: 'var(--bs-text-muted)',
-        textTransform: 'uppercase',
-        letterSpacing: '0.08em',
       }}>
         Sponsored
       </div>
@@ -423,9 +390,8 @@ export function SponsoredProductCard({
           position: 'absolute',
           top: isMobile ? 'var(--bs-space-2)' : 'var(--bs-space-3)',
           right: isMobile ? 'var(--bs-space-2)' : 'var(--bs-space-3)',
-          background: 'rgba(var(--bs-accent-rgb), 0.12)',
-          color: 'color-mix(in srgb, var(--bs-accent), var(--bs-on-tint-mix))',
-          fontWeight: 'var(--bs-weight-semibold)',
+          background: 'var(--bs-bg-elevated)',
+          color: 'var(--bs-text-secondary)',
         }}>
           {ad.card_badge || 'Sponsored'}
         </span>
@@ -451,18 +417,16 @@ export function SponsoredProductCard({
             </div>
             <div>
               <div style={{
-                fontSize: 'var(--bs-text-base)',
+                fontSize: 16,
                 color: 'var(--bs-text-primary)',
-                // Was 500. The real product card beside it is 600, and this
-                // component's whole job is to match it.
                 fontWeight: 'var(--bs-weight-semibold)',
-                lineHeight: 'var(--bs-leading-tight)',
+                lineHeight: 1.3,
               }}>
                 {ad.card_name || ad.title}
               </div>
               <div style={{
-                fontSize: 'var(--bs-text-2xs)',
-                color: 'var(--bs-text-muted)',
+                fontSize: 'var(--bs-text-xs)',
+                color: 'var(--bs-accent-on-surface)',
                 marginTop: 2,
               }}>
                 {ad.card_category || 'Sponsored'}
@@ -500,14 +464,12 @@ export function SponsoredProductCard({
             )}
           </div>
           <div style={{
-            fontSize: 'var(--bs-text-xs)',
-            padding: 'var(--bs-space-2) var(--bs-space-3)',
-            borderRadius: 'var(--bs-radius-sm)',
-            background: 'rgba(var(--bs-accent-rgb), 0.12)',
-            color: 'color-mix(in srgb, var(--bs-accent), var(--bs-on-tint-mix))',
-            fontWeight: 'var(--bs-weight-medium)',
+            fontSize: 'var(--bs-text-sm)',
+            color: 'var(--bs-accent-on-surface)',
+            fontWeight: 'var(--bs-weight-semibold)',
+            whiteSpace: 'nowrap',
           }}>
-            Learn More
+            Learn more
           </div>
         </div>
       </div>

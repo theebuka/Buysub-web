@@ -100,7 +100,7 @@ export function OrdersTab() {
 
   return (
     <>
-      <AdminHead title="Orders" actions={<Button size="md" icon="plus" onClick={openNewOrder}>New order</Button>} />
+      <AdminHead title="Orders" actions={<Button size="sm" icon="plus" onClick={openNewOrder}>New order</Button>} />
       <DataTable
         caption="Orders"
         columns={columns}

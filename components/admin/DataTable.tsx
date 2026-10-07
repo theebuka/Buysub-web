@@ -98,7 +98,7 @@ export function Pager({ page, pages, total, limit, onPage }: { page: number; pag
 
 export function DataTable<R>({
   columns, rows, rowKey, loading, error, onRetry, empty, onRowClick, rowHref,
-  toolbar, selectable, bulkActions, pagination, onPage, caption,
+  toolbar, selectable, bulkActions, pagination, onPage, caption, card,
 }: {
   columns: DTColumn<R>[]
   rows: R[]
@@ -117,6 +117,8 @@ export function DataTable<R>({
   pagination?: { page: number; pages: number; total: number; limit: number }
   onPage?: (p: number) => void
   caption?: string
+  /** Render rows as a grid of cards instead of a table (e.g. products). */
+  card?: (row: R, sel: { checked: boolean; toggle: () => void }) => ReactNode
 }) {
   const router = useRouter()
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -144,6 +146,12 @@ export function DataTable<R>({
         <TableState error title="Couldn’t load this list" action={onRetry && <Button size="sm" variant="secondary" onClick={onRetry}>Try again</Button>}>{error}</TableState>
       ) : !loading && rows.length === 0 ? (
         empty ?? <TableState title="Nothing here yet" />
+      ) : card ? (
+        <div className={s.cardGrid} aria-busy={loading || undefined} style={{ opacity: loading && !showSkeleton ? 0.6 : 1 }}>
+          {showSkeleton
+            ? Array.from({ length: 8 }, (_, i) => <div key={i} className={s.cardSkel}><span className={s.skel} style={{ width: 40, height: 40, borderRadius: 10 }} /><span className={s.skel} style={{ width: '70%' }} /><span className={s.skel} style={{ width: '40%' }} /></div>)
+            : rows.map(r => { const k = rowKey(r); return <div key={k} className={s.cardCell}>{card(r, { checked: selected.has(k), toggle: () => toggle(k) })}</div> })}
+        </div>
       ) : (
         <div className={s.tableWrap} aria-busy={loading || undefined}>
           <table className={s.table} style={{ opacity: loading && !showSkeleton ? 0.6 : 1, transition: 'opacity var(--bs-dur-1) var(--bs-ease-out)' }}>
