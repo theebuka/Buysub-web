@@ -458,7 +458,7 @@ const AUTO_DISCOUNT = {
 // far. The list endpoints return a correctly-shaped empty page. Fill these in
 // at Phase 6, when each tab's row shape has actually been read.
 const ADMIN_STATS = {
-  payouts_pending: 2,
+  payouts_pending: 2, support_waiting: 2,
   revenue_today: 184500, revenue_this_month: 4820750, total_revenue: 61944210,
   orders_today: 12, orders_pending_manual: 3,
   products_active: 268, products_total: 275,
@@ -817,8 +817,60 @@ const ADMIN_PAYOUTS = [
     affiliates: { store_name: 'Ade Stores', referral_code: 'ADE' } },
 ]
 
+// Support conversations (migration 18). Mutable, so a reply shows up on the next poll.
+const now = Date.now()
+const ago = (min) => new Date(now - min * 60000).toISOString()
+const SUPPORT = [
+  { id: 'st1', audience: 'customer', subject: 'Netflix login asks for a code', order_ref: 'BS-24301', status: 'open', user_unread: 1, admin_unread: 0, last_sender: 'admin', created_at: ago(60 * 26),
+    user: { full_name: 'Ada Okonkwo', email: 'ada.okonkwo@example.com' },
+    messages: [
+      { id: 'sm1', sender: 'user', body: 'Hi, I signed in on my TV and Netflix is asking for a code sent to the account email. I don’t have access to that email.', created_at: ago(60 * 26) },
+      { id: 'sm2', sender: 'admin', body: 'Thanks Ada. We’ve generated the code for you: 482 913. It expires in 15 minutes. If it runs out, reply here and we’ll send another.', created_at: ago(60 * 25) },
+      { id: 'sm3', sender: 'user', body: 'That worked, thank you!', created_at: ago(60 * 24) },
+      { id: 'sm4', sender: 'admin', body: 'Great. One more thing: please don’t change the profile PIN, as other members share the account.', created_at: ago(35) },
+    ] },
+  { id: 'st2', audience: 'customer', subject: 'Can I upgrade Spotify Duo to Family?', order_ref: null, status: 'open', user_unread: 0, admin_unread: 1, last_sender: 'user', created_at: ago(60 * 3),
+    user: { full_name: 'Ada Okonkwo', email: 'ada.okonkwo@example.com' },
+    messages: [{ id: 'sm5', sender: 'user', body: 'My sister wants to join. Is there a way to move to Family without losing the remaining time on Duo?', created_at: ago(60 * 3) }] },
+  { id: 'st3', audience: 'customer', subject: 'Refund for duplicate payment', order_ref: 'BS-23880', status: 'closed', user_unread: 0, admin_unread: 0, last_sender: 'admin', created_at: '2026-09-12T10:00:00Z', closed_at: '2026-09-13T10:00:00Z',
+    user: { full_name: 'Ada Okonkwo', email: 'ada.okonkwo@example.com' },
+    messages: [
+      { id: 'sm6', sender: 'user', body: 'I was charged twice for order BS-23880.', created_at: '2026-09-12T10:00:00Z' },
+      { id: 'sm7', sender: 'admin', body: 'Sorry about that. The second charge has been refunded to your wallet.', created_at: '2026-09-12T14:00:00Z' },
+    ] },
+  { id: 'st4', audience: 'partner', subject: 'Payout went to my old account', order_ref: null, status: 'open', user_unread: 0, admin_unread: 2, last_sender: 'user', created_at: ago(60 * 50),
+    user: { full_name: 'Tunde Bakare', email: 'tunde@lagosgadgets.ng' },
+    messages: [
+      { id: 'sm8', sender: 'user', body: 'I updated my bank details last week but the October payout shows the old account.', created_at: ago(60 * 50) },
+      { id: 'sm9', sender: 'user', body: 'Can you hold it until it’s fixed?', created_at: ago(60 * 49) },
+    ] },
+]
+const threadOut = (t) => {
+  const { messages, ...rest } = t
+  const last = messages[messages.length - 1]
+  return { ...rest, last_message_preview: last?.body.slice(0, 160) || '', last_message_at: last?.created_at || t.created_at, closed_at: t.closed_at || null }
+}
+const sortThreads = (list) => [...list].sort((a, b) => threadOut(b).last_message_at.localeCompare(threadOut(a).last_message_at))
+const supportPost = (id, sender, body) => {
+  const t = SUPPORT.find(x => x.id === id)
+  if (!t) return { ok: false, error: 'Conversation not found' }
+  const m = { id: `sm${Date.now()}`, sender, body: String(body.body || '').trim(), created_at: new Date().toISOString() }
+  t.messages.push(m); t.status = 'open'; t.closed_at = null; t.last_sender = sender
+  if (sender === 'user') { t.admin_unread += 1; t.user_unread = 0 } else { t.user_unread += 1; t.admin_unread = 0 }
+  return { ok: true, data: m }
+}
+
 // Writes that the UI reads a response from. Everything else is acknowledged.
 const POST_ROUTES = [
+  [/^\/v2\/me\/support$/, (body) => {
+    const t = { id: `st${Date.now()}`, audience: body.audience === 'partner' ? 'partner' : 'customer', subject: body.subject, order_ref: body.order_ref || null, status: 'open', user_unread: 0, admin_unread: 0, last_sender: 'user', created_at: new Date().toISOString(),
+      user: { full_name: 'Ada Okonkwo', email: 'ada.okonkwo@example.com' }, messages: [] }
+    SUPPORT.push(t); supportPost(t.id, 'user', body); return { ok: true, data: threadOut(t) }
+  }],
+  [/^\/v2\/me\/support\/[^/]+\/messages$/, (body, path) => supportPost(path.split('/')[4], 'user', body)],
+  [/^\/v2\/me\/support\/[^/]+\/close$/, (body, path) => { const t = SUPPORT.find(x => x.id === path.split('/')[4]); if (t) { t.status = 'closed'; t.closed_at = new Date().toISOString() } return { ok: true, data: t && threadOut(t) } }],
+  [/^\/v2\/admin\/support\/[^/]+\/messages$/, (body, path) => supportPost(path.split('/')[4], 'admin', body)],
+  [/^\/v2\/admin\/support\/[^/]+$/, (body, path) => { const t = SUPPORT.find(x => x.id === path.split('/')[4]); if (t) { t.status = body.status; t.closed_at = body.status === 'closed' ? new Date().toISOString() : null } return { ok: true, data: t && threadOut(t) } }],
   // Sends the browser straight back as if Paystack had redirected.
   [/^\/v2\/me\/wallet\/fund$/, () => ({ ok: true, data: { authorization_url: '/account/wallet?reference=FIXTURE-TOPUP', reference: 'FIXTURE-TOPUP' } })],
   [/^\/v2\/admin\/jobs\/partner-payouts$/, () => ({ ok: true, data: { created: 0, below_minimum: 2, exists: 0, not_due: 3, failed: 0 } })],
@@ -838,6 +890,10 @@ const ROUTES = [
   [/^\/v2\/me\/reviews\/[^/]+$/,       () => ({ ok: true, data: { enabled: true, can_review: true, review: null } })],
   [/^\/v2\/me\/referrals$/,            () => ({ ok: true, data: REFERRALS })],
   [/^\/v2\/me\/saved$/,                () => ({ ok: true, data: SAVED })],
+  [/^\/v2\/me\/support$/,              (q) => ({ ok: true, data: sortThreads(SUPPORT.filter(t => !q.get('audience') || t.audience === q.get('audience'))).map(threadOut) })],
+  [/^\/v2\/me\/support\/[^/]+$/,        (q, path) => { const t = SUPPORT.find(x => x.id === path.split('/')[4]); if (!t) return { ok: false, error: 'Conversation not found' }; t.user_unread = 0; return { ok: true, data: { thread: threadOut(t), messages: t.messages } } }],
+  [/^\/v2\/admin\/support$/,           (q) => { const st = q.get('status') || 'open'; const term = (q.get('q') || '').toLowerCase(); return { ok: true, data: sortThreads(SUPPORT.filter(t => (st === 'all' || t.status === st) && (!term || `${t.subject} ${t.order_ref} ${t.user.full_name} ${t.user.email}`.toLowerCase().includes(term)))).map(threadOut) } }],
+  [/^\/v2\/admin\/support\/[^/]+$/,     (q, path) => { const t = SUPPORT.find(x => x.id === path.split('/')[4]); if (!t) return { ok: false, error: 'Conversation not found' }; t.admin_unread = 0; return { ok: true, data: { thread: threadOut(t), messages: t.messages } } }],
   [/^\/v2\/me\/cart$/,                 () => ({ ok: true, data: CART })],
   [/^\/v2\/me\/wallet\/fund\/verify$/, () => ({ ok: true, data: { credited: true, amount_ngn: 5000, balance_ngn: 23300 } })],
   [/^\/v2\/partners\/me\/payouts$/,   () => ({ ok: true, data: PAYOUTS })],

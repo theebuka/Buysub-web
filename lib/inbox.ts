@@ -41,6 +41,6 @@ export async function markInboxRead(ids?: string[]) {
   invalidate('/v2/me/notifications')
 }
 
-export const KIND_ICON: Record<string, 'receipt' | 'clock' | 'wallet' | 'gift' | 'store' | 'card' | 'bell'> = {
-  order: 'receipt', renewal: 'clock', wallet: 'wallet', referral: 'gift', stock: 'store', payout: 'card',
+export const KIND_ICON: Record<string, 'receipt' | 'clock' | 'wallet' | 'gift' | 'store' | 'card' | 'bell' | 'message'> = {
+  order: 'receipt', renewal: 'clock', wallet: 'wallet', referral: 'gift', stock: 'store', payout: 'card', support_reply: 'message',
 }

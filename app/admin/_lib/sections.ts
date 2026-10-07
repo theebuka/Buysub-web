@@ -17,6 +17,7 @@ export const ADMIN_SECTIONS: AdminSection[] = [
   S('Catalog', 'reviews', 'Reviews', 'star'),
   S('Customers', 'customers', 'Customers', 'users'),
   S('Customers', 'wallets', 'Wallets', 'wallet'),
+  S('Customers', 'support', 'Support', 'message', 'support_waiting'),
   S('Growth', 'partners', 'Partner applications', 'user', 'partners_pending'),
   S('Growth', 'affiliates', 'Affiliates', 'trend'),
   S('Growth', 'payouts', 'Payouts', 'card', 'payouts_pending'),

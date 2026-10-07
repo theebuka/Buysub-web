@@ -144,8 +144,9 @@ export default function OrderDetail({ orderRef }: { orderRef: string }) {
           </div>
           <div className={`${s.panel} ${s.panelPad}`} style={{ display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-3)' }}>
             <h2 className={s.h2} style={{ marginBottom: 0 }}>Need help?</h2>
-            <p className={s.secondary}>Chat with us on WhatsApp. Your order number is filled in.</p>
-            <ButtonLink href={wa} external variant="secondary" size="md" full><WhatsAppGlyph size={16} /> Get help with this order</ButtonLink>
+            <p className={s.secondary}>Message our team about this order. The order number goes with it.</p>
+            <ButtonLink href={`${ROUTES.account.support}?order=${encodeURIComponent(o.order_ref)}`} size="md" full icon="message">Message support</ButtonLink>
+            <ButtonLink href={wa} external variant="secondary" size="md" full><WhatsAppGlyph size={16} /> Chat on WhatsApp</ButtonLink>
             {items.length > 0 && <Button variant="ghost" size="md" full onClick={() => reorder(items)}>Buy again</Button>}
           </div>
         </aside>
