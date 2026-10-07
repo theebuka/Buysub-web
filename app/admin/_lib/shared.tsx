@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { useTheme as useThemeController } from '@/lib/theme'
 import { getAccessToken } from '@/lib/session'
 import { API_BASE } from '@/lib/config'
+import { authFetch } from '@/lib/apiAuth'
 
 
 
@@ -168,20 +169,12 @@ export function signOut() {
   try { Object.keys(localStorage).forEach(key => { if (key.startsWith('sb-') && key.endsWith('-auth-token')) localStorage.removeItem(key) }) } catch {}
   window.location.href = '/login'
 }
-export async function apiFetch(path: string, opts: RequestInit = {}) {
-  const token = await getAccessToken()
-  if (!token) { signOut(); return { ok: false, error: 'Session expired' } }
-  try {
-    const res = await fetch(`${API}${path}`, {
-      ...opts,
-      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, ...(opts.headers || {}) },
-    })
-    const data = await res.json()
-    if (res.status === 401 || res.status === 403) { signOut(); return { ok: false, error: 'Session expired' } }
-    return data
-  } catch (e: any) {
-    return { ok: false, error: e.message === 'Failed to fetch' ? 'Network error — check that the API is reachable and CORS allows this origin' : (e.message || 'Network error') }
-  }
+// One fetch path for the console: lib/apiAuth's authFetch (token refresh,
+// /login?next= on 401/403). The return keeps the old envelope shape the
+// sections read: { ok, data, error, meta }.
+export async function apiFetch(path: string, opts: RequestInit = {}): Promise<any> {
+  const r = await authFetch(path, opts as any)
+  return { ok: r.ok, data: r.data, error: r.error, meta: r.meta }
 }
 
 // ════════════════════════════════════════════════════════════════

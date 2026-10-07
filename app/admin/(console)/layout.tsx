@@ -1,55 +1,69 @@
 'use client'
 
 // The admin console frame. Each section is its own route under /admin; this
-// layout owns the session check and the shell. /admin/receipt sits outside the
-// (console) group and keeps its own page.
+// layout gates on a staff role and renders the shell. /admin/receipt sits
+// outside the (console) group and keeps its own page.
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { Shell, T, readAdminEmail, readToken, useClientValue, useTheme } from '../_lib/shared'
-import { ADMIN_SECTIONS } from '../_lib/sections'
+import { Suspense } from 'react'
+import { AdminShell } from '@/components/admin/AdminShell'
+import { ButtonLink, Skeleton } from '@/components/ui'
+import { RequireRole, useSession } from '@/lib/useSession'
+import { useApi } from '@/lib/useApi'
+import { ADMIN_GROUPS, ADMIN_SECTIONS } from '../_lib/sections'
+import s from '@/components/admin/admin.module.css'
+
+function Loading() {
+  return (
+    <div className={s.app} aria-busy="true">
+      <aside className={s.side} />
+      <div className={s.main}>
+        <div className={s.top} />
+        <div className={s.content}>
+          <Skeleton width={180} height={24} />
+          <Skeleton height={88} radius="var(--bs-radius-lg)" />
+          <Skeleton height={320} radius="var(--bs-radius-lg)" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function NoAccess() {
+  const session = useSession()
+  return (
+    <div className={s.app} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'var(--bs-space-6)' }}>
+      <div style={{ maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 'var(--bs-space-3)' }}>
+        <h1 className={s.h1}>No admin access</h1>
+        <p className={s.secondary}>
+          {session.user?.email || 'This account'} isn’t a staff account. Sign in with a staff account to use the admin console.
+        </p>
+        <div style={{ display: 'flex', gap: 'var(--bs-space-2)', marginTop: 'var(--bs-space-2)' }}>
+          <ButtonLink href="/login?as=admin" size="md">Switch account</ButtonLink>
+          <ButtonLink href="/account" size="md" variant="secondary">My account</ButtonLink>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function Console({ children }: { children: React.ReactNode }) {
+  const session = useSession()
+  const { data: stats } = useApi<Record<string, any>>('/v2/admin/stats')
+  const sections = ADMIN_SECTIONS.map(x => ({
+    label: x.label, href: x.href, group: x.group, icon: x.icon,
+    count: x.count ? Number(stats?.[x.count]) || 0 : undefined,
+  }))
+  return (
+    <AdminShell sections={sections} groups={ADMIN_GROUPS} email={session.user?.email || ''} role={session.user?.role || ''}>
+      <Suspense fallback={null}>{children}</Suspense>
+    </AdminShell>
+  )
+}
 
 export default function AdminConsoleLayout({ children }: { children: React.ReactNode }) {
-  const { isDark, toggle, mounted } = useTheme()
-  const [token, setToken] = useState('')
-  const adminEmail = useClientValue(readAdminEmail, '')
-  const pathname = usePathname() || '/admin'
-
-  useEffect(() => {
-    try { setToken(readToken()) } catch {}
-    const iv = setInterval(() => { try { if (!readToken()) setToken('') } catch {} }, 15000)
-    return () => clearInterval(iv)
-  }, [])
-
-  if (!mounted) return null
-
-  if (!token) return (
-    <Shell isDark={isDark} toggle={toggle} adminEmail="">
-      <div style={{ textAlign: 'center', padding: '80px 20px' }}>
-        <div style={{ fontSize: 48, marginBottom: 16 }}>🔒</div>
-        <div style={{ fontSize: 20, fontWeight: 600, color: T.text, marginBottom: 8 }}>Admin Access Required</div>
-        <div style={{ fontSize: 14, color: T.textMuted, marginBottom: 24 }}>Session expired or not logged in.</div>
-        <a href="/login" style={{ display: 'inline-block', padding: '12px 32px', borderRadius: 10, background: 'var(--bs-accent-fill)', color: '#fff', textDecoration: 'none', fontSize: 14, fontWeight: 600 }}>Sign In</a>
-      </div>
-    </Shell>
-  )
-
   return (
-    <Shell isDark={isDark} toggle={toggle} adminEmail={adminEmail}>
-      <div style={{ display: 'flex', gap: 4, borderBottom: `1px solid ${T.border}`, marginBottom: 28, overflowX: 'auto', paddingBottom: 0 }}>
-        {ADMIN_SECTIONS.map(s => {
-          const active = s.href === '/admin' ? pathname === '/admin' : pathname.startsWith(s.href)
-          return (
-            <Link key={s.href} href={s.href} style={{
-              padding: '12px 18px', fontSize: 13, cursor: 'pointer', background: 'transparent', textDecoration: 'none',
-              color: active ? T.accent : T.textMuted, borderBottom: active ? `2px solid ${T.accent}` : '2px solid transparent',
-              fontWeight: active ? 600 : 400, whiteSpace: 'nowrap', transition: 'all 0.15s',
-            }}>{s.label}</Link>
-          )
-        })}
-      </div>
-      {children}
-    </Shell>
+    <RequireRole allow="staff" loading={<Loading />} fallback={<NoAccess />}>
+      <Console>{children}</Console>
+    </RequireRole>
   )
 }
