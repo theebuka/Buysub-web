@@ -8,6 +8,10 @@
 // shop agree with no migration. Same-tab writers call notifyCartChanged();
 // other tabs are picked up from the `storage` event.
 //
+// Signed in, the cart also follows the account: lib/cartSync.ts listens for
+// CART_EVENT and saves it. Write through writeCart (or the mutations below),
+// never localStorage directly, or the change won't reach the account.
+//
 // The snapshot is cached by raw string, so useSyncExternalStore sees a stable
 // reference until the stored value actually changes.
 
@@ -41,6 +45,9 @@ function read(): Cart {
   if (raw !== lastRaw) { lastRaw = raw; lastCart = parse(raw) }
   return lastCart
 }
+
+/** The current cart, outside React (cart sync). */
+export const readCart = read
 
 function subscribe(cb: () => void) {
   const onStorage = (e: StorageEvent) => { if (e.key === null || e.key === CART_STORAGE_KEY) cb() }

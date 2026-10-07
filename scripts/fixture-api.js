@@ -759,6 +759,8 @@ const REFERRALS = {
 
 // Saved on the account (another device), merged with the browser list on sign-in.
 const SAVED = ['p-claude']
+// The account's cart (PUT replaces it, like the API), merged with the browser cart on sign-in.
+let CART = { items: [{ product_id: 'p-spotify', period: 'quarterly', qty: 1 }], updated_at: '2026-10-06T10:00:00Z' }
 
 const PAYOUTS = {
   enabled: true, min_ngn: 5000, hold_days: 14,
@@ -820,6 +822,7 @@ const POST_ROUTES = [
   // Sends the browser straight back as if Paystack had redirected.
   [/^\/v2\/me\/wallet\/fund$/, () => ({ ok: true, data: { authorization_url: '/account/wallet?reference=FIXTURE-TOPUP', reference: 'FIXTURE-TOPUP' } })],
   [/^\/v2\/admin\/jobs\/partner-payouts$/, () => ({ ok: true, data: { created: 0, below_minimum: 2, exists: 0, not_due: 3, failed: 0 } })],
+  [/^\/v2\/me\/cart$/, (body) => { CART = { items: body.items || [], updated_at: new Date().toISOString() }; return { ok: true, data: CART } }],
   [/^\/v2\/me\/saved\/merge$/, (body) => ({ ok: true, data: [...new Set([...(body.product_ids || []), ...SAVED])] })],
   [/^\/v2\/me\/reviews$/, (body) => ({ ok: true, data: { id: 'rv-mine', rating: body.rating, body: body.body || null, status: 'published', created_at: new Date().toISOString() } })],
   [/^\/v2\/stock-alerts$/, () => ({ ok: true, data: { subscribed: true } })],
@@ -835,6 +838,7 @@ const ROUTES = [
   [/^\/v2\/me\/reviews\/[^/]+$/,       () => ({ ok: true, data: { enabled: true, can_review: true, review: null } })],
   [/^\/v2\/me\/referrals$/,            () => ({ ok: true, data: REFERRALS })],
   [/^\/v2\/me\/saved$/,                () => ({ ok: true, data: SAVED })],
+  [/^\/v2\/me\/cart$/,                 () => ({ ok: true, data: CART })],
   [/^\/v2\/me\/wallet\/fund\/verify$/, () => ({ ok: true, data: { credited: true, amount_ngn: 5000, balance_ngn: 23300 } })],
   [/^\/v2\/partners\/me\/payouts$/,   () => ({ ok: true, data: PAYOUTS })],
   [/^\/v2\/admin\/flags$/,             () => ({ ok: true, data: ADMIN_FLAGS })],

@@ -12,7 +12,8 @@
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { verifyPayment } from '@/lib/api';
-import { T, WHATSAPP_NUMBER, CART_STORAGE_KEY } from '@/lib/constants';
+import { T, WHATSAPP_NUMBER } from '@/lib/constants';
+import { clearCart } from '@/lib/cart';
 
 // ── Icons (module level, house style: 24×24, currentColor, stroke 2) ──
 type IconProps = { size?: number };
@@ -115,7 +116,8 @@ export default function VerifyContent() {
       .then((res) => {
         if (res.ok && res.data?.verified) {
           // Paid: empty the cart (WhatsApp checkout already does this itself).
-          try { localStorage.removeItem(CART_STORAGE_KEY); } catch { /* storage unavailable */ }
+          // clearCart, not removeItem, so the account copy empties too (lib/cartSync.ts).
+          clearCart();
           setStatus('success');
           setOrderRef(res.data.order_ref || '');
         } else {
