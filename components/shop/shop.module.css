@@ -159,7 +159,7 @@
 .heroActions { display: flex; gap: var(--bs-space-2); flex-basis: 100%; }
 @media (min-width: 768px) { .heroActions { flex-basis: auto; margin-left: auto; } }
 .heroName { font-size: var(--bs-text-2xl); font-weight: var(--bs-weight-bold); line-height: var(--bs-leading-tight); color: var(--bs-text-primary); }
-.heroTag { margin-top: var(--bs-space-2); font-size: var(--bs-text-base); color: var(--bs-text-secondary); line-height: var(--bs-leading-relaxed); }
+.heroTag { margin-top: var(--bs-space-1); font-size: var(--bs-text-base); color: var(--bs-text-secondary); line-height: var(--bs-leading-relaxed); }
 .heroMeta { display: flex; flex-wrap: wrap; gap: var(--bs-space-2); margin-top: var(--bs-space-3); }
 .metaChip { display: inline-flex; align-items: center; gap: var(--bs-space-1); height: 22px; padding: 0 var(--bs-space-2); border-radius: var(--bs-radius-sm); border: 1px solid var(--bs-border-default); color: var(--bs-text-secondary); font-size: var(--bs-text-xs); font-weight: var(--bs-weight-medium); }
 a.metaChip:hover { color: var(--bs-text-primary); }

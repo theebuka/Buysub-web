@@ -240,19 +240,19 @@ export const calcDiscountAmount = (
 export const CSS_VARS = `
   :root {
     /* ── Colour ─────────────────────────────────────────────── */
-    /* Neutral greys, no blue cast, and cards lifted clearly off the page.
-       The earlier blue-grey set (#050507 page, #0B0B0F cards, #F0F0F5 text)
-       read as dull next to G2G's #0A0A0A / #171717 / #FAFAFA: the tint pulls
-       white toward grey and the surfaces barely separated. Accent values
-       come from "BuySub brand assets": #5340FE brand, #7855FF tint. */
-    --bs-bg-base: #0A0A0A;
-    --bs-bg-card: #141414;
-    --bs-bg-elevated: #1A1A1A;
-    --bs-bg-input: #101010;
-    --bs-bg-muted: #262626;
-    --bs-bg-subtle: #1F1F1F;
-    --bs-text-primary: #FAFAFA;
-    --bs-text-secondary: #A3A3A3;
+    /* Cards lifted clearly off the page and near-white primary text. The
+       earlier set (#050507 page, #0B0B0F cards, #F0F0F5 text) read as dull:
+       the surfaces barely separated and the bluish cast pulled white toward
+       grey. This keeps a slight cool cast, which is part of BuySub's look,
+       at a fraction of the earlier strength. */
+    --bs-bg-base: #09090C;
+    --bs-bg-card: #131318;
+    --bs-bg-elevated: #1A1A20;
+    --bs-bg-input: #0F0F13;
+    --bs-bg-muted: #26262E;
+    --bs-bg-subtle: #1E1E25;
+    --bs-text-primary: #F7F7FA;
+    --bs-text-secondary: #A6A6B3;
     /* Was #6E6E80, which failed AA on every dark surface it renders on:
        4.08 on bg-base, 3.93 on bg-card, 3.77 on bg-elevated, 3.47 on bg-muted.
        Phase 0 did this same correction for light (#8896a6 -> #66717F) and
@@ -270,13 +270,13 @@ export const CSS_VARS = `
        converging on spacing that exists and works rather than inventing it.
        Dark's 17.89 was the outlier. Do not push past ~5.0:1 here (#898997,
        gap 7.66); that is where three tiers start reading as two. */
-    --bs-text-muted: #8F8F8F;
-    --bs-text-faint: #525252;
-    --bs-border-default: #2A2A2A;
-    --bs-border-subtle: #1F1F1F;
-    --bs-border-strong: #404040;
-    --bs-accent: #7855FF;
-    --bs-accent-hover: #4A36E8;
+    --bs-text-muted: #8E8E9C;
+    --bs-text-faint: #50505C;
+    --bs-border-default: #2A2A33;
+    --bs-border-subtle: #1E1E25;
+    --bs-border-strong: #3E3E4A;
+    --bs-accent: #7C5CFF;
+    --bs-accent-hover: #6B4EE6;
     --bs-success: #22C55E;
     --bs-error: #EF4444;
     --bs-warning: #F59E0B;
@@ -285,24 +285,46 @@ export const CSS_VARS = `
 
     /* ── rgb companions, derived from the hex above ─────────── */
     /* For rgba() tints: rgba(var(--bs-accent-rgb), 0.12)          */
-    --bs-accent-rgb: 120, 85, 255;
+    --bs-accent-rgb: 124, 92, 255;
     --bs-success-rgb: 34, 197, 94;
     --bs-error-rgb: 239, 68, 68;
     --bs-warning-rgb: 245, 158, 11;
-    --bs-text-muted-rgb: 143, 143, 143;
+    --bs-text-muted-rgb: 142, 142, 156;
     /* Legacy alias, still read by app/admin/page.tsx. Prefer
        --bs-text-muted-rgb in new code. */
     --bs-muted-rgb: var(--bs-text-muted-rgb);
 
     /* Accent as TEXT, on a page or card background only.
        Text sitting on an accent FILL stays #fff — see --bs-accent-fill. */
-    --bs-accent-on-surface: #9580FF;
+    /* #7C5CFF itself is 4.26:1 on the card surface above; #8A6DFF is the
+       same hue lifted just enough for AA (5.04 card, 4.71 elevated). */
+    --bs-accent-on-surface: #8A6DFF;
 
-    /* Accent as a FILL THAT CARRIES TEXT: buttons, the selected segment,
-       count pills. The brand violet from the brand assets, #5340FE, in both
-       themes; #fff on it is 5.95:1. --bs-accent (the tint, #7855FF in dark)
-       is for fills with no text on them: meters, dots, rings, tints. */
-    --bs-accent-fill: #5340FE;
+    /* Accent as a FILL THAT CARRIES TEXT. The mirror of the token above:
+       -on-surface is the accent adjusted to be readable AS text, this is the
+       accent adjusted to be readable UNDER text.
+
+       #fff on plain --bs-accent measures 4.35:1. AA needs 4.5 for body text,
+       and none of the 28 accent-filled controls in this app qualify for the
+       3:1 large-text allowance — the largest label is 14px, where the
+       threshold is 24px (or 18.66px bold). So every one of them failed.
+
+       #7756FF is the minimum darkening that clears the floor with headroom:
+       4.61:1, hue 251.8 -> 251.7, saturation unchanged at 100%, purely 1.2
+       points of HSL lightness. dE2000 from #7C5CFF is 1.77, below the ~2.3
+       just-noticeable-difference threshold, so the brand colour reads as
+       unchanged. #7958FF would also pass but only by 0.02, and any later
+       surface change erases that; #704DFF (5.0:1) is dE 4.32 and visibly off.
+
+       ONLY for fills with text on them. A fill with no text — a chart bar, a
+       progress meter, a dot, a swatch — keeps --bs-accent, so the brand
+       colour is untouched wherever it is seen on its own. Borders, tints and
+       gradient stops also keep --bs-accent.
+
+       Deliberately absent from [data-theme="light"]: it is the same value in
+       both themes, like --bs-accent itself, and #fff sits on it in both.
+       --bs-accent-hover already measures 5.44:1 and needs no sibling. */
+    --bs-accent-fill: #7756FF;
 
     /* ── Status badges ──────────────────────────────────────────
        OPAQUE fills, not rgba() tints. A badge renders on three
@@ -324,15 +346,15 @@ export const CSS_VARS = `
        rejection, reversible via /v2/admin/orders/:id/undo-reject.
        It is action-needed, so it takes the warning hue. Terminal
        rejected and cancelled use -error. Do not merge them. */
-    --bs-badge-success-bg: #16291D;
+    --bs-badge-success-bg: #152820;
     --bs-badge-success-fg: #22C55E;
-    --bs-badge-warning-bg: #2F2513;
+    --bs-badge-warning-bg: #2E2416;
     --bs-badge-warning-fg: #F59E0B;
-    --bs-badge-error-bg: #2E1B1B;
+    --bs-badge-error-bg: #2D191D;
     --bs-badge-error-fg: #F04E4E;
-    --bs-badge-neutral-bg: #1F1F1F;
-    --bs-badge-neutral-fg: #A3A3A3;
-    --bs-badge-pending-bg: #261F13;
+    --bs-badge-neutral-bg: #1E1E25;
+    --bs-badge-neutral-fg: #A6A6B3;
+    --bs-badge-pending-bg: #251E17;
     --bs-badge-pending-fg: #F59E0B;
 
     /* ── Text on a tint of its own colour ───────────────────────
@@ -431,8 +453,8 @@ export const CSS_VARS = `
     --bs-font-sans: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
     /* ── Scrollbar ──────────────────────────────────────────── */
-    --bs-scroll-thumb: #333333;
-    --bs-scroll-thumb-hover: #474747;
+    --bs-scroll-thumb: #33333D;
+    --bs-scroll-thumb-hover: #474754;
 
     /* ── Elevation ──────────────────────────────────────────── */
     /* Dark separates by surface + border, not shadow. Reach for elev-2 and
@@ -458,29 +480,29 @@ export const CSS_VARS = `
      --bs-bg-base, both failing AA. --bs-text-faint is for decorative and
      disabled use only, never for text a user has to read. */
   [data-theme="light"] {
-    --bs-bg-base: #F5F5F5;
+    --bs-bg-base: #F8F9FB;
     --bs-bg-card: #FFFFFF;
-    --bs-bg-elevated: #F5F5F5;
+    --bs-bg-elevated: #F1F3F5;
     --bs-bg-input: #FFFFFF;
-    --bs-bg-muted: #E5E5E5;
-    --bs-bg-subtle: #F0F0F0;
-    --bs-text-primary: #0A0A0A;
-    --bs-text-secondary: #525252;
-    --bs-text-muted: #666666;
-    --bs-text-faint: #A3A3A3;
-    --bs-border-default: #E5E5E5;
-    --bs-border-subtle: #F0F0F0;
-    --bs-border-strong: #D4D4D4;
-    --bs-accent: #5340FE;
-    --bs-accent-hover: #4A36E8;
+    --bs-bg-muted: #E8EAED;
+    --bs-bg-subtle: #EEF0F3;
+    --bs-text-primary: #1A1A2E;
+    --bs-text-secondary: #4A5568;
+    --bs-text-muted: #66717F;
+    --bs-text-faint: #7F8896;
+    --bs-border-default: #E2E5E9;
+    --bs-border-subtle: #EEF0F3;
+    --bs-border-strong: #D1D1D6;
+    --bs-accent: #7C5CFF;
+    --bs-accent-hover: #6B4EE6;
     --bs-success: #059669;
     --bs-error: #DC2626;
     --bs-warning: #D97706;
     --bs-star: #F5A300;
 
-    /* The brand violet is already 5.95:1 on white; text uses a step deeper
-       (7.04:1) so links read as text rather than as buttons. */
-    --bs-accent-on-surface: #4A36E8;
+    /* #7C5CFF as text on white is 4.0:1 and fails AA. #5B3FD4 is 6.76:1 on
+       card, 5.61:1 on the darkest light surface. Fills stay #7C5CFF. */
+    --bs-accent-on-surface: #5B3FD4;
 
     /* Status badges. Same construction as :root — the 0.12 tint of the
        light state token flattened against #FFFFFF (0.08 for -pending).
@@ -494,8 +516,8 @@ export const CSS_VARS = `
     --bs-badge-warning-fg: #9A5404;
     --bs-badge-error-bg: #FBE5E5;
     --bs-badge-error-fg: #BF2121;
-    --bs-badge-neutral-bg: #F0F0F0;
-    --bs-badge-neutral-fg: #525252;
+    --bs-badge-neutral-bg: #EDEEF0;
+    --bs-badge-neutral-fg: #5C6672;
     --bs-badge-pending-bg: #FCF4EB;
     --bs-badge-pending-fg: #9E5704;
 
@@ -505,18 +527,17 @@ export const CSS_VARS = `
     --bs-success-rgb: 5, 150, 105;
     --bs-error-rgb: 220, 38, 38;
     --bs-warning-rgb: 217, 119, 6;
-    --bs-text-muted-rgb: 102, 102, 102;
-    --bs-accent-rgb: 83, 64, 254;
+    --bs-text-muted-rgb: 102, 113, 127;
 
-    --bs-scroll-thumb: #D4D4D4;
-    --bs-scroll-thumb-hover: #A3A3A3;
+    --bs-scroll-thumb: #CDD1D7;
+    --bs-scroll-thumb-hover: #AEB4BC;
 
     --bs-elev-1: 0 1px 3px rgba(0,0,0,0.06);
     --bs-elev-2: 0 4px 12px rgba(0,0,0,0.08);
     --bs-elev-3: 0 16px 40px rgba(0,0,0,0.12);
 
-    /* --bs-brand-slab-* are deliberately absent here. They must stay dark
-       under light — see the note in :root. */
+    /* --bs-brand-slab-* and --bs-accent-rgb are deliberately absent here.
+       They must stay dark/identical under light — see the note in :root. */
   }
 
   @media (min-width: 768px)  { :root { --bs-page-gutter: 24px; } }

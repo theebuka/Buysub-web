@@ -1,0 +1,5 @@
+.logo { display: inline-flex; flex-shrink: 0; }
+.logo img { display: block; width: 100%; height: 100%; }
+.onLight { display: none !important; }
+:global([data-theme="light"]) .onDark { display: none !important; }
+:global([data-theme="light"]) .onLight { display: block !important; }
