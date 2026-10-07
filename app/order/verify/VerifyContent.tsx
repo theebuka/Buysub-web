@@ -11,12 +11,17 @@
 // copy, a personal headline, where the receipt went, what happens next, and
 // the summary of what was paid. The summary comes from /v2/pay/verify
 // (`summary`); when it's missing the page still confirms, in one column.
+//
+// An order paid in full from the wallet never goes to Paystack: checkout
+// sends it here as ?order=REF, and the summary comes from the owner-only
+// /v2/me/orders/:ref/confirmation.
 // ================================================================
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { verifyPayment } from '@/lib/api';
+import { authFetch } from '@/lib/apiAuth';
 import { WHATSAPP_NUMBER } from '@/lib/constants';
 import { clearCart } from '@/lib/cart';
 import { fmtDateTime, fmtNGN } from '@/lib/format';
@@ -109,6 +114,9 @@ function NextSteps({ summary }: { summary: Summary | null }) {
 }
 
 function OrderSummary({ summary }: { summary: Summary }) {
+  // total_ngn is what Paystack charged; the order's total includes the wallet part.
+  const card = summary.total_ngn
+  const wallet = summary.wallet_ngn
   return (
     <aside className={s.summary} aria-labelledby="summary-title">
       <div className={s.summaryHead}>
@@ -130,15 +138,19 @@ function OrderSummary({ summary }: { summary: Summary }) {
       <div className={s.rows}>
         <div className={s.row}><span>Subtotal</span><span>{fmtNGN(summary.subtotal_ngn)}</span></div>
         {summary.discount_ngn > 0 && <div className={`${s.row} ${s.rowMinus}`}><span>Discount</span><span>−{fmtNGN(summary.discount_ngn)}</span></div>}
-        {summary.wallet_ngn > 0 && <div className={`${s.row} ${s.rowMinus}`}><span>Wallet balance</span><span>−{fmtNGN(summary.wallet_ngn)}</span></div>}
       </div>
       <div className={s.total}>
-        <span className={s.totalLabel}>Paid</span>
-        <span className={s.totalAmt}>{fmtNGN(summary.total_ngn)}</span>
+        <span className={s.totalLabel}>Total</span>
+        <span className={s.totalAmt}>{fmtNGN(card + wallet)}</span>
       </div>
-      <div className={s.paidWith}>
-        {summary.wallet_ngn > 0 ? `By card or bank via Paystack, plus ${fmtNGN(summary.wallet_ngn)} from your wallet` : 'By card or bank via Paystack'}
-      </div>
+      {wallet > 0 ? (
+        <div className={s.paidRows}>
+          <div className={s.row}><span>Paid from wallet</span><span>{fmtNGN(wallet)}</span></div>
+          {card > 0 && <div className={s.row}><span>Paid by card or bank</span><span>{fmtNGN(card)}</span></div>}
+        </div>
+      ) : (
+        <div className={s.paidWith}>Paid by card or bank via Paystack</div>
+      )}
     </aside>
   );
 }
@@ -208,7 +220,8 @@ export function VerifyLoading() {
 
 export default function VerifyContent() {
   const searchParams = useSearchParams();
-  const reference = searchParams.get('reference') || searchParams.get('trxref');
+  const walletRef = searchParams.get('order');
+  const reference = walletRef || searchParams.get('reference') || searchParams.get('trxref');
 
   const [state, setState] = useState<
     { kind: 'loading' } | { kind: 'success'; orderRef: string; summary: Summary | null } | { kind: 'failed'; message: string }
@@ -216,7 +229,10 @@ export default function VerifyContent() {
 
   useEffect(() => {
     if (!reference) { setState({ kind: 'failed', message: 'This page was opened without a payment reference.' }); return; }
-    verifyPayment(reference)
+    const check: Promise<any> = walletRef
+      ? authFetch(`/v2/me/orders/${encodeURIComponent(walletRef)}/confirmation`, { redirectOnAuth: false })
+      : verifyPayment(reference);
+    check
       .then((res: any) => {
         if (res.ok && res.data?.verified) {
           // clearCart, not removeItem, so the account copy empties too (lib/cartSync.ts).
@@ -227,7 +243,7 @@ export default function VerifyContent() {
         }
       })
       .catch(() => setState({ kind: 'failed', message: 'We couldn’t reach our server.' }));
-  }, [reference]);
+  }, [reference, walletRef]);
 
   if (state.kind === 'loading') return <VerifyLoading />;
   return (

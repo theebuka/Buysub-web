@@ -98,8 +98,7 @@ export default function CheckoutPage() {
         clearCart()
         clearManualPromo()
         loadWallet()
-        toast.success('Paid from your wallet')
-        router.push(`${ROUTES.account.order(r.paidRef)}`)
+        router.push(`/order/verify?order=${encodeURIComponent(r.paidRef)}`)
         return
       }
       toast.success('Redirecting to payment…')

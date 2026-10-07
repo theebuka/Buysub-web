@@ -99,6 +99,13 @@ const item = (product_name, billing_period, months, quantity, unit, slug, domain
 })
 const ORDERS = [
   {
+    id: 'o-wallet', order_ref: 'BS-2026-G6T84', status: 'paid',
+    total_ngn: 0, subtotal_ngn: 263000, discount_ngn: 49970, wallet_ngn: 213030,
+    payment_method: 'wallet', currency: 'NGN', fx_rate: 1, discount_code: null,
+    created_at: '2026-10-07T22:04:00Z', paid_at: '2026-10-07T22:04:01Z',
+    order_items: [item('Netflix Premium', 'Annual', 12, 1, 263000, 'netflix-premium', 'netflix.com')],
+  },
+  {
     id: 'o-recent', order_ref: 'BS-24301', status: 'paid',
     total_ngn: 18500, subtotal_ngn: 18500, discount_ngn: 0, wallet_ngn: 0,
     payment_method: 'paystack', currency: 'NGN', fx_rate: 1, discount_code: null,
@@ -949,6 +956,12 @@ const ROUTES = [
   // localStorage `notif_<id>` — clear those keys between verification runs or
   // each one shows exactly once, ever.
   [/^\/v2\/notifications$/,             () => ({ ok: true, data: SHELL_NOTIFICATIONS })],
+  // Wallet-paid orders land on /order/verify?order=REF, which reads this.
+  [/^\/v2\/me\/orders\/[^/]+\/confirmation$/, () => ({ ok: true, data: { verified: true, order_ref: 'BS-2026-G6T84', summary: {
+    first_name: 'Ada', email_masked: 'ad••••@example.com', paid_at: new Date().toISOString(),
+    currency: 'NGN', fx_rate: 1, subtotal_ngn: 263000, discount_ngn: 49970, wallet_ngn: 213030, total_ngn: 0,
+    items: [{ name: 'Netflix Premium', period: 'Annual', billing_type: 'recurring', months: 12, quantity: 1, total_ngn: 263000, slug: 'netflix-premium', domain: 'netflix.com', image_url: null, delivery_time: 'Within 2 hours' }],
+  } } })],
   // /order/verify reads this through lib/api.ts, i.e. NEXT_PUBLIC_API_URL.
   [/^\/v2\/pay\/verify$/, () => VERIFY_OK
     ? ({ ok: true, data: { verified: true, order_ref: 'BS-2026-7K2QX', summary: {
@@ -1045,11 +1058,13 @@ const ROUTES = [
   }],
   [/^\/v2\/admin\/customers\/[^/]+\/messages$/, () => ({ ok: true, data: CUSTOMER_MESSAGES })],
   [/^\/v2\/admin\/customers\/[^/]+\/wallet$/,   () => ({ ok: true, data: { balance_ngn: 18300 } })],
-  // /v2/admin/wallets is deliberately absent. WalletsTab drops the response
-  // (`.finally()` with no `.then()`) and renders an EmptyState unconditionally,
-  // so no fixture can make anything appear. It is an unimplemented tab, not an
-  // unstyled one — see Deferred.
-  //
+  // Shaped like the API after migration 22: owner and staff actor named.
+  [/^\/v2\/admin\/wallets$/, () => page([
+    { id: 'wt1', wallet_id: 'w1', type: 'debit', amount_ngn: 213030, source: 'order_payment', reference: 'BS-2026-G6T84', balance_after: 268970, created_at: '2026-10-07T22:04:01Z', actor_id: null, customer_name: 'Ada Obi', customer_email: 'ada@example.com', actor_name: null, actor_email: null },
+    { id: 'wt2', wallet_id: 'w1', type: 'credit', amount_ngn: 480000, source: 'admin', reference: 'compensation', balance_after: 482000, created_at: '2026-10-06T12:00:00Z', actor_id: 'u-staff', customer_name: 'Ada Obi', customer_email: 'ada@example.com', actor_name: 'Chuka Admin', actor_email: 'admin@buysub.ng' },
+    { id: 'wt3', wallet_id: 'w2', type: 'credit', amount_ngn: 5000, source: 'admin', reference: 'admin topup', balance_after: 5000, created_at: '2026-09-01T12:00:00Z', actor_id: null, customer_name: null, customer_email: 'tobi@example.com', actor_name: null, actor_email: null },
+    { id: 'wt4', wallet_id: 'w2', type: 'credit', amount_ngn: 10000, source: 'topup', reference: 'Top-up BSW-1', balance_after: 15000, created_at: '2026-09-02T12:00:00Z', actor_id: null, customer_name: null, customer_email: 'tobi@example.com', actor_name: null, actor_email: null },
+  ])],
   [/^\/v2\/admin\/ads$/,                () => page(ADMIN_ADS)],
   [/^\/v2\/admin\/discounts$/,          () => page(ADMIN_DISCOUNTS)],
   [/^\/v2\/admin\/notifications$/,      () => page(ADMIN_NOTIFICATIONS)],
