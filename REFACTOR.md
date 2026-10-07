@@ -71,6 +71,13 @@ shape, and this file renders several counts and amounts.
   refactor (plan `starry-forging-valiant`, Phase 2): Marketplace.tsx was split
   into `components/shop/*` and deleted, its checkout logic ported verbatim to
   `lib/checkout.ts`, and the `/shop` dark-only theme guard removed.
+- **Admin console (IA refactor Phase 5, 2026-10-07).** `app/admin/page.tsx` is
+  gone: one route per section under `app/admin/(console)/`, bodies in
+  `app/admin/_components/`, chrome in `components/admin/` (CSS module, not
+  inline styles). The earlier decision to keep uppercase tracked micro-labels
+  in admin is reversed: admin uses sentence-case labels like every other
+  surface. Still on the legacy inline-style `T` map: the short-link editor and
+  QR dialog (`Links.tsx`) and the new-order drawer (`NewOrderDrawer.tsx`).
 - **Off-limits: the generated PDF receipt itself.** The jsPDF drawing code in
   `app/admin/receipt/page.tsx`, its 7.5pt–22pt print scale, its layout, and the
   `buildReceiptPdf` output in the API repo. Do not restyle, retokenise or

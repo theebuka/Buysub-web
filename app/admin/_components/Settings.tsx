@@ -1,130 +1,72 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { toast } from "sonner"
-import { useTheme as useThemeController } from '@/lib/theme'
-import { getAccessToken } from '@/lib/session'
-import { API_BASE } from '@/lib/config'
+// /admin/settings: store contact details and the receipt caption. Nothing
+// reads them yet (app/admin/receipt has the social line commented out).
 
-import { API, Card, FieldLabel, Loading, SmallBtn, T, apiFetch, inputStyle } from '../_lib/shared'
+import { useEffect, useState } from 'react'
+import { toast } from 'sonner'
+import { Button, Skeleton } from '@/components/ui'
+import { AdminHead, Panel, adminStyles as s } from '@/components/admin/AdminUI'
+import { AreaField, FormSection, TextField } from '@/components/admin/AdminForm'
+import { TableState } from '@/components/admin/DataTable'
+import { authFetch } from '@/lib/apiAuth'
+
+type Settings = Record<string, string>
 
 export function SettingsTab() {
-  const [settings, setSettings] = useState<any>({})
-  const [loading, setLoading] = useState(true)
+  const [settings, setSettings] = useState<Settings | null>(null)
+  const [saved, setSaved] = useState<Settings>({})
+  const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
-    apiFetch('/v2/admin/settings')
-      .then(r => {
-        if (r?.ok && r.data) {
-          setSettings(r.data)
-        } else {
-          setSettings({}) // fallback prevents null lock
-        }
-      })
-      .catch(() => {
-        setSettings({}) // network/error fallback
-      })
-      .finally(() => {
-        setLoading(false)
-      })
-  }, [])
-
-  const saveSettings = async () => {
-    const r = await apiFetch('/v2/admin/settings', {
-      method: 'PATCH',
-      body: JSON.stringify(settings),
+  const load = () => {
+    setError('')
+    authFetch<Settings>('/v2/admin/settings').then(r => {
+      if (r.ok && r.data && !Array.isArray(r.data)) { setSettings(r.data); setSaved(r.data) }
+      else if (r.ok) { setSettings({}); setSaved({}) }
+      else setError(r.error || 'Could not load settings.')
     })
+  }
+  useEffect(load, [])
 
-    if (r?.ok) toast.success('Settings saved')
-    else toast.error(r?.error || 'Failed to save')
+  const set = (k: string) => (v: string) => setSettings(x => ({ ...(x || {}), [k]: v }))
+  const dirty = settings && JSON.stringify(settings) !== JSON.stringify(saved)
+  const save = async () => {
+    if (!settings) return
+    setSaving(true)
+    const r = await authFetch('/v2/admin/settings', { method: 'PATCH', body: settings })
+    setSaving(false)
+    if (r.ok) { toast.success('Settings saved'); setSaved(settings) } else toast.error(r.error || 'Couldn’t save settings')
   }
 
-  if (loading) return <Loading />
-
   return (
-    <Card title="General Settings">
-      {/* Was a hard `1fr 1fr`. `1fr` is `minmax(auto, 1fr)` and an <input>'s
-          auto minimum is its intrinsic ~170px+, so at 360 — where this card has
-          about 262px of content once Shell's gutters and Card's padding are
-          taken — the two tracks overflowed the card rather than just crowding.
-
-          This grid has seven children, so a plain auto-fit would keep adding
-          tracks and turn the desktop layout into five columns. The track
-          minimum is therefore the LARGER of 240px and half the row: at 1440 the
-          half-row term wins and pins it to exactly two columns, which is what
-          desktop renders today, unchanged; at 360 the 240px term wins and only
-          one track fits. Mobile is the only width whose layout moves. */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(max(min(240px, 100%), (100% - var(--bs-space-3)) / 2), 1fr))', gap: 'var(--bs-space-3)' }}>
-        <FieldLabel label="Phone">
-          <input
-            style={inputStyle()}
-            value={settings.phone || ''}
-            onChange={e =>
-              setSettings((s: any) => ({ ...s, phone: e.target.value }))
-            }
-          />
-        </FieldLabel>
-
-        <FieldLabel label="Instagram">
-          <input
-            style={inputStyle()}
-            value={settings.instagram || ''}
-            onChange={e =>
-              setSettings((s: any) => ({ ...s, instagram: e.target.value }))
-            }
-          />
-        </FieldLabel>
-
-        <FieldLabel label="Facebook">
-          <input
-            style={inputStyle()}
-            value={settings.facebook || ''}
-            onChange={e =>
-              setSettings((s: any) => ({ ...s, facebook: e.target.value }))
-            }
-          />
-        </FieldLabel>
-
-        <FieldLabel label="X (Twitter)">
-          <input
-            style={inputStyle()}
-            value={settings.x || ''}
-            onChange={e =>
-              setSettings((s: any) => ({ ...s, x: e.target.value }))
-            }
-          />
-        </FieldLabel>
-
-        <FieldLabel label="TikTok">
-          <input
-            style={inputStyle()}
-            value={settings.tiktok || ''}
-            onChange={e =>
-              setSettings((s: any) => ({ ...s, tiktok: e.target.value }))
-            }
-          />
-        </FieldLabel>
-
-        <FieldLabel label="Receipt Caption (optional)">
-          <textarea
-            style={{ ...inputStyle(), height: 80, padding: '10px 14px' } as any}
-            value={settings.receipt_caption || ''}
-            onChange={e =>
-              setSettings((s: any) => ({
-                ...s,
-                receipt_caption: e.target.value,
-              }))
-            }
-          />
-        </FieldLabel>
-
-        <div style={{ gridColumn: '1 / -1', marginTop: 8 }}>
-          <SmallBtn color={T.accent} onClick={saveSettings}>
-            Save Settings
-          </SmallBtn>
-        </div>
-      </div>
-    </Card>
+    <>
+      <AdminHead title="Settings" lede="Store contact details and the receipt caption. Saved, but not shown anywhere yet." actions={<Button size="md" loading={saving} disabled={!dirty} onClick={save}>Save changes</Button>} />
+      {error ? <Panel><TableState error title="Couldn’t load settings" action={<Button size="sm" variant="secondary" onClick={load}>Try again</Button>}>{error}</TableState></Panel>
+        : !settings ? <Skeleton height={320} radius="var(--bs-radius-lg)" />
+        : (
+          <Panel style={{ maxWidth: 760 }}>
+            <form onSubmit={e => { e.preventDefault(); save() }}>
+              <FormSection title="Contact">
+                <div className={s.cols2}>
+                  <TextField label="Phone" type="tel" value={settings.phone} onChange={set('phone')} />
+                </div>
+              </FormSection>
+              <FormSection title="Social profiles" hint="Full profile links.">
+                <div className={s.cols2}>
+                  <TextField label="Instagram" value={settings.instagram} onChange={set('instagram')} placeholder="https://instagram.com/…" />
+                  <TextField label="Facebook" value={settings.facebook} onChange={set('facebook')} placeholder="https://facebook.com/…" />
+                  <TextField label="X" value={settings.x} onChange={set('x')} placeholder="https://x.com/…" />
+                  <TextField label="TikTok" value={settings.tiktok} onChange={set('tiktok')} placeholder="https://tiktok.com/@…" />
+                </div>
+              </FormSection>
+              <FormSection title="Receipts">
+                <AreaField label="Receipt caption" hint="Optional line for the foot of receipts." rows={3} value={settings.receipt_caption} onChange={set('receipt_caption')} />
+              </FormSection>
+              <button type="submit" hidden />
+            </form>
+          </Panel>
+        )}
+    </>
   )
 }
-console.log("API URL:", API)

@@ -6,7 +6,14 @@ import { useTheme as useThemeController } from '@/lib/theme'
 import { getAccessToken } from '@/lib/session'
 import { API_BASE } from '@/lib/config'
 
-import { BtnLabel, ClipboardIcon, CloakIcon, DownloadIcon, EmptyState, EyeOffIcon, Loading, LockIcon, Pagination, PaginationBar, PhoneIcon, QrIcon, SearchIcon, T, WarningIcon, XIcon, apiFetch, emptyPagination, inputStyle, parsePagination } from '../_lib/shared'
+import { Badge, Button, IconButton } from '@/components/ui'
+import { copyText } from '@/components/ui/CopyField'
+import { DataTable, SearchBox, TableState, type DTColumn } from '@/components/admin/DataTable'
+import { AdminHead, CellTitle, adminStyles as s } from '@/components/admin/AdminUI'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import { fmtDate } from '@/lib/format'
+import { useAdminList } from '../_lib/useAdminList'
+import { BtnLabel, DownloadIcon, LockIcon, T, WarningIcon, XIcon, apiFetch, inputStyle } from '../_lib/shared'
 
 export type LinkRow = {
   id: string
@@ -87,44 +94,15 @@ export function fromDtLocal(v: string): string | null {
 // MAIN TAB
 // ════════════════════════════════════════════════════════════════════
 export function LinksTab() {
-  const [links, setLinks] = useState<LinkRow[]>([])
-  const [pagination, setPagination] = useState<Pagination>(emptyPagination)
-  const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const searchTimer = useRef<any>(null)
-
+  const list = useAdminList<LinkRow>('/v2/admin/links', { limit: 25 })
   const [editingId, setEditingId] = useState<string | null>(null)
   const [form, setForm] = useState<LinkFormState>(EMPTY_LINK_FORM())
   const [panelOpen, setPanelOpen] = useState(false)
   const [saving, setSaving] = useState(false)
-
   const [qrFor, setQrFor] = useState<LinkRow | null>(null)
+  const [del, setDel] = useState<LinkRow | null>(null)
 
-  const load = useCallback(async (page = 1, q = search) => {
-    setLoading(true)
-    const params = new URLSearchParams({ page: String(page), limit: '20' })
-    if (q) params.set('q', q)
-    const r = await apiFetch(`/v2/admin/links?${params}`)
-    if (r.ok) {
-      setLinks(r.data || [])
-      setPagination(parsePagination(r))
-    }
-    setLoading(false)
-  }, [search])
-
-  useEffect(() => { load() }, [])
-
-  const onSearch = (q: string) => {
-    setSearch(q)
-    clearTimeout(searchTimer.current)
-    searchTimer.current = setTimeout(() => load(1, q), 400)
-  }
-
-  const openCreate = () => {
-    setEditingId(null)
-    setForm(EMPTY_LINK_FORM())
-    setPanelOpen(true)
-  }
+  const openCreate = () => { setEditingId(null); setForm(EMPTY_LINK_FORM()); setPanelOpen(true) }
 
   const openEdit = async (l: LinkRow) => {
     setEditingId(l.id)
@@ -142,19 +120,11 @@ export function LinksTab() {
     })
   }
 
-  const closePanel = () => {
-    setPanelOpen(false)
-    setEditingId(null)
-    setForm(EMPTY_LINK_FORM())
-  }
+  const closePanel = () => { setPanelOpen(false); setEditingId(null); setForm(EMPTY_LINK_FORM()) }
 
   const saveLink = async () => {
-    if (!form.destination_url) {
-      toast.error('Destination URL is required')
-      return
-    }
+    if (!form.destination_url) { toast.error('Destination URL is required'); return }
     setSaving(true)
-
     const payload: any = {
       destination_url: form.destination_url,
       slug: form.slug || undefined,
@@ -175,325 +145,130 @@ export function LinksTab() {
       utm_term: form.utm_term || null,
       qr_config: form.qr_config || null,
     }
-
-    // Password: only send if user actually entered a non-trivial value.
-    // The ' ' sentinel (used to flip the "change password" UI into input mode)
-    // must be ignored; only a real, non-empty password should be submitted.
+    // Password: only send a real, non-empty value. The ' ' sentinel (which
+    // flips the "change password" UI into input mode) is ignored.
     const pwTrimmed = (form.password || '').trim()
     if (pwTrimmed) payload.password = pwTrimmed
     else if (form.clearPassword) payload.password = null
 
-    const url = editingId ? `/v2/admin/links/${editingId}` : '/v2/admin/links'
-    const method = editingId ? 'PATCH' : 'POST'
-    const r = await apiFetch(url, { method, body: JSON.stringify(payload) })
-
-    if (!r.ok) {
-      toast.error(r.error || 'Failed to save link')
-      setSaving(false)
-      return
-    }
+    const r = await apiFetch(editingId ? `/v2/admin/links/${editingId}` : '/v2/admin/links', { method: editingId ? 'PATCH' : 'POST', body: JSON.stringify(payload) })
+    if (!r.ok) { toast.error(r.error || 'Failed to save link'); setSaving(false); return }
 
     const savedId = editingId || r.data?.id
     // Rule sync: delete removed rules, upsert current ones
     if (savedId) {
       const { data: existing } = await apiFetch(`/v2/admin/links/${savedId}/rules`)
-      const existingIds = new Set((existing || []).map((r: any) => r.id))
-      const keepIds = new Set(form.rules.filter(r => r.id).map(r => r.id!))
-      // Delete removed
-      for (const id of existingIds) {
-        if (!keepIds.has(id as string)) {
-          await apiFetch(`/v2/admin/links/${savedId}/rules/${id}`, { method: 'DELETE' })
-        }
+      const existingIds = new Set((existing || []).map((x: any) => x.id))
+      const keepIds = new Set(form.rules.filter(x => x.id).map(x => x.id!))
+      for (const id of Array.from(existingIds)) {
+        if (!keepIds.has(id as string)) await apiFetch(`/v2/admin/links/${savedId}/rules/${id}`, { method: 'DELETE' })
       }
-      // Upsert
       for (const rule of form.rules) {
         if (rule.id) {
           await apiFetch(`/v2/admin/links/${savedId}/rules/${rule.id}`, {
             method: 'PATCH',
-            body: JSON.stringify({
-              priority: rule.priority,
-              match_type: rule.match_type,
-              match_value: rule.match_value,
-              destination_url: rule.destination_url,
-            }),
+            body: JSON.stringify({ priority: rule.priority, match_type: rule.match_type, match_value: rule.match_value, destination_url: rule.destination_url }),
           })
         } else {
-          await apiFetch(`/v2/admin/links/${savedId}/rules`, {
-            method: 'POST',
-            body: JSON.stringify(rule),
-          })
+          await apiFetch(`/v2/admin/links/${savedId}/rules`, { method: 'POST', body: JSON.stringify(rule) })
         }
       }
     }
-
     toast.success(editingId ? 'Link updated' : 'Link created')
     closePanel()
-    await load(pagination.page)
+    list.reload()
     setSaving(false)
   }
 
   const toggleActive = async (l: LinkRow) => {
-    const r = await apiFetch(`/v2/admin/links/${l.id}`, {
-      method: 'PATCH',
-      body: JSON.stringify({ active: !l.active }),
-    })
-    if (r.ok) {
-      setLinks(prev => prev.map(x => x.id === l.id ? { ...x, active: !l.active } : x))
-    } else {
-      toast.error(r.error || 'Failed')
-    }
+    const r = await apiFetch(`/v2/admin/links/${l.id}`, { method: 'PATCH', body: JSON.stringify({ active: !l.active }) })
+    if (r.ok) list.patchRow(x => x.id === l.id, { active: !l.active })
+    else toast.error(r.error || 'Couldn’t update the link')
   }
 
-  const deleteLink = async (id: string) => {
-    if (!confirm('Delete this link? This cannot be undone.')) return
-    await apiFetch(`/v2/admin/links/${id}`, { method: 'DELETE' })
+  const deleteLink = async () => {
+    if (!del) return
+    const r = await apiFetch(`/v2/admin/links/${del.id}`, { method: 'DELETE' })
+    if (!r.ok) { toast.error(r.error || 'Couldn’t delete the link'); return }
+    list.setRows(rs => rs.filter(x => x.id !== del.id))
     toast.success('Link deleted')
-    await load(pagination.page)
+    setDel(null)
   }
 
   const copyShort = async (slug: string) => {
-    try {
-      await navigator.clipboard.writeText(`${SHORT_BASE}/${slug}`)
-      toast.success('Short link copied')
-    } catch {
-      toast.error('Copy failed')
-    }
+    if (await copyText(`${SHORT_BASE}/${slug}`)) toast.success('Short link copied')
+    else toast.error('Copy failed')
   }
 
-  const IS = inputStyle()
+  const expired = (l: LinkRow) => !!l.expires_at && new Date(l.expires_at).getTime() < Date.now()
+  const spent = (l: LinkRow) => !!l.click_limit && l.click_count >= l.click_limit
+
+  const columns: DTColumn<LinkRow>[] = [
+    {
+      key: 'slug', header: 'Short link',
+      cell: l => (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 'var(--bs-space-1)' }}>
+          <button type="button" className={`${s.textLink} ${s.mono}`} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--bs-text-sm)', whiteSpace: 'nowrap', textAlign: 'left' }} onClick={() => openEdit(l)}>/{l.slug}</button>
+          <IconButton icon="copy" label={`Copy ${SHORT_BASE}/${l.slug}`} size="sm" onClick={() => copyShort(l.slug)} />
+        </span>
+      ),
+    },
+    { key: 'dest', header: 'Goes to', cell: l => <div className={s.clip} style={{ maxWidth: 340 }}><CellTitle title={<span className={s.secondary}>{l.destination_url}</span>} sub={l.tags || ''} /></div> },
+    { key: 'clicks', header: 'Clicks', align: 'right', cell: l => <span>{(l.click_count || 0).toLocaleString()}{l.click_limit ? <span className={s.muted}> / {l.click_limit.toLocaleString()}</span> : ''}</span> },
+    {
+      key: 'opts', header: 'Options',
+      cell: l => {
+        const o = [l.has_password && 'Password', l.cloak && 'Cloaked', l.hide_referrer && 'No referrer', (l.deep_link_ios || l.deep_link_android) && 'App links', l.expires_at && `Ends ${fmtDate(l.expires_at)}`].filter(Boolean)
+        return <span className={s.secondary}>{o.length ? o.join(' · ') : '-'}</span>
+      },
+    },
+    {
+      key: 'status', header: 'Status',
+      cell: l => !l.active ? <Badge tone="neutral" dot>Off</Badge> : expired(l) ? <Badge tone="neutral" dot>Expired</Badge> : spent(l) ? <Badge tone="neutral" dot>Limit reached</Badge> : <Badge tone="success" dot>Live</Badge>,
+    },
+    {
+      key: 'actions', header: <span className="sr-only">Actions</span>, align: 'right', width: 230,
+      cell: l => (
+        <span style={{ display: 'inline-flex', gap: 'var(--bs-space-1)' }}>
+          <Button size="sm" variant="ghost" onClick={() => setQrFor(l)}>QR</Button>
+          <Button size="sm" variant="ghost" onClick={() => toggleActive(l)}>{l.active ? 'Turn off' : 'Turn on'}</Button>
+          <Button size="sm" variant="ghost" onClick={() => setDel(l)}>Delete</Button>
+          <Button size="sm" variant="secondary" onClick={() => openEdit(l)}>Edit</Button>
+        </span>
+      ),
+    },
+  ]
 
   return (
-    <div>
-      <style>{`
-        .bs-lnk-input:focus, .bs-lnk-input:focus-visible {
-          outline: none !important; border-color: var(--bs-accent) !important;
-        }
-        .bs-lnk-card { transition: border-color .18s, transform .18s; }
-        .bs-lnk-card:hover { border-color: var(--bs-border-strong) !important; transform: translateY(-1px); }
-        .bs-lnk-new-btn:hover { background: var(--bs-accent-hover) !important; }
-        .bs-lnk-ghost:hover:not(:disabled) { background: var(--bs-bg-muted) !important; }
-        .bs-lnk-ghost-danger:hover:not(:disabled) {
-          background: rgba(var(--bs-error-rgb), .08) !important;
-          border-color: rgba(var(--bs-error-rgb), .35) !important;
-          color: var(--bs-error) !important;
-        }
-        .bs-lnk-ghost-accent:hover:not(:disabled) {
-          background: rgba(var(--bs-accent-rgb), .1) !important;
-          border-color: rgba(var(--bs-accent-rgb), .4) !important;
-          color: var(--bs-accent-on-surface) !important;
-        }
-      `}</style>
+    <>
+      <AdminHead title="Short links" lede={<>Redirects on <span className={s.mono}>go.buysub.ng</span>, with targeting rules, passwords and QR codes.</>}
+        actions={<Button size="md" icon="plus" onClick={openCreate}>New link</Button>} />
+      <DataTable caption="Short links" columns={columns} rows={list.rows} rowKey={l => l.id}
+        loading={list.loading} error={list.error} onRetry={list.reload}
+        pagination={list.pagination} onPage={p => list.setParams({ page: String(p) })}
+        toolbar={<SearchBox value={list.params.q || ''} onChange={q => list.setParams({ q })} placeholder="Search slug, destination or tag" />}
+        empty={list.params.q
+          ? <TableState title="No links match">Search looks at the slug, destination and tags.</TableState>
+          : <TableState title="No short links yet" action={<Button size="sm" icon="plus" onClick={openCreate}>New link</Button>} />} />
 
-      {/* ─── HEADER ─── */}
-      <div style={{
-        display: 'flex', alignItems: 'baseline', flexWrap: 'wrap', gap: 10,
-        marginBottom: 18,
-      }}>
-        <div style={{ fontSize: 'var(--bs-text-xl)', fontWeight: 700, color: T.text, lineHeight: 1 }}>
-          Short links
-        </div>
-        <div style={{ fontSize: 12, color: T.textMuted }}>
-          {pagination.total || links.length} total · go.buysub.ng
-        </div>
-        <div style={{ flex: 1 }} />
-        <button
-          onClick={openCreate}
-          className="bs-lnk-new-btn"
-          style={{
-            height: 'var(--bs-control-md)', padding: '0 20px', borderRadius: 10,
-            background: T.accentFill, border: 'none', color: '#fff',
-            cursor: 'pointer', fontSize: 13, fontWeight: 600,
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            boxShadow: '0 4px 14px rgba(124,92,255,0.25)',
-            transition: 'background .15s',
-          }}
-        >
-          <span style={{ fontSize: 15, lineHeight: 1 }}>+</span>
-          New link
-        </button>
-      </div>
-
-      {/* ─── SEARCH ─── */}
-      <div style={{ position: 'relative', maxWidth: 380, marginBottom: 20 }}>
-        <input
-          className="bs-lnk-input"
-          placeholder="Search slug, destination, or tag…"
-          value={search}
-          onChange={e => onSearch(e.target.value)}
-          style={{ ...IS, paddingLeft: 36, width: '100%' }}
-        />
-        <div style={{
-          position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)',
-          color: T.textMuted, fontSize: 'var(--bs-text-sm)', pointerEvents: 'none',
-        }}><SearchIcon /></div>
-      </div>
-
-      {/* ─── LIST ─── */}
-      {loading ? (
-        <Loading />
-      ) : links.length === 0 ? (
-        <EmptyState text="No links yet — create your first one" />
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {links.map(l => (
-            <LinkRowCard
-              key={l.id}
-             
-              link={l}
-              onEdit={() => openEdit(l)}
-              onToggle={() => toggleActive(l)}
-              onDelete={() => deleteLink(l.id)}
-              onCopy={() => copyShort(l.slug)}
-              onQR={() => setQrFor(l)}
-            />
-          ))}
-        </div>
-      )}
-
-      {pagination?.pages > 1 && (
-        <div style={{ marginTop: 20 }}>
-          <PaginationBar pagination={pagination} onPage={p => load(p)} />
-        </div>
-      )}
-
-      {/* ─── EDITOR DRAWER ─── */}
       {panelOpen && (
-        <LinkEditorDrawer
-         
-          form={form}
-          setForm={setForm}
-          onSave={saveLink}
-          onCancel={closePanel}
-          saving={saving}
-          isEdit={!!editingId}
-        />
+        <LinkEditorDrawer form={form} setForm={setForm} onSave={saveLink} onCancel={closePanel} saving={saving} isEdit={!!editingId} />
       )}
-
-      {/* ─── QR DIALOG ─── */}
       {qrFor && (
         <QrDialog
-         
           link={qrFor}
           onClose={() => setQrFor(null)}
           onSaveConfig={async (cfg) => {
-            await apiFetch(`/v2/admin/links/${qrFor.id}`, {
-              method: 'PATCH',
-              body: JSON.stringify({ qr_config: cfg }),
-            })
-            toast.success('QR config saved')
-            await load(pagination.page)
+            const r = await apiFetch(`/v2/admin/links/${qrFor.id}`, { method: 'PATCH', body: JSON.stringify({ qr_config: cfg }) })
+            if (r.ok) { toast.success('QR settings saved'); list.patchRow(x => x.id === qrFor.id, { qr_config: cfg }) }
+            else toast.error(r.error || 'Couldn’t save the QR settings')
           }}
         />
       )}
-    </div>
-  )
-}
-
-// ════════════════════════════════════════════════════════════════════
-// LIST ROW
-// ════════════════════════════════════════════════════════════════════
-export function LinkRowCard({
-  link, onEdit, onToggle, onDelete, onCopy, onQR,
-}: {
-  link: LinkRow
-  onEdit: () => void
-  onToggle: () => void
-  onDelete: () => void
-  onCopy: () => void
-  onQR: () => void
-}) {
-  const features: { label: string; icon: React.ReactNode }[] = []
-  if (link.has_password)  features.push({ label: 'Password', icon: <LockIcon/> })
-  if (link.cloak)         features.push({ label: 'Cloaked',  icon: <CloakIcon/> })
-  if (link.hide_referrer) features.push({ label: 'No ref',   icon: <EyeOffIcon/> })
-  if (link.deep_link_ios || link.deep_link_android)
-                          features.push({ label: 'Deep link', icon: <PhoneIcon/> })
-
-  const expMs = link.expires_at ? new Date(link.expires_at).getTime() - Date.now() : null
-  const limitReached = link.click_limit != null && link.click_count >= link.click_limit
-  const isExpired = expMs != null && expMs < 0
-
-  return (
-    <div
-      className="bs-lnk-card"
-      style={{
-        background: T.card,
-        // Second Marketplace leak, same shape as the product card in Phase 7:
-        // #1C1C1F sits close to --bs-border-default in dark so the healthy
-        // state looked right there, and drew a near-black border on a white
-        // card in light. The healthy-vs-degraded distinction is preserved.
-        border: `1px solid ${link.active && !isExpired && !limitReached ? T.borderSubtle : T.border}`,
-        borderRadius: 'var(--bs-radius-lg)',
-        padding: '16px 18px',
-        display: 'flex',
-        gap: 14,
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        opacity: link.active && !isExpired && !limitReached ? 1 : 0.6,
-      }}
-    >
-      {/* Identity */}
-      <div style={{ minWidth: 0, flex: '1 1 320px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{
-            fontSize: 13, fontWeight: 600, color: T.accent,
-            fontFamily: "'SF Mono', Menlo, monospace",
-          }}>
-            /{link.slug}
-          </span>
-          <span style={{
-            fontSize: 11, color: T.textMuted,
-            fontFamily: "'SF Mono', Menlo, monospace",
-          }}>
-            go.buysub.ng
-          </span>
-          {features.map(f => (
-            <span key={f.label} title={f.label} style={{
-              display: 'inline-flex', alignItems: 'center', gap: 'var(--bs-space-1)',
-              height: 20, padding: '0 var(--bs-space-2)', borderRadius: 'var(--bs-radius-full)',
-              background: 'rgba(var(--bs-accent-rgb), .1)',
-              border: '1px solid rgba(var(--bs-accent-rgb), .25)',
-              // Fifth instance of the on-tint bug: the label was plain
-              // T.accent on a 10% tint of itself. Was also 10px, under the
-              // 11 floor.
-              color: 'color-mix(in srgb, var(--bs-accent), var(--bs-on-tint-mix))',
-              fontSize: 'var(--bs-text-2xs)', fontWeight: 600,
-            }}>
-              {f.icon}
-              {f.label}
-            </span>
-          ))}
-        </div>
-        <div style={{
-          fontSize: 12, color: T.textMuted, marginTop: 4,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          → {link.destination_url}
-        </div>
-        <div style={{ fontSize: 11, color: T.textFaint, marginTop: 3, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <span>{link.click_count || 0} click{link.click_count === 1 ? '' : 's'}
-            {link.click_limit ? ` / ${link.click_limit}` : ''}
-          </span>
-          {link.expires_at && (
-            <span style={{ color: isExpired ? T.warning : T.textFaint }}>
-              {isExpired ? 'Expired' : `Expires ${new Date(link.expires_at).toLocaleDateString()}`}
-            </span>
-          )}
-          {link.tags && <span>· {link.tags}</span>}
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-        <IconBtn onClick={onCopy} title="Copy short URL">{<ClipboardIcon/>}</IconBtn>
-        <IconBtn onClick={onQR} title="Show QR code"><QrIcon /></IconBtn>
-        <GhostBtn onClick={onEdit} variant="accent">Edit</GhostBtn>
-        <GhostBtn onClick={onToggle}>
-          {link.active ? 'Pause' : 'Resume'}
-        </GhostBtn>
-        <GhostBtn onClick={onDelete} variant="danger">Delete</GhostBtn>
-      </div>
-    </div>
+      <ConfirmDialog open={!!del} title={`Delete /${del?.slug}?`} confirmLabel="Delete" danger onConfirm={deleteLink} onClose={() => setDel(null)}>
+        <p>The short link stops working straight away, including in printed QR codes. Turn it off instead to keep its click history.</p>
+      </ConfirmDialog>
+    </>
   )
 }
 
@@ -660,8 +435,7 @@ export function LinkEditorDrawer({
 export function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
     <div style={{
-      fontSize: 'var(--bs-text-2xs)', color: T.textMuted, textTransform: 'uppercase',
-      letterSpacing: '0.08em', fontWeight: 600, marginBottom: 10,
+      fontSize: 'var(--bs-text-sm)', color: T.text, fontWeight: 600, marginBottom: 10,
     }}>{children}</div>
   )
 }
@@ -1034,7 +808,7 @@ export function SecuritySection({ form, setForm, IS, isEdit }: any) {
           fontSize: 12, color: T.textSecondary, lineHeight: 1.5,
         }}>
           <WarningIcon /> Many sites set <code>X-Frame-Options: DENY</code> which prevents cloaking.
-          Test the link after enabling — if the destination goes blank, disable cloaking.
+          Test the link after turning this on. If the destination goes blank, turn cloaking off.
         </div>
       )}
     </FieldStack>
@@ -1097,7 +871,7 @@ export function DeepLinksSection({ form, setForm, IS }: any) {
         fontSize: 12, color: T.textSecondary, lineHeight: 1.5,
       }}>
         Desktop visitors always see the regular destination URL.
-        Mobile visitors will be taken to the app — or to the App Store / Play Store
+        Mobile visitors will be taken to the app, or to the App Store / Play Store
         if it isn't installed.
       </div>
     </FieldStack>

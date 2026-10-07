@@ -1,122 +1,174 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { toast } from "sonner"
-import { useTheme as useThemeController } from '@/lib/theme'
-import { getAccessToken } from '@/lib/session'
-import { API_BASE } from '@/lib/config'
+// /admin/discounts: promo codes. One table; create and edit in a side panel.
+// Eligibility rules live in buysub-api-deploy/src/shared/discount.ts
+// (mirrored in lib/constants.ts): product and category lists are
+// comma-separated names, matched case-insensitively, exclusions first.
 
-import { Badge, ChevronIcon, DRow, DetailSection, Discount, EmptyState, Loading, Order, SmallBtn, T, apiFetch, fmt, fmtDate } from '../_lib/shared'
-import { DiscountFormPanel } from './DiscountForm'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { Badge, Button } from '@/components/ui'
+import { DataTable, Filters, TableState, type DTColumn } from '@/components/admin/DataTable'
+import { AdminHead, CellTitle, adminStyles as s } from '@/components/admin/AdminUI'
+import { FormSection, SelectField, SidePanel, SwitchRow, TextField } from '@/components/admin/AdminForm'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import { authFetch } from '@/lib/apiAuth'
+import { fmtDate, fmtNGN } from '@/lib/format'
+import { useAdminList } from '../_lib/useAdminList'
+import type { Discount } from '../_lib/shared'
 
-// ════════════════════ DISCOUNTS TAB (full CRUD) ════════════════════
-export const EMPTY_DISCOUNT = (): any => ({ code: '', type: 'percentage', value: 0, active: true, min_order_ngn: 0, max_uses: null, expires_at: null, active_from: null, max_discount_ngn: null, included_products: null, excluded_products: null, included_categories: null, excluded_categories: null, auto_apply: false, scope: 'site_wide', exclusive: false })
+type Form = Record<string, any>
+
+export const EMPTY_DISCOUNT = (): Form => ({
+  code: '', type: 'percentage', value: '', active: true, min_order_ngn: '', max_uses: '', expires_at: '', active_from: '',
+  max_discount_ngn: '', included_products: '', excluded_products: '', included_categories: '', excluded_categories: '',
+  auto_apply: false, scope: 'site_wide', exclusive: false,
+})
+
+const toForm = (d: Discount): Form => ({
+  ...EMPTY_DISCOUNT(), ...d,
+  value: d.value ?? '', min_order_ngn: d.min_order_ngn || '', max_uses: d.max_uses ?? '', max_discount_ngn: d.max_discount_ngn ?? '',
+  expires_at: d.expires_at ? d.expires_at.slice(0, 10) : '', active_from: d.active_from ? d.active_from.slice(0, 10) : '',
+  included_products: d.included_products || '', excluded_products: d.excluded_products || '',
+  included_categories: d.included_categories || '', excluded_categories: d.excluded_categories || '',
+})
+
+const num = (v: any) => v === '' || v == null ? null : Number(v)
+const toBody = (f: Form) => ({
+  code: String(f.code || '').trim().toUpperCase(), type: f.type, value: Number(f.value) || 0, active: !!f.active,
+  min_order_ngn: Number(f.min_order_ngn) || 0, max_uses: num(f.max_uses), max_discount_ngn: num(f.max_discount_ngn),
+  expires_at: f.expires_at || null, active_from: f.active_from || null,
+  included_products: f.included_products || null, excluded_products: f.excluded_products || null,
+  included_categories: f.included_categories || null, excluded_categories: f.excluded_categories || null,
+  auto_apply: !!f.auto_apply, exclusive: !!f.exclusive, scope: f.scope || 'site_wide',
+})
+
+const offLabel = (d: { type: string; value: number }) => d.type === 'percentage' ? `${Number(d.value)}% off` : `${fmtNGN(d.value)} off`
+
+function state(d: Discount): { label: string; tone: 'success' | 'neutral' | 'warning' | 'error' } {
+  const now = Date.now()
+  if (!d.active) return { label: 'Off', tone: 'neutral' }
+  if (d.expires_at && new Date(d.expires_at).getTime() < now) return { label: 'Expired', tone: 'neutral' }
+  if (d.max_uses && d.times_used >= d.max_uses) return { label: 'Used up', tone: 'neutral' }
+  if (d.active_from && new Date(d.active_from).getTime() > now) return { label: 'Scheduled', tone: 'warning' }
+  return { label: 'Live', tone: 'success' }
+}
+
+function Editor({ editing, setEditing, onSaved, onDeleted }: {
+  editing: { id: string | null; form: Form } | null
+  setEditing: (fn: (e: { id: string | null; form: Form } | null) => { id: string | null; form: Form } | null) => void
+  onSaved: () => void
+  onDeleted: (id: string) => void
+}) {
+  const [saving, setSaving] = useState(false)
+  const [del, setDel] = useState(false)
+  const f = editing?.form || {}
+  const set = (k: string) => (v: any) => setEditing(e => e ? { ...e, form: { ...e.form, [k]: v } } : e)
+  const pct = f.type === 'percentage'
+  const valueError = pct && Number(f.value) > 100 ? 'Can’t be more than 100%' : undefined
+  const save = async () => {
+    if (!editing) return
+    setSaving(true)
+    const r = editing.id
+      ? await authFetch(`/v2/admin/discounts/${editing.id}`, { method: 'PATCH', body: toBody(f) })
+      : await authFetch('/v2/admin/discounts', { method: 'POST', body: toBody(f) })
+    setSaving(false)
+    if (!r.ok) { toast.error(r.error || 'Couldn’t save the code'); return }
+    toast.success(editing.id ? 'Code saved' : `${toBody(f).code} created`)
+    onSaved()
+  }
+  const remove = async () => {
+    if (!editing?.id) return
+    const r = await authFetch(`/v2/admin/discounts/${editing.id}`, { method: 'DELETE' })
+    if (!r.ok) { toast.error(r.error || 'Couldn’t delete the code'); return }
+    toast.success('Code deleted')
+    setDel(false)
+    onDeleted(editing.id)
+  }
+  return (
+    <SidePanel open={!!editing} onClose={() => !saving && setEditing(() => null)} width={600}
+      title={editing?.id ? f.code : 'New discount code'}
+      footer={<>
+        {editing?.id && <Button size="md" variant="ghost" onClick={() => setDel(true)} style={{ marginRight: 'auto', color: 'var(--bs-error)' } as any}>Delete</Button>}
+        <Button size="md" variant="secondary" onClick={() => setEditing(() => null)} disabled={saving}>Cancel</Button>
+        <Button size="md" loading={saving} disabled={!String(f.code || '').trim() || !(Number(f.value) > 0) || !!valueError} onClick={save}>{editing?.id ? 'Save changes' : 'Create code'}</Button>
+      </>}>
+      <form onSubmit={e => { e.preventDefault(); save() }}>
+        <FormSection title="Code">
+          <div className={s.cols2}>
+            <TextField label="Code" value={f.code} onChange={v => set('code')(v.toUpperCase().replace(/\s+/g, ''))} placeholder="SAVE10" autoFocus={!editing?.id} />
+            <SelectField label="Type" value={f.type || 'percentage'} onChange={set('type')} options={[{ value: 'percentage', label: 'Percentage' }, { value: 'fixed', label: 'Fixed amount (₦)' }]} />
+            <TextField label={pct ? 'Percent off' : 'Amount off (₦)'} type="number" min={0} value={f.value} onChange={set('value')} error={valueError} />
+            {pct && <TextField label="Cap (₦)" type="number" min={0} value={f.max_discount_ngn} onChange={set('max_discount_ngn')} placeholder="No cap" hint="Most a single order can save." />}
+          </div>
+        </FormSection>
+        <FormSection title="Limits">
+          <div className={s.cols2}>
+            <TextField label="Minimum order (₦)" type="number" min={0} value={f.min_order_ngn} onChange={set('min_order_ngn')} placeholder="None" hint="Counted on eligible items only." />
+            <TextField label="Total uses" type="number" min={0} value={f.max_uses} onChange={set('max_uses')} placeholder="Unlimited" />
+            <TextField label="Starts" type="date" value={f.active_from} onChange={set('active_from')} hint="Blank starts now." />
+            <TextField label="Ends" type="date" value={f.expires_at} onChange={set('expires_at')} hint="Blank never ends." />
+          </div>
+        </FormSection>
+        <FormSection title="Applies to" hint="Comma-separated product or category names. Leave blank for everything. Exclusions win.">
+          <div className={s.cols2}>
+            <TextField label="Only these products" value={f.included_products} onChange={set('included_products')} placeholder="All products" />
+            <TextField label="Except these products" value={f.excluded_products} onChange={set('excluded_products')} />
+            <TextField label="Only these categories" value={f.included_categories} onChange={set('included_categories')} placeholder="All categories" />
+            <TextField label="Except these categories" value={f.excluded_categories} onChange={set('excluded_categories')} />
+          </div>
+        </FormSection>
+        <FormSection title="Behaviour">
+          <SwitchRow label="Active" hint="Off codes can’t be used." checked={!!f.active} onChange={set('active')} />
+          <SwitchRow label="Apply automatically" hint="Added to eligible carts without typing the code." checked={!!f.auto_apply} onChange={set('auto_apply')} />
+          <SwitchRow label="Exclusive" hint="Can’t be combined: an automatic exclusive code hides the promo code box." checked={!!f.exclusive} onChange={set('exclusive')} />
+        </FormSection>
+        <button type="submit" hidden />
+      </form>
+      <ConfirmDialog open={del} title={`Delete ${f.code}?`} confirmLabel="Delete" danger onConfirm={remove} onClose={() => setDel(false)}>
+        <p>Customers can no longer use this code. Orders that already used it keep their discount. To pause a code instead, switch it off.</p>
+      </ConfirmDialog>
+    </SidePanel>
+  )
+}
 
 export function DiscountsTab() {
-  const [discounts, setDiscounts] = useState<Discount[]>([]); const [loading, setLoading] = useState(true)
-  const [showCreate, setShowCreate] = useState(false); const [creating, setCreating] = useState(false)
-  const [editingId, setEditingId] = useState<string | null>(null)
-  const [editForm, setEditForm] = useState<any>({})
-  const [newDiscount, setNewDiscount] = useState<any>(EMPTY_DISCOUNT())
-  const [expanded, setExpanded] = useState<string | null>(null)
+  const list = useAdminList<Discount>('/v2/admin/discounts', { limit: 100 })
+  const [editing, setEditing] = useState<{ id: string | null; form: Form } | null>(null)
+  const [view, setView] = useState('')
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    const r = await apiFetch('/v2/admin/discounts?limit=100')
-    if (r.ok) setDiscounts(r.data || [])
-    setLoading(false)
-  }, [])
-  useEffect(() => { load() }, [])
-
-  const createDiscount = async () => {
-    if (!newDiscount.code) { toast.error('Code is required'); return }
-    setCreating(true)
-    const r = await apiFetch('/v2/admin/discounts', { method: 'POST', body: JSON.stringify({ ...newDiscount, code: newDiscount.code.toUpperCase() }) })
-    if (r.ok) { setNewDiscount(EMPTY_DISCOUNT()); setShowCreate(false); toast.success("Discount created"); await load() }
-    else toast.error(r.error || r.data?.error || 'Failed to create discount')
-    setCreating(false)
-  }
-
-  const startEdit = (d: Discount) => {
-    setEditingId(d.id); setExpanded(null)
-    setEditForm({ code: d.code, type: d.type, value: d.value, active: d.active, min_order_ngn: d.min_order_ngn || 0, max_uses: d.max_uses, expires_at: d.expires_at ? d.expires_at.slice(0, 10) : '', active_from: d.active_from ? d.active_from.slice(0, 10) : '', max_discount_ngn: d.max_discount_ngn, included_products: d.included_products || '', excluded_products: d.excluded_products || '', included_categories: d.included_categories || '', excluded_categories: d.excluded_categories || '', auto_apply: !!d.auto_apply, scope: d.scope || 'site_wide', exclusive: !!d.exclusive })
-  }
-
-  const saveEdit = async () => {
-    if (!editingId) return
-    const r = await apiFetch(`/v2/admin/discounts/${editingId}`, { method: 'PATCH', body: JSON.stringify(editForm) })
-    if (r.ok) { setEditingId(null); toast.success("Changes saved"); await load() } else toast.error(r.error || r.data?.error || 'Failed to update')
-  }
-
-  const deleteDiscount = async (id: string) => {
-    if (!confirm('Delete this discount code?')) return
-    const r = await apiFetch(`/v2/admin/discounts/${id}`, { method: 'DELETE' })
-    if (r.ok) {
-      await load();
-      toast.success('Discount code deleted successfully')
-    }
-    else toast.error(r.error || 'Failed to delete discount')
-  }
-
-  const toggleActive = async (d: Discount) => {
-    const r = await apiFetch(`/v2/admin/discounts/${d.id}`, { method: 'PATCH', body: JSON.stringify({ active: !d.active }) })
-    if (r.ok) setDiscounts(prev => prev.map(x => x.id === d.id ? { ...x, active: !d.active } : x))
-  }
+  const rows = list.rows.filter(d => !view || (view === 'live' ? state(d).label === 'Live' : state(d).label !== 'Live'))
+  const columns: DTColumn<Discount>[] = [
+    {
+      key: 'code', header: 'Code',
+      cell: d => <CellTitle title={<button type="button" className={`${s.textLink} ${s.mono}`} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', fontSize: 'var(--bs-text-sm)', fontWeight: 600 }} onClick={() => setEditing({ id: d.id, form: toForm(d) })}>{d.code}</button>}
+        sub={[d.auto_apply && 'Automatic', d.exclusive && 'Exclusive'].filter(Boolean).join(' · ')} />,
+    },
+    { key: 'off', header: 'Discount', cell: d => <CellTitle title={offLabel(d)} sub={[d.max_discount_ngn ? `up to ${fmtNGN(d.max_discount_ngn)}` : '', d.min_order_ngn ? `min ${fmtNGN(d.min_order_ngn)}` : ''].filter(Boolean).join(', ')} /> },
+    { key: 'applies', header: 'Applies to', cell: d => <span className={`${s.secondary} ${s.clip}`} style={{ display: 'block' }}>{d.included_products || d.included_categories || 'Everything'}{d.excluded_products || d.excluded_categories ? ' (with exclusions)' : ''}</span> },
+    { key: 'used', header: 'Used', align: 'right', cell: d => <span>{(d.times_used || 0).toLocaleString()}{d.max_uses ? <span className={s.muted}> / {d.max_uses.toLocaleString()}</span> : ''}</span> },
+    { key: 'window', header: 'Runs', cell: d => <span className={s.secondary}>{d.active_from || d.expires_at ? `${d.active_from ? fmtDate(d.active_from) : 'Now'} to ${d.expires_at ? fmtDate(d.expires_at) : 'no end'}` : 'Always'}</span> },
+    { key: 'state', header: 'Status', cell: d => { const st = state(d); return <Badge tone={st.tone} dot>{st.label}</Badge> } },
+  ]
 
   return (
-    <div>
-      <button onClick={() => { setShowCreate(!showCreate); setEditingId(null) }} style={{ height: 'var(--bs-control-md)', padding: '0 20px', borderRadius: 10, background: T.accentFill, border: 'none', color: '#fff', cursor: 'pointer', fontSize: 13, fontWeight: 600, marginBottom: 20 }}>+ New Discount</button>
-
-      {showCreate && <DiscountFormPanel form={newDiscount} setForm={setNewDiscount} onSave={createDiscount} onCancel={() => setShowCreate(false)} saving={creating} title="Create Discount Code" />}
-      {editingId && <DiscountFormPanel form={editForm} setForm={setEditForm} onSave={saveEdit} onCancel={() => setEditingId(null)} title="Edit Discount Code" />}
-
-      {loading ? <Loading /> : discounts.length === 0 ? <EmptyState text="No discount codes" /> : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {discounts.map(d => (
-            <div key={d.id} style={{ background: T.card, border: `1px solid ${T.borderSubtle}`, borderRadius: 'var(--bs-radius-lg)', overflow: 'hidden', opacity: d.active ? 1 : 0.55 }}>
-              <div onClick={() => setExpanded(expanded === d.id ? null : d.id)} style={{ padding: '14px 22px', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
-                <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                  <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 'var(--bs-text-sm)', fontWeight: 700, color: 'var(--bs-accent-on-surface)', background: 'rgba(var(--bs-accent-rgb), 0.09)', padding: '3px 10px', borderRadius: 6 }}>{d.code}</span>
-                  <span style={{ fontSize: 13, color: T.text }}>{d.type === 'percentage' ? `${d.value}% off` : `₦${Number(d.value).toLocaleString()} off`}</span>
-                  <Badge status={d.active ? 'active' : 'hidden'} />
-                  {d.auto_apply && <span style={{ fontSize: 'var(--bs-text-2xs)', padding: '2px 8px', borderRadius: 'var(--bs-radius-sm)', background: 'rgba(var(--bs-accent-rgb), 0.08)', color: 'var(--bs-accent-on-surface)', fontWeight: 600 }}>Auto</span>}
-                </div>
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
-                  <span style={{ fontSize: 11, color: T.textMuted }}>{d.times_used || 0} uses</span>
-                  <span style={{ color: T.textMuted }}><ChevronIcon open={expanded === d.id} /></span>
-                </div>
-              </div>
-              {expanded === d.id && (
-                <div style={{ padding: '0 22px 18px', borderTop: `1px solid ${T.borderSubtle}` }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 16, padding: '14px 0' }}>
-                    <DetailSection title="Rules">
-                      <DRow label="Min Order" value={d.min_order_ngn ? fmt(d.min_order_ngn) : 'None'} />
-                      <DRow label="Max Discount" value={d.max_discount_ngn ? fmt(d.max_discount_ngn) : 'No cap'} />
-                      <DRow label="Max Uses" value={d.max_uses ? String(d.max_uses) : 'Unlimited'} />
-                      <DRow label="Used" value={String(d.times_used || 0)} />
-                    </DetailSection>
-                    <DetailSection title="Dates">
-                      <DRow label="Active From" value={d.active_from ? fmtDate(d.active_from) : 'Immediately'} />
-                      <DRow label="Expires" value={d.expires_at ? fmtDate(d.expires_at) : 'Never'} />
-                      <DRow label="Created" value={fmtDate(d.created_at)} />
-                    </DetailSection>
-                    <DetailSection title="Targeting">
-                      <DRow label="Scope" value={d.scope || 'site_wide'} />
-                      <DRow label="Incl. Products" value={d.included_products || 'All'} />
-                      <DRow label="Excl. Products" value={d.excluded_products || 'None'} />
-                    </DetailSection>
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <SmallBtn color={T.accent} onClick={() => startEdit(d)}>Edit</SmallBtn>
-                    <SmallBtn color={d.active ? T.warning : T.success} onClick={() => toggleActive(d)}>{d.active ? 'Deactivate' : 'Activate'}</SmallBtn>
-                    <SmallBtn color={T.error} onClick={() => deleteDiscount(d.id)}>Delete</SmallBtn>
-                  </div>
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      <AdminHead title="Discounts" actions={<Button size="md" icon="plus" onClick={() => setEditing({ id: null, form: EMPTY_DISCOUNT() })}>New code</Button>} />
+      <DataTable
+        caption="Discount codes"
+        columns={columns}
+        rows={rows}
+        rowKey={d => d.id}
+        onRowClick={d => setEditing({ id: d.id, form: toForm(d) })}
+        loading={list.loading}
+        error={list.error}
+        onRetry={list.reload}
+        toolbar={<Filters label="Show" value={view} onChange={setView} options={[{ value: '', label: 'All' }, { value: 'live', label: 'Live' }, { value: 'other', label: 'Off, expired or scheduled' }]} />}
+        empty={<TableState title={view ? 'No codes here' : 'No discount codes yet'} action={!view ? <Button size="sm" icon="plus" onClick={() => setEditing({ id: null, form: EMPTY_DISCOUNT() })}>New code</Button> : undefined} />}
+      />
+      <Editor editing={editing} setEditing={setEditing}
+        onSaved={() => { setEditing(null); list.reload() }}
+        onDeleted={id => { setEditing(null); list.setRows(rs => rs.filter(r => r.id !== id)) }} />
+    </>
   )
 }

@@ -43,7 +43,7 @@ To watch changes live against the fixture API, use the `fixture-api` and `web-de
 | `/login` | `app/login/page.tsx` | three tabs: customer / partner / admin |
 | `/account/*` | `app/account/*` → `components/account/*` | customer area: overview, orders (`?status=` processing/completed/cancelled, `?q=`), `orders/[ref]` (edge), subscriptions, wallet, messages (`?m=<id>`), settings. `AccountShell` gates on `RequireRole` |
 | `/dashboard` | `app/dashboard/page.tsx` | redirect stub to `/account/*` (maps `?tab=`, keeps the hash). Still the sign-up `emailRedirectTo`, because it is on the Supabase Auth allow-list |
-| `/admin` | `app/admin/page.tsx` (~5.5k lines) | 13 tabs, the whole back office |
+| `/admin/*` | `app/admin/(console)/<section>/page.tsx` → `app/admin/_components/*` | admin console: overview, orders (+ `orders/[ref]`, edge), rejected, discounts, products, customers, wallets, partners, affiliates, links, ads, notifications, settings. The `(console)` layout gates on a staff role (`RequireRole allow="staff"`) and renders `components/admin/AdminShell` (grouped sidebar with counts, breadcrumbs, ⌘K). Lists use `components/admin/DataTable` + `app/admin/_lib/useAdminList` (filters in the URL). `/admin?tab=x` redirects to `/admin/x` |
 | `/admin/receipt` | `app/admin/receipt/page.tsx` | PDF receipt generator (ported from Airtable) |
 | `/partners` | `app/partners/page.tsx` | partner application form (draft persisted to localStorage) |
 | `/partner/*` | `app/partner/*` → `components/partner/*` | partner portal: overview (link, figures, 30-day clicks chart), referral link builder, conversions, payouts, profile. `PartnerShell` shows the application status instead until approved |
@@ -51,7 +51,7 @@ To watch changes live against the fixture API, use the `fixture-api` and `web-de
 | `/order/verify` | `app/order/verify/VerifyContent.tsx` | Paystack callback landing page (clears the cart on success) |
 | `/reset-password` | `app/reset-password/page.tsx` | target of the forgot-password email; must be on the Supabase Auth redirect allow-list |
 
-The big files are structured internally by section-comment banners and module-level sub-components (e.g. `OrdersTab`, `ProductsTab`, `NewOrderDrawer` in `app/admin/page.tsx`). Sub-components are declared at module level on purpose — defining them inside the parent would remount them on every render and drop input focus. Keep that pattern.
+The big files are structured internally by section-comment banners and module-level sub-components (e.g. the link editor sections in `app/admin/_components/Links.tsx`). Sub-components are declared at module level on purpose — defining them inside the parent would remount them on every render and drop input focus. Keep that pattern.
 
 ### Shell and chrome
 
@@ -63,7 +63,7 @@ The big files are structured internally by section-comment banners and module-le
 
 Supabase Auth, browser-only. The Supabase client is instantiated per-page (`createClient(SUPABASE_URL, SUPABASE_ANON)` in `login`, `dashboard`, `partners/dashboard`, `reset-password`). `lib/session.ts` holds a lazy shared client used only for `getAccessToken()`.
 
-Tokens for API calls come from `supabase.auth.getSession()`, which refreshes an expired access token: the page's own client in login, dashboard and partner dashboard, and `getAccessToken()` in `lib/session.ts` for admin and receipt. **Never delete the `sb-*-auth-token` key when `expires_at` has passed** — it holds the refresh token. The old hand-rolled readers did that and signed everyone out hourly. `readToken` in `app/admin/page.tsx` survives only as a presence check for render gating. Checkout prefills from `lib/useSession.tsx`.
+Tokens for API calls come from `supabase.auth.getSession()`, which refreshes an expired access token: the page's own client in login, dashboard and partner dashboard, and `getAccessToken()` in `lib/session.ts` for admin and receipt. **Never delete the `sb-*-auth-token` key when `expires_at` has passed** — it holds the refresh token. The old hand-rolled readers did that and signed everyone out hourly. The admin console gates on `RequireRole` (from `/v2/me`), not on a token sniff. Checkout prefills from `lib/useSession.tsx`.
 
 Every authenticated request sends `Authorization: Bearer <access_token>`. Each surface has its own local `apiFetch` that redirects to `/login` on 401/403. There is no middleware and no route protection — pages guard themselves client-side after mount.
 
@@ -96,7 +96,7 @@ New code (from the 2026-10 IA refactor) uses **CSS Modules**: `components/ui/` (
 The older surfaces are 100% inline `style` objects. Two systems coexist there and both are in use:
 
 1. **CSS variables** (`--bs-bg-base`, `--bs-text-primary`, `--bs-accent`, …) defined once in `CSS_VARS` and consumed by `AppShell` and the verify page.
-2. **Per-file `dark` / `light` theme token objects** duplicated in `app/admin/page.tsx`, `app/login/page.tsx` and elsewhere, selected by a local `useTheme()` / `isDark` state. These are being removed surface by surface; see `REFACTOR.md`.
+2. **Per-file `dark` / `light` theme token objects** duplicated in `app/login/page.tsx` and elsewhere (the admin console's remaining legacy editors read the var()-based `T` in `app/admin/_lib/shared.tsx`), selected by a local `useTheme()` / `isDark` state. These are being removed surface by surface; see `REFACTOR.md`.
 
 The theme preference is persisted under the single localStorage key `bs_admin_theme` as a bare `'dark'` / `'light'` string.
 
@@ -106,7 +106,7 @@ Images use raw `<img>`. The older surfaces use raw `<a>`; new code (`components/
 
 ### Hydration
 
-Client-only values (localStorage, `window`) must never be read during render. The established fix is `useClientValue(getter, fallback)` in `app/admin/page.tsx` and the `mounted` flag pattern (`useEffect(() => setMounted(true), [])`, render the fallback until mounted). Reading localStorage directly in a render body will produce a hydration mismatch.
+Client-only values (localStorage, `window`) must never be read during render. The established fix is `useSyncExternalStore` (see `lib/useSession.tsx`, `lib/cart.ts`) or the `mounted` flag pattern (`useEffect(() => setMounted(true), [])`, render the fallback until mounted). Reading localStorage directly in a render body will produce a hydration mismatch.
 
 ## Gotchas
 

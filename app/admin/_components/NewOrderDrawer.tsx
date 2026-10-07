@@ -10,7 +10,7 @@ import { Customer, Discount, Order, Product, T, XIcon, apiFetch, fmt, sentenceCa
 
 export const BILLING_PERIODS = ['Monthly', 'Quarterly', 'Biannual', 'Annual', 'One-time']
 export const PAYMENT_METHODS_MANUAL: { label: string; value: string }[] = [
-  { label: 'Bank Transfer', value: 'bank_transfer' },
+  { label: 'Bank transfer', value: 'bank_transfer' },
   { label: 'Cash',          value: 'cash' },
   { label: 'WhatsApp',      value: 'whatsapp' },
   { label: 'Coupon',        value: 'coupon' },
@@ -321,9 +321,9 @@ export function NewOrderDrawer({
         <div style={{ padding:'20px 24px 16px', borderBottom:`1px solid ${T.border}`, flexShrink:0 }}>
           <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
             <div>
-              <div style={{ fontSize:'var(--bs-text-lg)', fontWeight:700, color:T.text }}>New Manual Order</div>
+              <div style={{ fontSize:'var(--bs-text-lg)', fontWeight:700, color:T.text }}>New manual order</div>
               <div style={{ fontSize:11, color:T.textMuted, marginTop:3 }}>
-                Creates order directly in DB — no Paystack
+                Recorded as placed by staff. No Paystack payment is taken.
               </div>
             </div>
             <button onClick={onClose} style={{
@@ -338,7 +338,7 @@ export function NewOrderDrawer({
 
           {/* ── Customer ── */}
           <section>
-            <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600, marginBottom:12 }}>
+            <div style={{ fontSize:'var(--bs-text-sm)', color:T.text, fontWeight:600, marginBottom:12 }}>
               Customer
             </div>
             <div style={{ display:'flex', flexDirection:'column', gap:10 }}>
@@ -355,7 +355,7 @@ export function NewOrderDrawer({
               </div>
               <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10 }}>
                 <div>
-                  <div style={{ fontSize:11, color:T.textSecondary, marginBottom:4 }}>Full Name</div>
+                  <div style={{ fontSize:11, color:T.textSecondary, marginBottom:4 }}>Full name</div>
                   <input style={IS} placeholder="Optional" value={custName} onChange={e => setCustName(e.target.value)} />
                 </div>
                 <div>
@@ -369,7 +369,7 @@ export function NewOrderDrawer({
           {/* ── Items ── */}
           <section>
             <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:12 }}>
-              <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600 }}>
+              <div style={{ fontSize:'var(--bs-text-sm)', color:T.text, fontWeight:600 }}>
                 Items
               </div>
               <button
@@ -379,7 +379,7 @@ export function NewOrderDrawer({
                   border:`1px solid ${T.border}`, color:T.accent, fontSize:12,
                   fontWeight:600, cursor:'pointer',
                 }}
-              >+ Add item</button>
+              >Add item</button>
             </div>
 
             {errors.items && (
@@ -467,18 +467,18 @@ export function NewOrderDrawer({
 
           {/* ── Order details ── */}
           <section>
-            <div style={{ fontSize:'var(--bs-text-2xs)', color:T.textMuted, textTransform:'uppercase', letterSpacing:'0.08em', fontWeight:600, marginBottom:12 }}>
-              Order Details
+            <div style={{ fontSize:'var(--bs-text-sm)', color:T.text, fontWeight:600, marginBottom:12 }}>
+              Order details
             </div>
             <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:10, marginBottom:10 }}>
               <div>
-                <div style={{ fontSize:11, color:T.textSecondary, marginBottom:4 }}>Payment Method</div>
+                <div style={{ fontSize:11, color:T.textSecondary, marginBottom:4 }}>Payment method</div>
                 <select style={IS} value={payMethod} onChange={e => setPayMethod(e.target.value)}>
                   {PAYMENT_METHODS_MANUAL.map(m => (<option key={m.value} value={m.value}>{m.label}</option>))}
                 </select>
               </div>
               <div>
-                <div style={{ fontSize:11, color:T.textSecondary, marginBottom:4 }}>Initial Status</div>
+                <div style={{ fontSize:11, color:T.textSecondary, marginBottom:4 }}>Initial status</div>
                 <select style={IS} value={orderStatus} onChange={e => setOrderStatus(e.target.value)}>
                   <option value="pending_manual">Pending (needs approval)</option>
                   <option value="paid">Paid (mark as done)</option>
@@ -637,7 +637,7 @@ export function NewOrderDrawer({
               opacity:saving?0.6:1, transition:'opacity .15s',
             }}
           >
-            {saving ? 'Creating…' : 'Create Order'}
+            {saving ? 'Creating…' : 'Create order'}
           </button>
         </div>
       </div>

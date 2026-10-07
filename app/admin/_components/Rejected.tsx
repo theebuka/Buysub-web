@@ -1,43 +1,92 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { toast } from "sonner"
-import { useTheme as useThemeController } from '@/lib/theme'
-import { getAccessToken } from '@/lib/session'
-import { API_BASE } from '@/lib/config'
+// /admin/rejected: stage one of the two-stage rejection (contract 5). Each
+// order here can be restored (back to Needs approval) or confirmed (cancelled).
 
-import { Badge, BtnLabel, EmptyState, Loading, Order, SmallBtn, T, UndoIcon, XIcon, apiFetch, fmt } from '../_lib/shared'
+import Link from 'next/link'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { Button } from '@/components/ui'
+import { DataTable, TableState, type DTColumn } from '@/components/admin/DataTable'
+import { AdminHead, CellTitle, adminStyles as s } from '@/components/admin/AdminUI'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import { fmtDateTime, fmtNGN } from '@/lib/format'
+import { useAdminList } from '../_lib/useAdminList'
+import { confirmReject, orderHref, undoReject, type AdminOrder } from '../_lib/orders'
 
-// ════════════════════ REJECTED TAB ════════════════════
+/** The reason the reject step appended to the notes, if any. */
+function reasonOf(notes: string | null) {
+  const m = String(notes || '').match(/Rejection reason:\s*(.+)$/m)
+  return m ? m[1] : notes || ''
+}
+
 export function RejectedTab() {
-  const [orders,setOrders]=useState<Order[]>([]); const [loading,setLoading]=useState(true); const [actionLoading,setActionLoading]=useState<string|null>(null)
-  const load=useCallback(async()=>{setLoading(true);const r=await apiFetch('/v2/admin/orders?status=rejected_pending&limit=50');if(r.ok)setOrders(r.data||[]);setLoading(false)},[])
-  useEffect(()=>{load()},[])
-  const confirmReject=async(ref:string)=>{if(!confirm(`Permanently reject ${ref}?`))return;setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/reject`,{method:'POST',body:JSON.stringify({confirm:true})});if(r.ok||r.data?.rejected)await load();else toast.error(r.error||'Failed');setActionLoading(null)}
-  const undoReject=async(ref:string)=>{setActionLoading(ref);const r=await apiFetch(`/v2/admin/orders/${ref}/undo-reject`,{method:'POST'});if(r.ok||r.data?.undone)await load();else toast.error(r.error||'Failed');setActionLoading(null)}
+  const list = useAdminList<AdminOrder>('/v2/admin/orders?status=rejected_pending', { limit: 50 })
+  const [busy, setBusy] = useState<string | null>(null)
+  const [confirming, setConfirming] = useState<AdminOrder[] | null>(null)
+  const drop = (refs: string[]) => list.setRows(rs => rs.filter(r => !refs.includes(r.order_ref)))
+
+  const undo = async (o: AdminOrder) => {
+    setBusy(o.order_ref)
+    const r = await undoReject(o.order_ref)
+    setBusy(null)
+    if (r.ok) { drop([o.order_ref]); toast.success(`${o.order_ref} restored to Needs approval`) }
+    else toast.error(r.error || 'Could not restore')
+  }
+  const confirm = async () => {
+    const rows = confirming || []
+    const done: string[] = []
+    for (const o of rows) {
+      const r = await confirmReject(o.order_ref)
+      if (r.ok) done.push(o.order_ref); else toast.error(`${o.order_ref}: ${r.error || 'Could not cancel'}`)
+    }
+    drop(done)
+    if (done.length) toast.success(done.length === 1 ? `${done[0]} cancelled` : `${done.length} orders cancelled`)
+    setConfirming(null)
+  }
+
+  const columns: DTColumn<AdminOrder>[] = [
+    { key: 'ref', header: 'Order', width: 170, cell: o => <CellTitle title={<Link href={orderHref(o.order_ref)} className={`${s.textLink} ${s.mono}`}>{o.order_ref}</Link>} sub={fmtDateTime(o.updated_at || o.created_at)} /> },
+    { key: 'customer', header: 'Customer', cell: o => <div className={s.clip}><CellTitle title={o.customer_name || o.customer_email || 'Guest'} sub={o.customer_name ? o.customer_email : ''} /></div> },
+    { key: 'reason', header: 'Reason', cell: o => <span className={`${s.secondary} ${s.clip}`} style={{ display: 'block' }} title={o.notes || ''}>{reasonOf(o.notes) || '-'}</span> },
+    { key: 'total', header: 'Total', align: 'right', cell: o => fmtNGN(o.total_ngn) },
+    {
+      key: 'actions', header: <span className="sr-only">Actions</span>, align: 'right', width: 220,
+      cell: o => (
+        <span style={{ display: 'inline-flex', gap: 'var(--bs-space-2)' }}>
+          <Button size="sm" variant="secondary" loading={busy === o.order_ref} disabled={!!busy} onClick={() => undo(o)}>Undo</Button>
+          <Button size="sm" variant="danger" disabled={!!busy} onClick={() => setConfirming([o])}>Confirm</Button>
+        </span>
+      ),
+    },
+  ]
+
   return (
-    <div>
-      <div style={{fontSize:13,color:T.warning,marginBottom:20,padding:'12px 16px',background:T.warningBg,borderRadius:'var(--bs-radius-lg)',border:`1px solid rgba(var(--bs-warning-rgb), 0.2)`}}>Orders here need a second confirmation before permanent cancellation. Use Undo to restore.</div>
-      {loading?<Loading/>:orders.length===0?<EmptyState text="No rejected orders pending"/>:(
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {orders.map(o=>(
-            <div key={o.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'18px 22px'}}>
-              <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',gap:12}}>
-                <div>
-                  <div style={{display:'flex',gap:8,alignItems:'center',marginBottom:6}}><span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:13,fontWeight:600,color:T.text}}>{o.order_ref}</span><Badge status="rejected_pending"/></div>
-                  <div style={{fontSize:13,color:T.textSecondary}}>{o.customer_name||o.customer_email||'—'}</div>
-                  {o.notes&&<div style={{fontSize:12,color:T.textMuted,marginTop:4}}>Reason: {o.notes}</div>}
-                </div>
-                <div style={{fontSize:20,fontWeight:700,color:T.text}}>{fmt(o.total_ngn)}</div>
-              </div>
-              <div style={{display:'flex',gap:8,marginTop:12}}>
-                <SmallBtn color={T.success} onClick={()=>undoReject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<UndoIcon/>}>Undo</BtnLabel></SmallBtn>
-                <SmallBtn color={T.error} onClick={()=>confirmReject(o.order_ref)} disabled={actionLoading===o.order_ref}><BtnLabel icon={<XIcon/>}>Confirm</BtnLabel></SmallBtn>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
+    <>
+      <AdminHead title="Rejected orders" lede="Rejected orders wait here for a second check. Undo sends an order back to Needs approval; Confirm cancels it for good." />
+      <DataTable
+        caption="Rejected orders awaiting confirmation"
+        columns={columns}
+        rows={list.rows}
+        rowKey={o => o.id}
+        rowHref={o => orderHref(o.order_ref)}
+        loading={list.loading}
+        error={list.error}
+        onRetry={list.reload}
+        selectable
+        bulkActions={(sel) => <Button size="sm" variant="danger" onClick={() => setConfirming(sel)}>Confirm {sel.length}</Button>}
+        empty={<TableState title="Nothing waiting">Orders you reject from the orders list land here until they’re confirmed or restored.</TableState>}
+      />
+      <ConfirmDialog
+        open={!!confirming}
+        title={confirming && confirming.length > 1 ? `Cancel ${confirming.length} orders?` : `Cancel ${confirming?.[0]?.order_ref}?`}
+        confirmLabel="Confirm rejection"
+        danger
+        onConfirm={confirm}
+        onClose={() => setConfirming(null)}
+      >
+        <p>Confirmed orders are cancelled and can’t be restored.</p>
+      </ConfirmDialog>
+    </>
   )
 }

@@ -1,68 +1,131 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { toast } from "sonner"
-import { useTheme as useThemeController } from '@/lib/theme'
-import { getAccessToken } from '@/lib/session'
-import { API_BASE } from '@/lib/config'
+// /admin: today at a glance. Numbers that need someone link to the queue
+// that clears them.
 
-import { Badge, Card, EmptyState, ErrorMsg, KpiCard, Loading, Stats, T, apiFetch, fmt, fmtDate, fmtFull } from '../_lib/shared'
+import { useState } from 'react'
+import { Button, StatusBadge } from '@/components/ui'
+import { AdminHead, ListRow, Panel, PanelLink, Stats, adminStyles as s } from '@/components/admin/AdminUI'
+import { TableState } from '@/components/admin/DataTable'
+import { useApi } from '@/lib/useApi'
+import { fmtDate, fmtDateTime, fmtNGN } from '@/lib/format'
+import { orderHref } from '../_lib/orders'
 
-// ════════════════════ OVERVIEW ════════════════════
-export function OverviewTab() {
-  const [stats,setStats]=useState<Stats|null>(null); const [loading,setLoading]=useState(true); const [error,setError]=useState('')
-  useEffect(()=>{apiFetch('/v2/admin/stats').then(r=>{if(r.ok)setStats(r.data);else setError(r.error||'Failed')}).catch(()=>setError('Network error')).finally(()=>setLoading(false))},[])
-  if(loading) return <Loading/>; if(error) return <ErrorMsg msg={error}/>; if(!stats) return null
+type Stats = {
+  total_revenue: number; revenue_today: number; revenue_this_month: number
+  orders_total?: number; orders_today: number; orders_pending_manual: number; orders_paid?: number; orders_rejected_pending?: number
+  products_active: number; products_total: number; customers_total: number; partners_pending: number
+  top_products?: { name: string; slug?: string; order_count: number; revenue: number }[]
+  recent_orders?: { order_ref: string; status: string; total_ngn: number; customer_name?: string; customer_email?: string; created_at: string }[]
+  revenue_by_day?: { day: string; revenue: number; orders: number }[]
+}
+
+/** admin_dashboard_stats returns only days with paid orders; lay them on a full 30-day axis. */
+function fillDays(rows: NonNullable<Stats['revenue_by_day']>) {
+  const byDay = new Map(rows.map(r => [String(r.day).slice(0, 10), r]))
+  const out: NonNullable<Stats['revenue_by_day']> = []
+  const today = new Date()
+  for (let i = 30; i >= 0; i--) {
+    const d = new Date(Date.UTC(today.getFullYear(), today.getMonth(), today.getDate() - i)).toISOString().slice(0, 10)
+    const hit = byDay.get(d)
+    out.push({ day: d, revenue: Number(hit?.revenue) || 0, orders: Number(hit?.orders) || 0 })
+  }
+  return out
+}
+
+function RevenueChart({ days }: { days: NonNullable<Stats['revenue_by_day']> }) {
+  const [hover, setHover] = useState<number | null>(null)
+  const max = Math.max(1, ...days.map(d => Number(d.revenue) || 0))
+  const total = days.reduce((a, d) => a + (Number(d.revenue) || 0), 0)
+  const orders = days.reduce((a, d) => a + (Number(d.orders) || 0), 0)
   return (
-    <div>
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))',gap:14,marginBottom:28}}>
-        <KpiCard label="Revenue Today" value={fmt(stats.revenue_today)}/>
-        <KpiCard label="Revenue (Month)" value={fmt(stats.revenue_this_month)}/>
-        <KpiCard label="Total Revenue" value={fmt(stats.total_revenue)}/>
-        <KpiCard label="Orders Today" value={String(stats.orders_today)}/>
-        <KpiCard label="Pending WhatsApp" value={String(stats.orders_pending_manual)} highlight={stats.orders_pending_manual>0}/>
-        <KpiCard label="Active Products" value={`${stats.products_active}/${stats.products_total}`}/>
-        <KpiCard label="Customers" value={String(stats.customers_total)}/>
-        <KpiCard label="Partners Pending" value={String(stats.partners_pending)} highlight={stats.partners_pending>0}/>
-      </div>
-      {/* `min(380px, 100%)`, not a bare 380px. auto-fit collapses to one track
-          on a phone, but a bare floor keeps that track 380px wide against a
-          312px container, so the tab overflowed by 59px — the widest floor in
-          the file, on the tab an admin lands on first. */}
-      <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(380px, 100%),1fr))',gap:18}}>
-        <Card title="Top Products (by revenue)">
-          {(!stats.top_products||stats.top_products.length===0)&&<EmptyState text="No sales data yet"/>}
-          {stats.top_products?.map((p,i)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:i<stats.top_products.length-1?`1px solid ${T.borderSubtle}`:'none'}}>
-              <div><div style={{fontSize:13,color:T.text}}>{p.name}</div><div style={{fontSize:11,color:T.textMuted}}>{p.order_count} orders</div></div>
-              <div style={{fontSize:13,fontWeight:600,color:T.text}}>{fmt(p.revenue)}</div>
-            </div>
-          ))}
-        </Card>
-        <Card title="Recent Orders">
-          {(!stats.recent_orders||stats.recent_orders.length===0)&&<EmptyState text="No orders yet"/>}
-          {stats.recent_orders?.map((o:any,i:number)=>(
-            <div key={i} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'12px 0',borderBottom:i<stats.recent_orders.length-1?`1px solid ${T.borderSubtle}`:'none',gap:12}}>
-              <div style={{minWidth:0}}>
-                <div style={{fontSize:13,color:T.text,display:'flex',gap:8,alignItems:'center'}}>
-                  <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',fontSize:12}}>{o.order_ref}</span><Badge status={o.status}/>
-                </div>
-                <div style={{fontSize:11,color:T.textMuted,marginTop:2}}>{o.customer_name||o.customer_email||'—'} · {fmtFull(o.created_at)}</div>
-              </div>
-              <div style={{fontSize:'var(--bs-text-sm)',fontWeight:600,color:T.text,flexShrink:0}}>{fmt(o.total_ngn)}</div>
-            </div>
-          ))}
-        </Card>
-      </div>
-      {stats.revenue_by_day&&stats.revenue_by_day.length>0&&(
-        <Card title="Revenue (Last 30 Days)" style={{marginTop:18}}>
-          <div style={{display:'flex',alignItems:'flex-end',gap:3,height:140,paddingTop:8}}>
-            {(()=>{const max=Math.max(...stats.revenue_by_day.map(d=>d.revenue),1);return stats.revenue_by_day.map((d,i)=>(
-              <div key={i} title={`${fmtDate(d.day)}: ${fmt(d.revenue)} (${d.orders} orders)`} style={{flex:1,minWidth:4,maxWidth:24,height:`${Math.max(2,(d.revenue/max)*100)}%`,background:T.accent,borderRadius:'4px 4px 0 0',cursor:'help',opacity:0.65,transition:'opacity 0.15s'}} onMouseEnter={e=>(e.currentTarget.style.opacity='1')} onMouseLeave={e=>(e.currentTarget.style.opacity='0.65')}/>
-            ))})()}
+    <Panel title="Revenue, last 30 days" action={<span className={s.muted} style={{ fontSize: 'var(--bs-text-xs)' }}>{fmtNGN(total)} · {orders.toLocaleString()} orders</span>}>
+      <div className={s.bars} role="img" aria-label={`Daily revenue for the last ${days.length} days, ${fmtNGN(total)} in total`}>
+        {days.map((d, i) => (
+          <div key={d.day} className={s.bar} tabIndex={0}
+            style={{ height: `${Math.max(1.5, (Number(d.revenue) / max) * 100)}%`, opacity: hover === null ? undefined : hover === i ? 1 : .35 }}
+            onMouseEnter={() => setHover(i)} onMouseLeave={() => setHover(null)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
+            aria-label={`${fmtDate(d.day)}: ${fmtNGN(d.revenue)}, ${d.orders} orders`}>
+            {hover === i && (
+              <span className={s.tip} style={i < 4 ? { left: 0, transform: 'none' } : i > days.length - 5 ? { left: 'auto', right: 0, transform: 'none' } : undefined}>
+                <span className={s.muted}>{fmtDate(d.day)}</span>
+                <span className={s.strong}>{fmtNGN(d.revenue)}</span>
+                <span className={s.muted}>{d.orders} {d.orders === 1 ? 'order' : 'orders'}</span>
+              </span>
+            )}
           </div>
-        </Card>
-      )}
-    </div>
+        ))}
+      </div>
+      <div className={s.barAxis}><span>{fmtDate(days[0].day)}</span><span>{fmtDate(days[days.length - 1].day)}</span></div>
+    </Panel>
+  )
+}
+
+export function OverviewTab() {
+  const { data: st, loading, error, reload } = useApi<Stats>('/v2/admin/stats')
+
+  if (loading && !st) {
+    return (
+      <>
+        <AdminHead title="Overview" />
+        <div className={s.stats}>{Array.from({ length: 8 }, (_, i) => <div key={i} className={s.stat}><span className={s.skel} style={{ width: '50%' }} /><span className={s.skel} style={{ width: '70%', height: 20, marginTop: 6 }} /></div>)}</div>
+      </>
+    )
+  }
+  if (!st) {
+    return (
+      <>
+        <AdminHead title="Overview" />
+        <Panel><TableState error title="Couldn’t load the dashboard" action={<Button size="sm" variant="secondary" onClick={reload}>Try again</Button>}>{error}</TableState></Panel>
+      </>
+    )
+  }
+
+  const top = st.top_products || []
+  const recent = st.recent_orders || []
+  const days = fillDays(st.revenue_by_day || [])
+
+  return (
+    <>
+      <AdminHead title="Overview" lede={new Date().toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} />
+      <Stats items={[
+        { label: 'Revenue today', value: fmtNGN(st.revenue_today), sub: `${(st.orders_today || 0).toLocaleString()} orders today` },
+        { label: 'Revenue this month', value: fmtNGN(st.revenue_this_month) },
+        { label: 'Revenue, all time', value: fmtNGN(st.total_revenue) },
+        { label: 'Customers', value: (st.customers_total || 0).toLocaleString(), href: '/admin/customers' },
+        { label: 'Orders needing approval', value: st.orders_pending_manual || 0, href: '/admin/orders?status=pending_manual', attention: st.orders_pending_manual > 0 },
+        { label: 'Rejected, awaiting confirmation', value: st.orders_rejected_pending || 0, href: '/admin/rejected', attention: (st.orders_rejected_pending || 0) > 0 },
+        { label: 'Partner applications', value: st.partners_pending || 0, href: '/admin/partners?status=pending_review', attention: st.partners_pending > 0 },
+        { label: 'Products live', value: `${(st.products_active || 0).toLocaleString()} of ${(st.products_total || 0).toLocaleString()}`, href: '/admin/products' },
+      ]} />
+
+      <RevenueChart days={days} />
+
+      <div className={s.grid2}>
+        <Panel title="Recent orders" action={<PanelLink href="/admin/orders">All orders</PanelLink>}>
+          {recent.length === 0 ? <TableState title="No orders yet" /> : (
+            <ul className={s.list}>
+              {recent.map(o => (
+                <ListRow key={o.order_ref} href={orderHref(o.order_ref)}
+                  title={<><span className={s.mono}>{o.order_ref}</span><StatusBadge status={o.status} audience="admin" /></>}
+                  sub={`${o.customer_name || o.customer_email || 'Guest'} · ${fmtDateTime(o.created_at)}`}
+                  end={fmtNGN(o.total_ngn)} />
+              ))}
+            </ul>
+          )}
+        </Panel>
+        <Panel title="Top products by revenue" action={<PanelLink href="/admin/products">Products</PanelLink>}>
+          {top.length === 0 ? <TableState title="No sales yet" /> : (
+            <ul className={s.list}>
+              {top.map((p, i) => (
+                <ListRow key={p.slug || i}
+                  lead={<span className={s.muted} style={{ width: 16, textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{i + 1}</span>}
+                  title={p.name} sub={`${p.order_count.toLocaleString()} orders`} end={fmtNGN(p.revenue)} />
+              ))}
+            </ul>
+          )}
+        </Panel>
+      </div>
+    </>
   )
 }

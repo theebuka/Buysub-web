@@ -1,70 +1,80 @@
 'use client'
 
-import { useEffect, useState, useCallback, useRef, useMemo } from 'react'
-import { toast } from "sonner"
-import { useTheme as useThemeController } from '@/lib/theme'
-import { getAccessToken } from '@/lib/session'
-import { API_BASE } from '@/lib/config'
+// /admin/affiliates: referral codes and commission rates. Approving sets the
+// rate; suspending stops the code earning.
 
-import { Badge, EmptyState, Loading, Pagination, PaginationBar, SmallBtn, T, apiFetch, emptyPagination, parsePagination, inputStyle } from '../_lib/shared'
+import { useState } from 'react'
+import { toast } from 'sonner'
+import { Button, StatusBadge } from '@/components/ui'
+import { DataTable, Filters, TableState, type DTColumn } from '@/components/admin/DataTable'
+import { AdminHead, CellTitle, adminStyles as s } from '@/components/admin/AdminUI'
+import { ConfirmDialog } from '@/components/admin/ConfirmDialog'
+import { authFetch } from '@/lib/apiAuth'
+import { fmtDate } from '@/lib/format'
+import { useAdminList } from '../_lib/useAdminList'
 
-// ════════════════════ AFFILIATES TAB ════════════════════
-export function AffiliatesTab() {
-  const [affiliates,setAffiliates]=useState<any[]>([]); const [pagination,setPagination]=useState<Pagination>(emptyPagination)
-  const [loading,setLoading]=useState(true); const [statusFilter,setStatusFilter]=useState(''); const [actionLoading,setActionLoading]=useState<string|null>(null)
-  const load=useCallback(async(page=1,status=statusFilter)=>{setLoading(true);const params=new URLSearchParams({page:String(page),limit:'20'});if(status)params.set('status',status);const r=await apiFetch(`/v2/admin/affiliates?${params}`);if(r.ok){setAffiliates(r.data||[]);setPagination(parsePagination(r))}setLoading(false)},[statusFilter])
-  useEffect(()=>{load()},[])
-  const approve=async(id:string)=>{const rate=prompt('Commission rate (%):','5');if(rate===null)return;setActionLoading(id);await apiFetch(`/v2/admin/affiliates/${id}/approve`,{method:'POST',body:JSON.stringify(rate.trim()===''?{}:{commission_rate:Number(rate)})});await load(pagination.page);setActionLoading(null)}
-  const suspend=async(id:string)=>{setActionLoading(id);await apiFetch(`/v2/admin/affiliates/${id}/suspend`,{method:'POST',body:JSON.stringify({reason:'Admin action'})});await load(pagination.page);setActionLoading(null)}
-  return (
-    <div>
-      <select value={statusFilter} onChange={e=>{setStatusFilter(e.target.value);load(1,e.target.value)}} style={{...inputStyle(),width:170,marginBottom:20}}>
-        <option value="">All</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="suspended">Suspended</option>
-      </select>
-      {loading?<Loading/>:affiliates.length===0?<EmptyState text="No affiliates"/>:(
-        <div style={{display:'flex',flexDirection:'column',gap:10}}>
-          {affiliates.map((a:any)=>(
-            <div key={a.id} style={{background:T.card,border:`1px solid ${T.borderSubtle}`,borderRadius:'var(--bs-radius-lg)',padding:'16px 22px',display:'flex',justifyContent:'space-between',alignItems:'center',gap:12,flexWrap:'wrap'}}>
-              <div>
-                <div style={{fontSize:'var(--bs-text-sm)',fontWeight:500,color:T.text}}>{a.business_name||a.store_name||'—'}</div>
-                <div style={{fontSize:12,color:T.textMuted,marginTop:3}}>Code: <span style={{fontFamily:'ui-monospace, SFMono-Regular, Menlo, monospace',background:T.elevated,padding:'2px 8px',borderRadius:6}}>{a.referral_code}</span> · {a.commission_rate}%</div>
-              </div>
-              <div style={{display:'flex',gap:6,alignItems:'center'}}>
-                <Badge status={a.status}/>
-                {a.status==='pending'&&<SmallBtn color={T.success} onClick={()=>approve(a.id)} disabled={actionLoading===a.id}>Approve</SmallBtn>}
-                {a.status==='approved'&&<SmallBtn color={T.warning} onClick={()=>suspend(a.id)} disabled={actionLoading===a.id}>Suspend</SmallBtn>}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      {pagination?.pages>1&&<PaginationBar pagination={pagination} onPage={p=>load(p)}/>}
-    </div>
-  )
+type Affiliate = {
+  id: string; status: string; business_name?: string; store_name?: string; referral_code: string
+  commission_rate: number; click_count?: number; created_at: string
+  profiles?: { display_name?: string; email?: string } | null
 }
 
-// ════════════════════════════════════════════════════════════════════
-// LINKS TAB — Short links management with full feature support
-// ════════════════════════════════════════════════════════════════════
-//
-// Feature matrix (UI ↔ backend)
-//   ✅ Edit destination               short_links.destination_url
-//   ✅ Expiration by date             short_links.expires_at
-//   ✅ Expiration by click limit      short_links.click_limit
-//   ✅ Link cloaking                  short_links.cloak
-//   ✅ Referrer hiding                short_links.hide_referrer
-//   ✅ Password protection            short_links.password_hash (SHA-256)
-//   ✅ Deep links (ios/android)       short_links.deep_link_* + *_app_store_id / *_package
-//   ✅ Region / city / country / OS   short_link_rules (priority-ordered)
-//   ✅ QR code w/ color + download    client-side, via api.qrserver.com
-//   ✅ UTM params                     short_links.utm_*
-//   ✅ Edit existing links            PATCH /v2/admin/links/:id
-//   ⛔ Main-page redirect / 404        domain-level, belongs in shortener worker settings, not per-link
-//
-// Conventions
-//   • All new sub-components (form sections, pickers, rule editors) are
-//     defined at module level — never inside LinksTab — to preserve
-//     input focus across re-renders. See userMemory: "Component stability".
-//   • Only `SmallBtn`, `Card`, `Loading`, `EmptyState`, `PaginationBar`,
-//     `apiFetch`, `toast`, `inputStyle`, `parsePagination`, `Pagination`,
-//     `emptyPagination`, `Theme` are imported from the existing admin scope.
+export function AffiliatesTab() {
+  const list = useAdminList<Affiliate>('/v2/admin/affiliates', { params: ['status'], limit: 25 })
+  const [dialog, setDialog] = useState<{ kind: 'approve' | 'suspend'; a: Affiliate } | null>(null)
+  const status = list.params.status || ''
+
+  const act = async (text: string) => {
+    if (!dialog) return
+    const { kind, a } = dialog
+    const body = kind === 'approve' ? (text.trim() === '' ? {} : { commission_rate: Number(text) }) : { reason: text || 'Admin action' }
+    const r = await authFetch(`/v2/admin/affiliates/${a.id}/${kind}`, { method: 'POST', body })
+    if (!r.ok) { toast.error(r.error || 'That didn’t work'); return }
+    list.patchRow(x => x.id === a.id, { status: kind === 'approve' ? 'approved' : 'suspended', ...(kind === 'approve' && text.trim() ? { commission_rate: Number(text) } : {}) })
+    toast.success(kind === 'approve' ? `${a.referral_code} approved` : `${a.referral_code} suspended`)
+    setDialog(null)
+  }
+
+  const columns: DTColumn<Affiliate>[] = [
+    { key: 'name', header: 'Partner', cell: a => <div className={s.clip}><CellTitle title={a.business_name || a.store_name || a.profiles?.display_name || '-'} sub={a.profiles?.email} /></div> },
+    { key: 'code', header: 'Code', cell: a => <span className={s.mono}>{a.referral_code}</span> },
+    { key: 'rate', header: 'Commission', align: 'right', cell: a => `${Number(a.commission_rate || 0)}%` },
+    { key: 'clicks', header: 'Clicks', align: 'right', cell: a => (a.click_count ?? 0).toLocaleString() },
+    { key: 'status', header: 'Status', cell: a => <StatusBadge status={a.status === 'active' ? 'approved' : a.status === 'pending' ? 'pending_review' : a.status} audience="admin" /> },
+    { key: 'since', header: 'Since', cell: a => <span className={s.secondary}>{fmtDate(a.created_at)}</span> },
+    {
+      key: 'actions', header: <span className="sr-only">Actions</span>, align: 'right',
+      cell: a => a.status === 'pending' ? <Button size="sm" onClick={() => setDialog({ kind: 'approve', a })}>Approve</Button>
+        : a.status === 'approved' || a.status === 'active' ? <Button size="sm" variant="secondary" onClick={() => setDialog({ kind: 'suspend', a })}>Suspend</Button>
+        : null,
+    },
+  ]
+
+  return (
+    <>
+      <AdminHead title="Affiliates" lede="Referral codes and the commission each one earns." />
+      <DataTable
+        caption="Affiliates"
+        columns={columns}
+        rows={list.rows}
+        rowKey={a => a.id}
+        loading={list.loading}
+        error={list.error}
+        onRetry={list.reload}
+        pagination={list.pagination}
+        onPage={p => list.setParams({ page: String(p) })}
+        toolbar={<Filters label="Status" value={status} onChange={v => list.setParams({ status: v })} options={[
+          { value: '', label: 'All' }, { value: 'pending', label: 'Pending' }, { value: 'approved', label: 'Approved' }, { value: 'suspended', label: 'Suspended' },
+        ]} />}
+        empty={<TableState title={status ? 'No affiliates with this status' : 'No affiliates yet'}>Approved partner applications get a referral code here.</TableState>}
+      />
+      <ConfirmDialog open={dialog?.kind === 'approve'} title={`Approve ${dialog?.a.referral_code}?`} confirmLabel="Approve"
+        reasonLabel="Commission rate (%)" reasonType="number" reasonDefault={String(dialog?.a.commission_rate || 5)}
+        reasonHint="Of each referred order’s total." onConfirm={act} onClose={() => setDialog(null)} />
+      <ConfirmDialog open={dialog?.kind === 'suspend'} title={`Suspend ${dialog?.a.referral_code}?`} confirmLabel="Suspend" danger
+        reasonLabel="Reason (optional)" onConfirm={act} onClose={() => setDialog(null)}>
+        <p>Orders using this code stop earning commission until it’s approved again.</p>
+      </ConfirmDialog>
+    </>
+  )
+}

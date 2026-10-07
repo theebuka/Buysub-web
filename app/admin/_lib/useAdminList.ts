@@ -41,7 +41,7 @@ export function useAdminList<R = any>(endpoint: string, { params = [], limit = 2
     setError('')
     const qs = new URLSearchParams({ limit: String(limit), ...values })
     if (!qs.get('page')) qs.set('page', '1')
-    const r = await authFetch<R[]>(`${endpoint}?${qs}`)
+    const r = await authFetch<R[]>(`${endpoint}${endpoint.includes("?") ? "&" : "?"}${qs}`)
     if (id !== seq.current) return
     if (r.ok) {
       const list = Array.isArray(r.data) ? r.data : []
