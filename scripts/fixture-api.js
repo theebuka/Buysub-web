@@ -951,7 +951,13 @@ const ROUTES = [
   [/^\/v2\/notifications$/,             () => ({ ok: true, data: SHELL_NOTIFICATIONS })],
   // /order/verify reads this through lib/api.ts, i.e. NEXT_PUBLIC_API_URL.
   [/^\/v2\/pay\/verify$/, () => VERIFY_OK
-    ? ({ ok: true, data: { verified: true, order_ref: 'BS-24118' } })
+    ? ({ ok: true, data: { verified: true, order_ref: 'BS-2026-7K2QX', summary: {
+        first_name: 'Ada', email_masked: 'ad••••@example.com', paid_at: new Date().toISOString(),
+        currency: 'NGN', fx_rate: 1, subtotal_ngn: 66000, discount_ngn: 3300, wallet_ngn: 2000, total_ngn: 60700,
+        items: [
+          { name: 'Netflix Premium', period: 'Annual', billing_type: 'recurring', months: 12, quantity: 1, total_ngn: 54000, slug: 'netflix-premium', domain: 'netflix.com', image_url: null, delivery_time: 'Within 2 hours' },
+          { name: 'Spotify Premium', period: 'Quarterly', billing_type: 'recurring', months: 3, quantity: 2, total_ngn: 12000, slug: null, domain: 'spotify.com', image_url: null, delivery_time: null },
+        ] } } })
     : ({ ok: true, data: { verified: false } })],
   // ── storefront ──────────────────────────────────────────────────────
   // A flat array, not page(): Marketplace reads res.data directly and
