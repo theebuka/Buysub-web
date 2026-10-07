@@ -63,7 +63,10 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (session.status !== 'signed_in' || !session.user) return
     const u = session.user
-    setC(prev => ({ email: prev.email || u.email, name: prev.name || u.full_name, phone: prev.phone || u.phone }))
+    // The email is the account's, always: the order is filed under it, and
+    // the wallet can only pay for the account's own orders. Browser autofill
+    // used to put another address here, which quietly switched the wallet off.
+    setC(prev => ({ email: u.email, name: prev.name || u.full_name, phone: prev.phone || u.phone }))
     if (status.services.wallet_pay) loadWallet()
   }, [session.status, session.user, status.services.wallet_pay])
 
@@ -136,7 +139,9 @@ export default function CheckoutPage() {
                 ? <p className={s.muted} style={{ marginBottom: 'var(--bs-space-4)' }}><Icon name="check" size={14} style={{ display: 'inline', verticalAlign: '-2px' }} /> Signed in. We filled these in from your account.</p>
                 : <p className={s.muted} style={{ marginBottom: 'var(--bs-space-4)' }}>Have an account? <Link className={s.inlineLink} href={`/login?next=${encodeURIComponent('/checkout')}`}>Sign in</Link> to track this order.</p>}
               <div className={s.formGrid}>
-                <Field label="Email">{p => <Input {...p} type="email" autoComplete="email" inputMode="email" value={c.email} onChange={set('email')} placeholder="you@example.com" />}</Field>
+                {session.status === 'signed_in' && session.user
+                  ? <Field label="Email" hint="Orders are filed under your account's email.">{p => <Input {...p} type="email" value={session.user!.email} readOnly />}</Field>
+                  : <Field label="Email">{p => <Input {...p} type="email" autoComplete="email" inputMode="email" value={c.email} onChange={set('email')} placeholder="you@example.com" />}</Field>}
                 <Field label="Full name">{p => <Input {...p} autoComplete="name" value={c.name} onChange={set('name')} placeholder="Ada Okonkwo" />}</Field>
                 <Field label="Phone (WhatsApp)" hint="We use this to deliver your subscription.">{p => <Input {...p} type="tel" autoComplete="tel" inputMode="tel" value={c.phone} onChange={set('phone')} placeholder="0803 000 0000" />}</Field>
               </div>
