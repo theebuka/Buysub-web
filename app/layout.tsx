@@ -7,6 +7,9 @@ import TawkWidget from '../components/TawkWidget'
 export const metadata = {
   title: 'BuySub — Digital Subscription Marketplace',
   description: 'Explore and purchase digital subscriptions and plans at the best prices.',
+  // A static file, not app/icon.svg: next-on-pages treats app/icon.* as a
+  // route that must be edge, and fails the Pages build.
+  icons: { icon: { url: '/brand/logomark-on-brand.svg', type: 'image/svg+xml' } },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
