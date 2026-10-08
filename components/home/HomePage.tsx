@@ -116,15 +116,21 @@ function Device() {
 
 const SNAPCHAT = 'Snapchat'
 
-function BrandTile({ b, copy, repeat }: { b: Brand; copy?: boolean; repeat?: boolean }) {
-  // White glyphs, except Snapchat: its mark is a white ghost with a black outline.
+/** A brand's Simple Icons glyph: white, except Snapchat, whose mark is a white ghost with a black outline. */
+function BrandGlyph({ b }: { b: Brand }) {
   const snap = b.name === SNAPCHAT
+  return (
+    <svg viewBox="-1 -1 26 26" aria-hidden="true">
+      <path d={b.path} fill="currentColor" {...(snap ? { stroke: '#000', strokeWidth: 1.1, paintOrder: 'stroke', strokeLinejoin: 'round' as const } : {})} />
+    </svg>
+  )
+}
+
+function BrandTile({ b, copy, repeat }: { b: Brand; copy?: boolean; repeat?: boolean }) {
   return (
     <Link href={`${ROUTES.shop}?q=${encodeURIComponent(b.q)}`} className={`${s.brand} ${repeat ? s.repeat : ''}`} tabIndex={copy ? -1 : undefined} aria-hidden={copy || undefined}>
       <span className={s.brandTile} style={{ background: b.hex, color: '#fff' }}>
-        <svg viewBox="-1 -1 26 26" aria-hidden="true">
-          <path d={b.path} fill="currentColor" {...(snap ? { stroke: '#000', strokeWidth: 1.1, paintOrder: 'stroke', strokeLinejoin: 'round' as const } : {})} />
-        </svg>
+        <BrandGlyph b={b} />
       </span>
       <span className={s.brandName}>{b.name}</span>
     </Link>
@@ -244,10 +250,36 @@ function HowItWorks({ priced, loading }: { priced: Priced[]; loading: boolean })
   )
 }
 
-const PROMISES = ['Prices in Naira, shown before you pay', 'Card, transfer, wallet or WhatsApp', 'Set up for you by our team']
+// Where the orbiting tiles sit around the logomark, in percent of the art box.
+const ORBIT = [
+  { x: 14, y: 20, r: -12 }, { x: 50, y: 6, r: 6 }, { x: 86, y: 22, r: 10 },
+  { x: 88, y: 76, r: -8 }, { x: 50, y: 93, r: 8 }, { x: 13, y: 78, r: 12 },
+]
+
+/** Art for the closer until a mascot exists: the apps we sell orbiting the BuySub mark. */
+function OrbitArt({ brands }: { brands: Brand[] }) {
+  return (
+    <div className={s.art} aria-hidden="true">
+      <span className={s.ring} />
+      <span className={`${s.ring} ${s.ringInner}`} />
+      <span className={s.hub}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/brand/logomark-tint.svg" alt="" />
+      </span>
+      {brands.slice(0, ORBIT.length).map((b, i) => (
+        <span
+          key={b.name} className={s.orbitTile}
+          style={{ left: `${ORBIT[i].x}%`, top: `${ORBIT[i].y}%`, background: b.hex, color: '#fff', '--r': `${ORBIT[i].r}deg`, animationDelay: `${i * -1.3}s` } as React.CSSProperties}
+        >
+          <BrandGlyph b={b} />
+        </span>
+      ))}
+    </div>
+  )
+}
 
 /** The closing call to action: why buy here, then the shop. */
-function Closer() {
+function Closer({ brands }: { brands: Brand[] }) {
   return (
     <section className={s.closer} aria-labelledby="closer-title">
       <div className={s.closerCard}>
@@ -259,11 +291,7 @@ function Closer() {
             <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className={s.closerGhost}>Ask us on WhatsApp</a>
           </div>
         </div>
-        <ul className={s.promises}>
-          {PROMISES.map(p => (
-            <li key={p} className={s.promise}><span className={s.promiseMark} aria-hidden="true"><Icon name="check" size={14} /></span>{p}</li>
-          ))}
-        </ul>
+        <OrbitArt brands={brands} />
       </div>
     </section>
   )
@@ -326,7 +354,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <Closer />
+      <Closer brands={brands} />
     </div>
   )
 }

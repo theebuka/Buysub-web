@@ -226,7 +226,7 @@
   border-radius: var(--bs-radius-md); background: var(--bs-accent-fill); color: #fff;
 }
 @media (min-width: 1024px) {
-  .closerCard { grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 64px; padding: 80px 64px; align-items: end; }
+  .closerCard { grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 64px; padding: 80px 64px; align-items: center; }
 }
 .closerMain { display: flex; flex-direction: column; align-items: flex-start; }
 .closerTitle { font-family: var(--display); font-weight: 500; font-size: clamp(38px, 5vw, 76px); line-height: .98; letter-spacing: -.04em; max-width: 12ch; text-wrap: balance; }
@@ -243,7 +243,30 @@
 .closerGhost { color: #fff; font-weight: 500; text-decoration: underline; text-underline-offset: 5px; text-decoration-color: rgba(255, 255, 255, .5); border-radius: 2px; }
 .closerGhost:hover { text-decoration-color: #fff; }
 .closerBtn:focus-visible, .closerGhost:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
-.promises { list-style: none; margin: 0; padding: 0; }
-.promise { display: flex; align-items: center; gap: var(--bs-space-3); padding: var(--bs-space-4) 0; border-top: 1px solid rgba(255, 255, 255, .28); font-size: var(--bs-text-base); font-weight: 500; }
-.promise:last-child { border-bottom: 1px solid rgba(255, 255, 255, .28); }
-.promiseMark { display: grid; place-items: center; width: 24px; height: 24px; flex: none; border-radius: 50%; background: #fff; color: var(--bs-accent-fill); }
+
+/* Orbit art: brand tiles around the BuySub mark, on two dashed white rings. */
+.art { position: relative; width: 100%; max-width: 460px; aspect-ratio: 1.1; justify-self: center; }
+.ring { position: absolute; left: 50%; top: 50%; width: 80%; aspect-ratio: 1; border-radius: 50%; border: 1px dashed rgba(255, 255, 255, .45); transform: translate(-50%, -50%); }
+.ringInner { width: 50%; border-style: solid; border-color: rgba(255, 255, 255, .22); }
+.hub {
+  position: absolute; left: 50%; top: 50%; display: grid; place-items: center;
+  width: 30%; aspect-ratio: 1; border-radius: 28%; background: #fff; transform: translate(-50%, -50%) rotate(-4deg);
+  box-shadow: 0 24px 48px -20px rgba(20, 8, 70, .55);
+}
+.hub img { width: 56%; height: auto; display: block; }
+.orbitTile {
+  position: absolute; display: grid; place-items: center; width: 19%; aspect-ratio: 1; border-radius: 26%;
+  transform: translate(-50%, -50%) rotate(var(--r));
+  box-shadow: 0 16px 32px -16px rgba(20, 8, 70, .55), inset 0 0 0 1px rgba(0, 0, 0, .06);
+}
+.orbitTile svg { width: 46%; height: 46%; }
+@media (prefers-reduced-motion: no-preference) {
+  .orbitTile { animation: bob 6.5s ease-in-out infinite; }
+  .ring:not(.ringInner) { animation: ringSpin 90s linear infinite; }
+}
+@keyframes ringSpin { to { transform: translate(-50%, -50%) rotate(1turn); } }
+@keyframes bob {
+  0%, 100% { transform: translate(-50%, -50%) rotate(var(--r)); }
+  50% { transform: translate(-50%, calc(-50% - 10px)) rotate(calc(var(--r) * -.5)); }
+}
+@media (max-width: 1023.98px) { .art { max-width: 360px; } }
