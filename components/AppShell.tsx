@@ -12,7 +12,6 @@ import { CartSync } from "@/lib/cartSync"
 import { toast } from "sonner"
 import { syncThemeToRoute } from "@/lib/theme"
 import { API_BASE } from "@/lib/config"
-import { isFramed, useFramed } from "@/lib/framed"
 
 // Precedence between the two env var names lives in lib/config.ts.
 const API = API_BASE
@@ -28,8 +27,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard") || pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/reset-password") || pathname.startsWith("/order/verify")
   // The home page runs full width; its sections set their own gutters.
   const isFullBleed = pathname === "/"
-  // The live shop inside the home page's phone (lib/framed.ts).
-  const framed = useFramed()
   const [stepIndex, setStepIndex] = useState(0)
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -40,7 +37,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => { syncThemeToRoute(pathname) }, [pathname])
 
   useEffect(() => {
-    if (isFramed()) return
     let seenCache = new Set<string>()
   
     const load = async () => {
@@ -107,7 +103,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <>
-      {banner && !isAdmin && !framed && (
+      {banner && !isAdmin && (
         // Phase 11 made the whole bar one <button> (it had been a
         // click-to-dismiss <div> with no role and no accessible name) and moved
         // the off-palette #0ea5e9 -> #6366f1 gradient onto
@@ -219,11 +215,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         }
       >
         <MaintenanceGate>{children}</MaintenanceGate>
-        {!framed && <SavedSync />}
-        {!framed && <CartSync />}
+        <SavedSync />
+        <CartSync />
       </div>
 
-      {modal && !framed && (
+      {modal && (
   (() => {
     const steps = modal.steps && Array.isArray(modal.steps)
       ? modal.steps
