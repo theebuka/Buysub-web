@@ -296,11 +296,11 @@
       },
       "title": {
         "displayName": "Title",
-        "purpose": "App page titles and KPI values (Public Sans)."
+        "purpose": "App page titles and KPI values."
       },
       "body": {
         "displayName": "Body",
-        "purpose": "Customer body copy (Public Sans; real ₦ glyph)."
+        "purpose": "Customer body copy (₦ from Public Sans)."
       },
       "body-dense": {
         "displayName": "Body dense",
@@ -516,12 +516,12 @@
   ],
   "narrative": {
     "northStar": "The Ruled Shopfront",
-    "overview": "**Creative North Star: \"The Ruled Shopfront\"**\n\nBuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.\n\nTwo registers share the same tokens. The app register (Public Sans, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a muted partner card to close. The home register is scoped to the home page; it is not a restyle of the app.\n\nConfirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.",
+    "overview": "**Creative North Star: \"The Ruled Shopfront\"**\n\nBuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.\n\nTwo registers share the same tokens. The app register (Geist at text sizes, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a muted partner card to close. The home register is scoped to the home page; it is not a restyle of the app.\n\nConfirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.",
     "keyCharacteristics": [
       "Light paper ground (`paper`), white cards, ink text with a slight cool cast.",
       "Violet only on primary actions and active states.",
       "Depth by surface step and 1px border; shadows only for things that genuinely float.",
-      "Public Sans for all text; Geist 500 only for home display type.",
+      "Geist for everything; ₦ alone comes from Public Sans.",
       "Third-party services shown in their official brand colour (Simple Icons)."
     ],
     "rules": [
@@ -541,8 +541,8 @@
         "section": "colors"
       },
       {
-        "name": "The Two Faces Rule",
-        "body": "Geist is the home page's display face and nothing else: headline, section titles, step numbers and titles, category names. Body copy, buttons, inputs, prices and every app surface stay in Public Sans.",
+        "name": "The One Face Rule",
+        "body": "Geist sets every word on every surface. Display sizes (home headline, section titles, step numbers and titles, category names) use weight 500 at -0.02em to -0.04em; text sizes keep normal tracking. The only other face is Public Sans, and only for ₦.",
         "section": "typography"
       },
       {
@@ -570,7 +570,7 @@
       "Do use `--bs-accent-fill` (#7756FF) under any text and `--bs-accent` (#7C5CFF) for fills without text, rings and active marks.",
       "Do separate surfaces with a tone step and a 1px `--bs-border-default` rule before reaching for a shadow.",
       "Do keep customer controls at 48px or taller.",
-      "Do set Geist only on home display type, at weight 500 and -0.02em to -0.04em tracking.",
+      "Do set home display type in Geist 500 at -0.02em to -0.04em tracking; text sizes keep normal tracking.",
       "Do show third-party services in their Simple Icons brand colour with a white glyph.",
       "Do render `rejected_pending` in the warning tone.",
       "Do honour reduced motion: entrances and the marquee stop, and the marquee becomes a scrollable row."
@@ -580,7 +580,6 @@
       "Don't put an eyebrow, kicker or uppercase label above a heading.",
       "Don't use violet for decoration, illustration, section backgrounds or tinted panels.",
       "Don't use title case or em dashes in visible copy.",
-      "Don't use Geist for body text, buttons, prices or any app surface.",
       "Don't round home surfaces past 10px (brand tiles excepted) or square off app cards below 16px.",
       "Don't use `--bs-text-faint` for text someone has to read.",
       "Don't recolour or redraw a third-party brand mark."

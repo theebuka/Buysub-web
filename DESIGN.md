@@ -44,22 +44,22 @@ typography:
     lineHeight: 1.15
     letterSpacing: "-0.02em"
   title:
-    fontFamily: "Public Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Geist, Public Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "24px"
     fontWeight: 700
     lineHeight: 1.2
   body:
-    fontFamily: "Public Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Geist, Public Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "15px"
     fontWeight: 400
     lineHeight: 1.6
   body-dense:
-    fontFamily: "Public Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Geist, Public Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "13px"
     fontWeight: 400
     lineHeight: 1.4
   label:
-    fontFamily: "Public Sans, system-ui, -apple-system, Segoe UI, sans-serif"
+    fontFamily: "Geist, Public Sans, system-ui, -apple-system, Segoe UI, sans-serif"
     fontSize: "14px"
     fontWeight: 600
     lineHeight: 1
@@ -158,7 +158,7 @@ components:
 
 BuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.
 
-Two registers share the same tokens. The app register (Public Sans, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a muted partner card to close. The home register is scoped to the home page; it is not a restyle of the app.
+Two registers share the same tokens. The app register (Geist at text sizes, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a muted partner card to close. The home register is scoped to the home page; it is not a restyle of the app.
 
 Confirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.
 
@@ -166,7 +166,7 @@ Confirmed rejections from the owner: no gradients, no glows, no eyebrows or kick
 - Light paper ground (`paper`), white cards, ink text with a slight cool cast.
 - Violet only on primary actions and active states.
 - Depth by surface step and 1px border; shadows only for things that genuinely float.
-- Public Sans for all text; Geist 500 only for home display type.
+- Geist for everything; ₦ alone comes from Public Sans.
 - Third-party services shown in their official brand colour (Simple Icons).
 
 ## Colors
@@ -202,23 +202,23 @@ A cool neutral paper-and-ink palette with one violet accent and brand colours bo
 
 ## Typography
 
-**Display Font:** Geist variable, self-hosted (`/fonts/Geist-Variable.woff2`), falling back to Public Sans
-**Body Font:** Public Sans (with system-ui, -apple-system, Segoe UI, sans-serif)
+**Font:** Geist variable, self-hosted (`/fonts/Geist-Variable.woff2`), for display and text alike
+**₦ glyph:** Public Sans, loaded as a one-glyph subset; Geist has no ₦, so the browser takes it from the next face in the stack (then system-ui, -apple-system, Segoe UI, sans-serif)
 
-**Character:** Geist at weight 500 with negative tracking gives the home page a compact, engineered headline voice; Public Sans is a neutral grotesque with tabular figures and a real ₦ glyph, which is why it carries every price and every word of UI.
+**Character:** One family carries the whole site. At weight 500 with negative tracking Geist gives the home page a compact, engineered headline voice; at text sizes it is a clean, neutral grotesque with tabular figures for prices and tables.
 
 ### Hierarchy
 - **Display** (Geist 500, clamp(44px, 6.2vw, 96px), 0.96, -0.04em): the home hero headline, two lines, balanced, max 15ch.
 - **Display partner** (Geist 500, clamp(34px, 4.4vw, 64px), 1, -0.035em): the partner card's headline, max 13ch.
 - **Headline** (Geist 500, clamp(34px, 4.4vw, 64px), 1, -0.035em): home section titles.
 - **Title display** (Geist 500, clamp(18px, 1.6vw, 24px), 1.15, -0.02em): home category card names.
-- **Title** (Public Sans 700, 24px, 1.2): app page titles and KPI values. 20px for panel titles and prices, 17px for card titles.
-- **Body** (Public Sans 400, 15px, 1.6): customer body copy; 14px in account and partner areas; prose at 40 to 75ch.
-- **Body dense** (Public Sans 400, 13px, 1.4): admin body and table cells.
-- **Label** (Public Sans 600, 14px, 1): buttons, tabs, active states. Badges and column headers at 11 to 12px, weight 500. Floor is 11px.
+- **Title** (Geist 700, 24px, 1.2): app page titles and KPI values. 20px for panel titles and prices, 17px for card titles.
+- **Body** (Geist 400, 15px, 1.6): customer body copy; 14px in account and partner areas; prose at 40 to 75ch.
+- **Body dense** (Geist 400, 13px, 1.4): admin body and table cells.
+- **Label** (Geist 600, 14px, 1): buttons, tabs, active states. Badges and column headers at 11 to 12px, weight 500. Floor is 11px.
 
 ### Named Rules
-**The Two Faces Rule.** Geist is the home page's display face and nothing else: headline, section titles, step numbers and titles, category names. Body copy, buttons, inputs, prices and every app surface stay in Public Sans.
+**The One Face Rule.** Geist sets every word on every surface. Display sizes (home headline, section titles, step numbers and titles, category names) use weight 500 at -0.02em to -0.04em; text sizes keep normal tracking. The only other face is Public Sans, and only for ₦.
 
 **The Sentence Case Rule.** All copy is sentence case. No uppercase kickers, no eyebrow labels over headings, no em dashes in visible copy. A heading stands alone.
 
@@ -257,7 +257,7 @@ Two radius scopes on one scale. The app register rounds generously: controls and
 ### Buttons
 Solid, compact and unadorned.
 - **Shape:** gently rounded (10px), 1px transparent border, 48px tall on customer surfaces (52px for the hero-level CTA, 32 to 40px for admin only).
-- **Primary:** Violet Fill with white label text, Public Sans 600 14px, 20px side padding (24px at xl, 15px text).
+- **Primary:** Violet Fill with white label text, Geist 600 14px, 20px side padding (24px at xl, 15px text).
 - **Hover / Focus:** hover darkens to Violet Hover over 120ms; press nudges down 1px; focus shows the violet ring. Disabled at 45% opacity.
 - **Secondary:** white with a `rule` border and ink text; hover steps to Paper Elevated with a Rule Strong border.
 - **Ghost:** transparent, slate text; hover fills Paper Elevated and inks the text.
@@ -289,7 +289,7 @@ The last section is a Paper Muted card at 10px radius inset in the page gutters 
 - **Do** use `--bs-accent-fill` (#7756FF) under any text and `--bs-accent` (#7C5CFF) for fills without text, rings and active marks.
 - **Do** separate surfaces with a tone step and a 1px `--bs-border-default` rule before reaching for a shadow.
 - **Do** keep customer controls at 48px or taller.
-- **Do** set Geist only on home display type, at weight 500 and -0.02em to -0.04em tracking.
+- **Do** set home display type in Geist 500 at -0.02em to -0.04em tracking; text sizes keep normal tracking.
 - **Do** show third-party services in their Simple Icons brand colour with a white glyph.
 - **Do** render `rejected_pending` in the warning tone.
 - **Do** honour reduced motion: entrances and the marquee stop, and the marquee becomes a scrollable row.
@@ -299,7 +299,6 @@ The last section is a Paper Muted card at 10px radius inset in the page gutters 
 - **Don't** put an eyebrow, kicker or uppercase label above a heading.
 - **Don't** use violet for decoration, illustration, section backgrounds or tinted panels.
 - **Don't** use title case or em dashes in visible copy.
-- **Don't** use Geist for body text, buttons, prices or any app surface.
 - **Don't** round home surfaces past 10px (brand tiles excepted) or square off app cards below 16px.
 - **Don't** use `--bs-text-faint` for text someone has to read.
 - **Don't** recolour or redraw a third-party brand mark.

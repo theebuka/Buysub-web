@@ -447,10 +447,10 @@ export const CSS_VARS = `
     --bs-page-gutter: 16px;
 
     /* ── Type family ────────────────────────────────────────── */
-    /* Public Sans: neutral grotesque with tabular figures and a real ₦
-       glyph (most UI faces fall back to the system font for it). Loaded in
-       app/layout.tsx. */
-    --bs-font-sans: 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    /* Geist (self-hosted, app/globals.css) is the face for everything.
+       It has no ₦, so Public Sans follows it in the stack, loaded in
+       app/layout.tsx as a one-glyph subset: the browser takes ₦ from it. */
+    --bs-font-sans: 'Geist', 'Public Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
 
     /* ── Scrollbar ──────────────────────────────────────────── */
     --bs-scroll-thumb: #33333D;

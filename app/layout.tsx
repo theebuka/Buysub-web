@@ -43,8 +43,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="" />
+        <link rel="preload" href="/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossOrigin="" />
+        {/* Public Sans for the ₦ glyph only (text=₦), which Geist lacks. */}
         <link
-          href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400..700;1,400..700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Public+Sans:ital,wght@0,400..700;1,400..700&text=%E2%82%A6&display=swap"
           rel="stylesheet"
         />
         {/* Tokens only. The reset, keyframes and utilities are in globals.css. */}

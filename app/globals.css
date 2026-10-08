@@ -116,8 +116,8 @@ input[type="checkbox"]:disabled, input[type="radio"]:disabled { opacity: .5; cur
 @media (max-width: 767.98px) { .bs-desktop-only { display: none !important; } }
 @media (min-width: 768px)    { .bs-mobile-only  { display: none !important; } }
 
-/* Geist (OFL, Vercel), self-hosted. Display face for the home page only;
-   the app's text face stays Public Sans. */
+/* Geist (OFL, Vercel), self-hosted: the site's one typeface
+   (--bs-font-sans). It has no ₦; that glyph comes from Public Sans. */
 @font-face {
   font-family: 'Geist';
   src: url('/fonts/Geist-Variable.woff2') format('woff2-variations'), url('/fonts/Geist-Variable.woff2') format('woff2');
