@@ -244,39 +244,26 @@ function HowItWorks({ priced, loading }: { priced: Priced[]; loading: boolean })
   )
 }
 
-const PARTNER_STEPS = [
-  ['Apply', 'Tell us about you or your business. We review every application.'],
-  ['Share your link', 'Send it to friends, followers or customers, for the whole shop or one product.'],
-  ['Earn commission', 'When someone buys through your link, you earn commission on the sale.'],
-]
+const PROMISES = ['Prices in Naira, shown before you pay', 'Card, transfer, wallet or WhatsApp', 'Set up for you by our team']
 
-function PartnerCard() {
+/** The closing call to action: why buy here, then the shop. */
+function Closer() {
   return (
-    <section className={s.partner} aria-labelledby="partner-title">
-      <div className={s.partnerCard}>
-        <div className={s.partnerMain}>
-          <h2 id="partner-title" className={s.partnerTitle}>Earn on every subscription you refer</h2>
-          <p className={s.partnerText}>Join the BuySub partner programme and get a link of your own.</p>
-          <div className={s.partnerBtns}>
-            <ButtonLink href={ROUTES.partner.apply} size="xl" iconRight="arrowRight">Become a partner</ButtonLink>
-            <ButtonLink href={ROUTES.loginNext(ROUTES.partner.home)} size="xl" variant="secondary">Partner sign in</ButtonLink>
+    <section className={s.closer} aria-labelledby="closer-title">
+      <div className={s.closerCard}>
+        <div className={s.closerMain}>
+          <h2 id="closer-title" className={s.closerTitle}>Pay in Naira. We handle the rest.</h2>
+          <p className={s.closerText}>No dollar card, no setup headaches. Pick a subscription and our team gets you in.</p>
+          <div className={s.closerBtns}>
+            <Link href={ROUTES.shop} className={s.closerBtn}>Browse the shop <Icon name="arrowRight" size={18} /></Link>
+            <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className={s.closerGhost}>Ask us on WhatsApp</a>
           </div>
         </div>
-        <div className={s.partnerSide}>
-          <div className={s.refLink} aria-hidden="true">
-            <span className={s.refLabel}>Your link</span>
-            <span className={s.refUrl}>app.buysub.ng/shop?ref=<b>YOURNAME</b></span>
-            <Icon name="copy" size={16} />
-          </div>
-          <ol className={s.pSteps}>
-            {PARTNER_STEPS.map(([t, b], i) => (
-              <li key={t} className={s.pStep}>
-                <span className={s.num}>{String(i + 1).padStart(2, '0')}</span>
-                <span><strong className={s.pStepTitle}>{t}</strong><span className={s.pStepBody}>{b}</span></span>
-              </li>
-            ))}
-          </ol>
-        </div>
+        <ul className={s.promises}>
+          {PROMISES.map(p => (
+            <li key={p} className={s.promise}><span className={s.promiseMark} aria-hidden="true"><Icon name="check" size={14} /></span>{p}</li>
+          ))}
+        </ul>
       </div>
     </section>
   )
@@ -339,7 +326,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <PartnerCard />
+      <Closer />
     </div>
   )
 }

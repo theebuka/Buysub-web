@@ -1,0 +1,33 @@
+/* Partner promo: a Paper Muted card inset in the page gutters. Moved from
+   the home page; kept for the partner landing page. */
+.partner { --rule: 1px solid var(--bs-border-default); --gut: var(--bs-page-gutter); --display: 'Geist', var(--bs-font-sans); }
+.partner { padding: 64px var(--gut); }
+@media (min-width: 1024px) { .partner { padding: 96px var(--gut); } }
+.partnerCard {
+  display: grid; gap: 40px; padding: 32px var(--bs-space-5);
+  border-radius: var(--bs-radius-md); background: var(--bs-bg-muted);
+}
+@media (min-width: 1024px) {
+  .partnerCard { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 64px; padding: 64px; align-items: center; }
+}
+.partnerMain { display: flex; flex-direction: column; align-items: flex-start; }
+.partnerTitle { font-family: var(--display); font-weight: 500; font-size: clamp(34px, 4.4vw, 64px); line-height: 1; letter-spacing: -.035em; max-width: 13ch; text-wrap: balance; }
+.partnerText { margin-top: var(--bs-space-5); font-size: var(--bs-text-lg); line-height: var(--bs-leading-relaxed); color: var(--bs-text-secondary); max-width: 40ch; }
+.partnerBtns { display: flex; flex-wrap: wrap; gap: var(--bs-space-3); margin-top: 32px; }
+.partnerSide { display: flex; flex-direction: column; gap: var(--bs-space-6); }
+.refLink {
+  display: flex; align-items: center; gap: var(--bs-space-3); min-height: 56px; padding: 0 var(--bs-space-4);
+  border-radius: 8px; background: var(--bs-bg-card); border: 1px solid var(--bs-border-default);
+  color: var(--bs-text-secondary); font-size: var(--bs-text-sm);
+}
+.refLabel { flex: none; padding-right: var(--bs-space-3); border-right: var(--rule); color: var(--bs-text-muted); }
+.refUrl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--bs-text-primary); }
+.refUrl b { font-weight: 600; color: var(--bs-accent-on-surface); }
+.pSteps { list-style: none; margin: 0; padding: 0; }
+.pStep { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: var(--bs-space-3); padding: var(--bs-space-4) 0; border-top: var(--rule); }
+.pStep:last-child { border-bottom: var(--rule); }
+.pStep .num { padding-top: 2px; }
+.pStepTitle { display: block; font-weight: 600; color: var(--bs-text-primary); }
+.pStepBody { display: block; margin-top: 2px; color: var(--bs-text-secondary); font-size: var(--bs-text-sm); line-height: var(--bs-leading-relaxed); }
+
+.num { font-family: var(--display); font-size: var(--bs-text-sm); font-weight: 500; color: var(--bs-text-muted); font-variant-numeric: tabular-nums; }

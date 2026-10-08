@@ -25,12 +25,12 @@ typography:
     fontWeight: 500
     lineHeight: 0.96
     letterSpacing: "-0.04em"
-  display-partner:
+  display-closer:
     fontFamily: "Geist, Public Sans, system-ui, sans-serif"
-    fontSize: "clamp(34px, 4.4vw, 64px)"
+    fontSize: "clamp(38px, 5vw, 76px)"
     fontWeight: 500
-    lineHeight: 1
-    letterSpacing: "-0.035em"
+    lineHeight: 0.98
+    letterSpacing: "-0.04em"
   headline:
     fontFamily: "Geist, Public Sans, system-ui, sans-serif"
     fontSize: "clamp(34px, 4.4vw, 64px)"
@@ -143,11 +143,11 @@ components:
     textColor: "{colors.card-white}"
     rounded: "{rounded.brand-tile}"
     size: "120px"
-  home-partner-card:
-    backgroundColor: "{colors.paper-muted}"
-    textColor: "{colors.ink}"
+  home-closer:
+    backgroundColor: "{colors.violet-fill}"
+    textColor: "#FFFFFF"
     rounded: "{rounded.md}"
-    padding: "64px"
+    padding: "80px 64px"
 ---
 
 # Design System: BuySub
@@ -158,7 +158,7 @@ components:
 
 BuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.
 
-Two registers share the same tokens. The app register (Geist at text sizes, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a muted partner card to close. The home register is scoped to the home page; it is not a restyle of the app.
+Two registers share the same tokens. The app register (Geist at text sizes, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a violet call-to-action card to close. The home register is scoped to the home page; it is not a restyle of the app.
 
 Confirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.
 
@@ -181,7 +181,7 @@ A cool neutral paper-and-ink palette with one violet accent and brand colours bo
 
 ### Neutral
 - **Paper** (`paper`): the page ground; also no longer used as text on Ink.
-- **Card White** (`card-white`): cards, inputs, secondary buttons, the how-it-works rows and the partner link field.
+- **Card White** (`card-white`): cards, inputs, secondary buttons, the how-it-works rows, the closer's button.
 - **Paper Elevated** (`paper-elevated`): hover fills, the media half of home category cards, table row hover.
 - **Paper Muted** (`paper-muted`): the body of home category cards, count pills, skeletons.
 - **Ink** (`ink`): primary text, the ink cross, the done mark in how it works.
@@ -209,7 +209,7 @@ A cool neutral paper-and-ink palette with one violet accent and brand colours bo
 
 ### Hierarchy
 - **Display** (Geist 500, clamp(44px, 6.2vw, 96px), 0.96, -0.04em): the home hero headline, two lines, balanced, max 15ch.
-- **Display partner** (Geist 500, clamp(34px, 4.4vw, 64px), 1, -0.035em): the partner card's headline, max 13ch.
+- **Display closer** (Geist 500, clamp(38px, 5vw, 76px), 0.98, -0.04em): the closing call to action's headline, max 12ch.
 - **Headline** (Geist 500, clamp(34px, 4.4vw, 64px), 1, -0.035em): home section titles.
 - **Title display** (Geist 500, clamp(18px, 1.6vw, 24px), 1.15, -0.02em): home category card names.
 - **Title** (Geist 700, 24px, 1.2): app page titles and KPI values. 20px for panel titles and prices, 17px for card titles.
@@ -226,7 +226,7 @@ A cool neutral paper-and-ink palette with one violet accent and brand colours bo
 
 The app is a centred column (max 1600px) with a responsive gutter of 16px, 24px from 768px and 32px from 1280px, on a strict 4px spacing grid (4, 8, 12, 16, 20, 24, 32, 48). Breakpoints are 640, 768, 1024 and 1280; 768 is the phone/desktop split for chrome, and tables become cards below it. The sticky site header is 64px.
 
-The home page runs full width and every band sets its own gutter. From 1024px the hero is a ruled grid, columns 2fr/1fr, as tall as the first viewport (capped at 980px): the top left is left empty, the headline sits bottom left with 72px below it, and the phone stage spans the right column; the phone is sized to the viewport height (0.46×, at least 360px, within the column) so its lower part always runs off the fold. Below 1024px it stacks the headline, then the phone stage (560px). The marquee band also holds How it works: a 1px rule, then three ruled columns (stacked below 900px), each a 232px Paper Muted panel holding a small piece of real UI, a Geist step number, title and body. Sections after the hero are bands of 64px vertical padding (96px from 1024px), each closed by a 1px rule, with a 40px gap from title row to content. Category cards run two columns, three from 1024px.
+The home page runs full width and every band sets its own gutter. From 1024px the hero is a ruled grid, columns 2fr/1fr, as tall as the first viewport (capped at 980px): the top left is left empty, the headline sits bottom left with 72px below it, and the phone stage spans the right column; the phone is sized to the viewport height (0.46×, at least 360px, within the column) so its lower part always runs off the fold. Below 1024px it stacks the headline, then the phone stage (560px). The marquee band also holds How it works, with no rule between them (one section): its title row, then three ruled columns (stacked below 900px), each a 232px Paper Muted panel holding a small piece of real UI, a Geist step number, title and body. Sections after the hero are bands of 96px vertical padding (144px from 1024px), each closed by a 1px rule, with a 40px gap from title row to content. Category cards run two columns, three from 1024px.
 
 ### Named Rules
 **The Ruled Grid Rule.** On the home page, structure is drawn, not boxed: 1px `rule` lines divide the hero cells and close each band, and an ink cross (33px, 1px arms) marks the one point where the hero's rules meet, from 1024px up. The rules belong to the home register; app surfaces use cards and borders instead.
@@ -247,7 +247,7 @@ Flat by default. Surfaces separate by a tonal step (paper, white card, elevated,
 
 ## Shapes
 
-Two radius scopes on one scale. The app register rounds generously: controls and inputs at 10px, panels and line items at 12px, cards and modals at 16px (20px for storefront cards from 768px), badges at 6px. The home register is tighter and more drafted: the outlined tag at 4px, how-it-works rows and the partner link field at 8px, category cards and the partner card at 10px, with circles only for radio marks, step marks and pills. Brand tiles are the one soft shape on the home page (28px on a 120px tile, 22px on 88px), matching an app icon. Borders are always 1px.
+Two radius scopes on one scale. The app register rounds generously: controls and inputs at 10px, panels and line items at 12px, cards and modals at 16px (20px for storefront cards from 768px), badges at 6px. The home register is tighter and more drafted: the outlined tag at 4px, how-it-works rows at 8px, category cards and the closer card at 10px, with circles only for radio marks, step marks and pills. Brand tiles are the one soft shape on the home page (28px on a 120px tile, 22px on 88px), matching an app icon. Borders are always 1px.
 
 ### Named Rules
 **The Scope Rule.** Corner radius follows the register: home surfaces stay at 10px or under (brand tiles excepted); app cards stay at 16 to 20px. Do not mix a home card into the app or round the home grid's cells.
@@ -280,8 +280,11 @@ Solid, compact and unadorned.
 ### Brand tile (home)
 A 120px square (88px under 640px) at 28px radius, filled with the service's official hex, white Simple Icons glyph at 54px, a 6% inset hairline, the brand name below in 13px slate. Hover lifts 4px and tilts -3deg. Tiles run in one or two marquee rows (60s linear loop, the second reversed), pause on hover and focus, and become a static scrollable row under reduced motion. Each links to a shop search for that product, and a brand appears only while the catalog sells it.
 
-### Partner card (home)
-The last section is a Paper Muted card at 10px radius inset in the page gutters (64px padding from 1024px). Left: Geist display headline (max 13ch), a 17px slate lede, an xl primary and an xl secondary button. Right: a white referral-link field (label, URL with the code in violet text, copy glyph; decorative) over three ruled steps, each a Geist step number, a 600 title and a 13px body.
+### Closer (home)
+The last section is the shopper's call to action: a Violet Fill card at 10px radius inset in the page gutters (96px section padding, 144px from 1024px; 80px/64px card padding). Left: the display-closer headline in white, a 17px white lede, a 52px white button with ink text ("Browse the shop") and an underlined white WhatsApp link. Right, bottom-aligned: three benefits on rules at 28% white, each with a white check disc carrying a violet tick. This is the one place violet is a surface, at the owner's request.
+
+### Partner promo (kept for the partner landing page)
+`components/partner/PartnerPromo.tsx`, not mounted. The section that closed the home page before the closer: a Paper Muted card with the partner headline, lede, "Become a partner" and "Partner sign in" buttons, a decorative referral-link field and three ruled steps.
 
 ## Do's and Don'ts
 

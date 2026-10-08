@@ -282,9 +282,9 @@
         "displayName": "Display",
         "purpose": "Home hero headline only. Geist, self-hosted at /fonts/Geist-Variable.woff2."
       },
-      "display-partner": {
-        "displayName": "Display partner",
-        "purpose": "Headline of the home page's partner card."
+      "display-closer": {
+        "displayName": "Display closer",
+        "purpose": "Headline of the home page's closing call to action."
       },
       "headline": {
         "displayName": "Headline",
@@ -516,7 +516,7 @@
   ],
   "narrative": {
     "northStar": "The Ruled Shopfront",
-    "overview": "**Creative North Star: \"The Ruled Shopfront\"**\n\nBuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.\n\nTwo registers share the same tokens. The app register (Geist at text sizes, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a muted partner card to close. The home register is scoped to the home page; it is not a restyle of the app.\n\nConfirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.",
+    "overview": "**Creative North Star: \"The Ruled Shopfront\"**\n\nBuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.\n\nTwo registers share the same tokens. The app register (Geist at text sizes, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a violet call-to-action card to close. The home register is scoped to the home page; it is not a restyle of the app.\n\nConfirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.",
     "keyCharacteristics": [
       "Light paper ground (`paper`), white cards, ink text with a slight cool cast.",
       "Violet only on primary actions and active states.",
