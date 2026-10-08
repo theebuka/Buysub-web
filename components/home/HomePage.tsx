@@ -3,8 +3,7 @@
 // ============================================================
 // BUYSUB — Home (/)
 // ============================================================
-// Hero on a ruled grid: the lede and the shop button (top left), the headline
-// (bottom left), and a right column with the rotating line and its pager over
+// Hero on a ruled grid: the headline (bottom left) and, in the right column,
 // the live shop in a tilted phone. Search lives in the header, so the hero
 // has none. Then three sections: the brand marquee with how it works,
 // browse by category, and the partner card. AppShell renders this route full width (isFullBleed),
@@ -36,9 +35,6 @@ import s from './home.module.css'
 const MOCKUP: string | null = null
 const SCREEN = { left: 0, top: 0, width: 100, height: 100, radius: '11% / 5%', transform: 'none' }
 
-const LINES = ['Priced in Naira.', 'Paid by card, transfer or WhatsApp.', 'Set up for you by our team.']
-const LINE_MS = 3600
-
 function useHomeData(products: Product[]) {
   return useMemo(() => {
     const byCat: Record<string, Product[]> = {}
@@ -63,8 +59,7 @@ function useHomeData(products: Product[]) {
       if (f) { seen.add(p.id); priced.push({ p, ...f }) }
       if (priced.length === 3) break
     }
-    // The same count the shop shows for an unfiltered catalog.
-    return { cats, brands, priced, count: products.length }
+    return { cats, brands, priced }
   }, [products])
 }
 
@@ -115,36 +110,6 @@ function Device() {
   return (
     <div className={s.phone}>
       <LiveShop />
-    </div>
-  )
-}
-
-function Rotator() {
-  const [i, setI] = useState(0)
-  const [paused, setPaused] = useState(false)
-  const [chosen, setChosen] = useState(false) // announce only lines the visitor picked
-  useEffect(() => {
-    if (paused || chosen) return
-    const t = window.setTimeout(() => setI(n => (n + 1) % LINES.length), LINE_MS)
-    return () => window.clearTimeout(t)
-  }, [i, paused, chosen])
-  return (
-    <div
-      className={s.rotator}
-      onMouseEnter={() => setPaused(true)} onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)} onBlur={() => setPaused(false)}
-    >
-      <div className={s.pager}>
-        {LINES.map((l, n) => (
-          <button
-            key={l} type="button" aria-current={n === i ? 'true' : undefined} aria-label={`Show: ${l.replace(/,$/, '')}`}
-            className={`${s.dot} ${n === i ? s.dotOn : ''}`} onClick={() => { setI(n); setChosen(true) }}
-          />
-        ))}
-      </div>
-      <p className={s.line} aria-live={chosen ? 'polite' : 'off'}>
-        <span key={i} className={s.lineText}>{LINES[i]}</span>
-      </p>
     </div>
   )
 }
@@ -320,23 +285,11 @@ function PartnerCard() {
 export default function HomePage() {
   useReferral() // records ?ref= from partner links to the home page
   const { products, loading } = useProducts()
-  const { cats, brands, priced, count } = useHomeData(products)
-  // Name only brands the catalog sells.
-  const named = brands.slice(0, 3).map(b => b.name)
-  const lede = named.length === 3
-    ? `${named[0]}, ${named[1]}, ${named[2]} and more, priced in Naira and set up for you.`
-    : 'Streaming, music, AI tools and more, priced in Naira and set up for you.'
+  const { cats, brands, priced } = useHomeData(products)
 
   return (
     <div className={s.home}>
       <section className={s.hero} aria-labelledby="home-title">
-        <div className={s.introCell}>
-          <p className={s.lede}>{lede}</p>
-          <div className={s.ctas}>
-            <ButtonLink href={ROUTES.shop} size="xl" iconRight="arrowRight">Browse all {count ? `${count} ` : ''}products</ButtonLink>
-            <a href="#how" className={s.textLink}>How it works</a>
-          </div>
-        </div>
         <div className={s.titleCell}>
           <span className={s.cross} aria-hidden="true" />
           <h1 id="home-title" className={s.title}>
@@ -344,10 +297,7 @@ export default function HomePage() {
             <span className={s.titleLine}>you use, <span className={s.nowrap}>in one place.</span></span>
           </h1>
         </div>
-        <div className={s.side}>
-          <div className={s.aside}><Rotator /></div>
-          <div className={s.stage}><Device /></div>
-        </div>
+        <div className={s.stage}><Device /></div>
       </section>
 
       <section className={s.band} aria-labelledby={loading || brands.length ? 'brands-title' : undefined} aria-label={loading || brands.length ? undefined : 'How it works'}>

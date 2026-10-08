@@ -12,8 +12,8 @@ Mode: Persuade. Audience: shoppers in Nigeria who want foreign subscriptions wit
 ## Direction contract
 
 THESIS: The product is its own hero: the real shop running in a phone on a ruled grid. Refuses the centred headline over a search pill and a card row.
-OWN-WORLD: Light paper ground, 1px rules meeting at an ink cross, Geist 500 display at -0.04em, Public Sans text, violet only on the active pager dot and primary buttons; brand tiles in each service's own colour.
+OWN-WORLD: Light paper ground, 1px rules meeting at an ink cross, Geist 500 display at -0.04em, Public Sans text, violet only on primary buttons and active states; brand tiles in each service's own colour.
 STORY: Visitor sees the shop working, reads "Every subscription you use, in one place.", recognises their apps in the marquee, picks a category, reads how buying works, or leaves through the partner card.
-FIRST VIEWPORT: Ruled grid, 2fr/1fr, sized to the viewport. Top left: lede and "Browse all products" with a "How it works" link. Bottom left: two-line headline at up to 96px. Right column, spanning both rows: dot pager over a rotating line, then the live shop in a phone tilted in perspective, cropped by the hero's bottom rule. No hero search (the header has it). Primary action is "Browse all products".
+FIRST VIEWPORT: Ruled grid, 2fr/1fr, sized to the viewport. Top left: empty. Bottom left: two-line headline at up to 96px. Right column, spanning both rows: the live shop in a phone tilted in perspective. No hero search, lede, buttons or rotating line (owner's call); the header carries search and browse.
 FORM: Pinned by the user (Abatable hero); no concept-seed roll. Code-led, no image generation.
 FINISH: unreviewed and undocumented is unfinished; this build ends with the finish review, the verdict, DESIGN.md, and every shipping raster carrying its provenance

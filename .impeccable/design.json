@@ -290,10 +290,6 @@
         "displayName": "Headline",
         "purpose": "Home section titles."
       },
-      "lede": {
-        "displayName": "Lede",
-        "purpose": "The home hero's rotating line."
-      },
       "title-display": {
         "displayName": "Title display",
         "purpose": "Home category card names."
@@ -402,11 +398,6 @@
         "name": "home-lift",
         "value": "1.1s ease-out, 0.15s delay",
         "purpose": "The phone rises 60px into the hero stage."
-      },
-      {
-        "name": "home-line",
-        "value": "0.7s ease-out every 3.6s",
-        "purpose": "Rotating line enters from below; pauses on hover or focus, stops once a dot is chosen."
       },
       {
         "name": "home-marquee",
@@ -551,7 +542,7 @@
       },
       {
         "name": "The Two Faces Rule",
-        "body": "Geist is the home page's display face and nothing else: headline, section titles, the rotating line, category names. Body copy, buttons, inputs, prices and every app surface stay in Public Sans.",
+        "body": "Geist is the home page's display face and nothing else: headline, section titles, step numbers and titles, category names. Body copy, buttons, inputs, prices and every app surface stay in Public Sans.",
         "section": "typography"
       },
       {
@@ -579,7 +570,7 @@
       "Do use `--bs-accent-fill` (#7756FF) under any text and `--bs-accent` (#7C5CFF) for fills without text, rings and active marks.",
       "Do separate surfaces with a tone step and a 1px `--bs-border-default` rule before reaching for a shadow.",
       "Do keep customer controls at 48px or taller.",
-      "Do set Geist only on home display type, at weight 500 (450 for the rotating line) and -0.02em to -0.04em tracking.",
+      "Do set Geist only on home display type, at weight 500 and -0.02em to -0.04em tracking.",
       "Do show third-party services in their Simple Icons brand colour with a white glyph.",
       "Do render `rejected_pending` in the warning tone.",
       "Do honour reduced motion: entrances and the marquee stop, and the marquee becomes a scrollable row."
