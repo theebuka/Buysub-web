@@ -18,6 +18,13 @@
 }
 @media (min-width: 768px) { .bar { gap: var(--bs-space-4); } }
 
+/* The full header (Browse, search box, Earn, theme, currency, sign-in
+   buttons) needs about 850px, so it starts at 1024px; below that the
+   compact header (menu, search and account icons) takes over. Its own
+   breakpoint: the global .bs-desktop-only switches at 768px. */
+@media (max-width: 1023.98px) { .wide { display: none !important; } }
+@media (min-width: 1024px) { .narrow { display: none !important; } }
+
 /* Keyboard users' "skip to content". Invisible until it receives focus from
    the Tab key; fixed, so the announcement banner above the header can't push
    it into view. */

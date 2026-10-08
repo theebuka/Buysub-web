@@ -266,9 +266,9 @@ function AccountMenu({ session }: { session: SessionState }) {
   if (session.status !== 'signed_in' || !session.user) {
     return (
       <div className={css.authBtns}>
-        <ButtonLink href={ROUTES.login} variant="ghost" size="md" className="bs-desktop-only">Sign in</ButtonLink>
-        <ButtonLink href={ROUTES.signup} variant="primary" size="md" className="bs-desktop-only">Create account</ButtonLink>
-        <span className="bs-mobile-only"><Link href={ROUTES.login} className={css.navIcon} aria-label="Sign in"><Icon name="user" size={20} /></Link></span>
+        <ButtonLink href={ROUTES.login} variant="ghost" size="md" className={css.wide}>Sign in</ButtonLink>
+        <ButtonLink href={ROUTES.signup} variant="primary" size="md" className={css.wide}>Create account</ButtonLink>
+        <span className={css.narrow}><Link href={ROUTES.login} className={css.navIcon} aria-label="Sign in"><Icon name="user" size={20} /></Link></span>
       </div>
     )
   }
@@ -281,7 +281,7 @@ function AccountMenu({ session }: { session: SessionState }) {
       trigger={({ toggle, props }) => (
         <button type="button" className={css.avatarBtn} onClick={toggle} aria-label="Account menu" {...props}>
           <Avatar user={user} />
-          <Icon name="chevronDown" size={14} className="bs-desktop-only" />
+          <Icon name="chevronDown" size={14} className={css.wide} />
         </button>
       )}
     >
@@ -448,32 +448,32 @@ export default function SiteHeader() {
     <header className={css.header}>
       <a href="#main" className={css.skip}>Skip to content</a>
       <div className={css.bar}>
-        <span className="bs-mobile-only">
+        <span className={css.narrow}>
           <IconButton icon="menu" label="Open menu" onClick={() => setNavOpen(true)} />
         </span>
         <Logo />
-        <nav aria-label="Primary" className={`${css.primary} bs-desktop-only`}>
+        <nav aria-label="Primary" className={`${css.primary} ${css.wide}`}>
           <BrowseMenu />
         </nav>
 
-        <button type="button" className={`${css.searchBox} bs-desktop-only`} onClick={() => setPaletteOpen(true)} aria-label="Search products">
+        <button type="button" className={`${css.searchBox} ${css.wide}`} onClick={() => setPaletteOpen(true)} aria-label="Search products">
           <Icon name="search" size={16} />
           <span className={css.searchPlaceholder}>Search Netflix, Spotify, ChatGPT…</span>
           <Kbd>/</Kbd>
         </button>
 
         <div className={css.actions}>
-          <Link href={ROUTES.partner.apply} className={`${css.navBtn} bs-desktop-only`}>
+          <Link href={ROUTES.partner.apply} className={`${css.navBtn} ${css.wide}`}>
             <Icon name="gift" size={16} /> Earn
           </Link>
-          <span className="bs-mobile-only">
+          <span className={css.narrow}>
             <IconButton icon="search" label="Search" onClick={() => setPaletteOpen(true)} />
           </span>
-          <span className="bs-desktop-only"><ThemeToggle /></span>
-          <span className="bs-desktop-only"><CurrencyMenu /></span>
-          {/* Desktop only: a 360px panel doesn't fit beside the phone header's
-              icons. On phones, Notifications is in the account section tabs. */}
-          {session.status === 'signed_in' && <span className="bs-desktop-only"><NotificationBell /></span>}
+          <span className={css.wide}><ThemeToggle /></span>
+          <span className={css.wide}><CurrencyMenu /></span>
+          {/* Wide header only: a 360px panel doesn't fit beside the compact
+              header's icons. Below 1024px, Notifications is in the account section tabs. */}
+          {session.status === 'signed_in' && <span className={css.wide}><NotificationBell /></span>}
           <IconButton icon="cart" label="Cart" count={count} onClick={() => setCartDrawer(true)} />
           <AccountMenu session={session} />
         </div>
