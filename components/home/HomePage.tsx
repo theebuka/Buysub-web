@@ -168,13 +168,74 @@ function Marquee({ brands }: { brands: Brand[] }) {
 type Priced = { p: Product; price: number; period: string }
 
 // How it works: three steps, each over a small piece of the real UI it describes.
+// Motion helpers for the how-it-works visuals: run only while on screen,
+// and not at all for visitors who ask for reduced motion.
+function useOnScreen<T extends Element>(ref: React.RefObject<T>): boolean {
+  const [on, setOn] = useState(false)
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const io = new IntersectionObserver(([e]) => setOn(e.isIntersecting), { threshold: 0.4 })
+    io.observe(el)
+    return () => io.disconnect()
+  }, [ref])
+  return on
+}
+
+function useReducedMotion(): boolean {
+  const [rm, setRm] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    setRm(mq.matches)
+    const on = () => setRm(mq.matches)
+    mq.addEventListener('change', on)
+    return () => mq.removeEventListener('change', on)
+  }, [])
+  return rm
+}
+
+/** Steps an index through `count` items every `ms` while `run` is true. */
+function useCycle(count: number, ms: number, run: boolean): [number, (n: number) => void] {
+  const [i, setI] = useState(0)
+  useEffect(() => {
+    if (!run || count < 2) return
+    const t = window.setInterval(() => setI(n => (n + 1) % count), ms)
+    return () => window.clearInterval(t)
+  }, [count, ms, run])
+  return [i, setI]
+}
+
+// Rows land one after another on a parabolic path (x eases out, y eases in),
+// spaced like rungs; then the active row (lifted, shifted right) walks
+// down the list and starts again.
+const LADDER_MS = 1300 // the last rung (delay 460ms) lands at 1.21s
+
 function StepPrices({ priced, loading }: { priced: Priced[]; loading: boolean }) {
+  const ref = useRef<HTMLUListElement>(null)
+  const onScreen = useOnScreen(ref)
+  const rm = useReducedMotion()
+  const [armed, setArmed] = useState(false) // hide rows only once JS can bring them in
+  const [landed, setLanded] = useState(false)
+  useEffect(() => { setArmed(true) }, [])
+  useEffect(() => {
+    if (loading || landed || !(onScreen || rm)) return
+    if (rm) { setLanded(true); return }
+    const t = window.setTimeout(() => setLanded(true), LADDER_MS)
+    return () => window.clearTimeout(t)
+  }, [loading, landed, onScreen, rm])
+  const entering = armed && !rm && !loading && onScreen && !landed
+  const waiting = armed && !rm && !loading && !onScreen && !landed
+  const [active] = useCycle(priced.length, 2200, landed && onScreen && !rm)
   return (
-    <ul className={s.vList}>
+    <ul ref={ref} className={s.vList}>
       {loading
         ? Array.from({ length: 3 }, (_, i) => <li key={i} className={s.vRow}><Skeleton width={28} height={28} radius="8px" /><Skeleton width="50%" height={12} /></li>)
-        : priced.map(({ p, price, period }) => (
-            <li key={p.id} className={`${s.vRow} ${s.cycle3}`}>
+        : priced.map(({ p, price, period }, i) => (
+            <li
+              key={p.id}
+              className={`${s.vRow} ${s.rung} ${waiting ? s.rungWait : ''} ${entering ? s.rungIn : ''} ${landed && i === active ? s.rungOn : ''}`}
+              style={{ '--d': `${Math.round(90 * i + 70 * i * i)}ms` } as React.CSSProperties}
+            >
               <ProductLogo product={p} size={28} radius="8px" />
               <span className={s.vName}>{p.name}</span>
               <span className={s.vPrice}>{fmtNGN(price)} <span className={s.vMuted}>{PERIODS[period]?.label}</span></span>
@@ -184,25 +245,55 @@ function StepPrices({ priced, loading }: { priced: Priced[]; loading: boolean })
   )
 }
 
-function StepPay() {
+type Way = { key: 'card' | 'transfer' | 'wallet' | 'whatsapp'; icon: IconName; label: string }
+
+// A small checkout in the manner of a payment element: method tabs with a
+// sliding selection, a panel that changes with the method, and the pay
+// button. It walks through the methods checkout offers right now.
+function StepPay({ priced }: { priced: Priced[] }) {
   const { services } = useSiteStatus()
-  // Only the options checkout offers right now (admins can switch them off).
-  const ways: { icon: IconName; label: string; on: boolean }[] = [
-    { icon: 'card', label: 'Card', on: services.paystack },
-    { icon: 'send', label: 'Bank transfer', on: services.paystack },
-    { icon: 'wallet', label: 'BuySub wallet', on: services.wallet_pay },
-    { icon: 'message', label: 'WhatsApp', on: services.whatsapp },
-  ].filter(w => w.on)
+  const ways: Way[] = ([
+    { key: 'card', icon: 'card', label: 'Card', on: services.paystack },
+    { key: 'transfer', icon: 'send', label: 'Transfer', on: services.paystack },
+    { key: 'wallet', icon: 'wallet', label: 'Wallet', on: services.wallet_pay },
+    { key: 'whatsapp', icon: 'message', label: 'WhatsApp', on: services.whatsapp },
+  ] as (Way & { on: boolean })[]).filter(w => w.on)
+  const ref = useRef<HTMLDivElement>(null)
+  const onScreen = useOnScreen(ref)
+  const rm = useReducedMotion()
+  const [i] = useCycle(ways.length, 2600, onScreen && !rm)
+  const at = Math.min(i, ways.length - 1)
+  const first = priced[0]
+  const pane = (w: Way) => {
+    switch (w.key) {
+      case 'card': return (
+        <span className={s.field}><Icon name="card" size={16} /><span className={s.fieldText}>1234 1234 1234 1234</span><span className={s.fieldSide}>MM / YY</span></span>
+      )
+      case 'transfer': return <span className={s.paneNote}>Pay into the account Paystack shows you at checkout.</span>
+      case 'wallet': return <span className={s.paneNote}>Your BuySub balance pays first; card or transfer covers the rest.</span>
+      case 'whatsapp': return (
+        <span className={s.bubble}>Hi, I’d like {first ? first.p.name : 'to order'}<span className={s.ticks}><Icon name="check" size={11} /><Icon name="check" size={11} /></span></span>
+      )
+    }
+  }
+  if (!ways.length) return null
   return (
-    <ul className={s.vList}>
-      {ways.map((w, i) => (
-        <li key={w.label} className={`${s.vRow} ${i === 0 ? s.vOn : ''} ${ways.length === 4 ? s.cycle4 : ''}`}>
-          <Icon name={w.icon} size={18} />
-          <span className={s.vName}>{w.label}</span>
-          <span className={s.radio} aria-hidden="true" />
-        </li>
-      ))}
-    </ul>
+    <div ref={ref} className={s.payEl}>
+      <div className={s.tabs} style={{ '--n': ways.length, '--i': at } as React.CSSProperties}>
+        <span className={s.tabInd} />
+        {ways.map((w, n) => (
+          <span key={w.key} className={`${s.tab} ${n === at ? s.tabOn : ''}`}><Icon name={w.icon} size={14} />{w.label}</span>
+        ))}
+      </div>
+      <div className={s.panes}>
+        {ways.map((w, n) => <div key={w.key} className={`${s.pane} ${n === at ? s.paneOn : ''}`}>{pane(w)}</div>)}
+      </div>
+      <span className={s.payBtn}>
+        <span key={ways[at].key === 'whatsapp' ? 'wa' : 'pay'} className={s.payLabel}>
+          {ways[at].key === 'whatsapp' ? 'Send order on WhatsApp' : first ? `Pay ${fmtNGN(first.price)}` : 'Pay now'}
+        </span>
+      </span>
+    </div>
   )
 }
 
@@ -224,7 +315,7 @@ function StepSetup() {
 function HowItWorks({ priced, loading }: { priced: Priced[]; loading: boolean }) {
   const steps = [
     { title: 'Pick it, priced in Naira', body: 'Search or browse the catalog. Every price is in Naira and shown before you pay, so you don’t need a dollar card.', visual: <StepPrices priced={priced} loading={loading} /> },
-    { title: 'Pay your way', body: 'Choose how to pay at checkout. Card and bank transfer go through Paystack.', visual: <StepPay /> },
+    { title: 'Pay your way', body: 'Choose how to pay at checkout. Card and bank transfer go through Paystack.', visual: <StepPay priced={priced} /> },
     { title: 'We set it up', body: 'Our team sets up the subscription and sends you the access details. Follow each order from your account.', visual: <StepSetup /> },
   ]
   return (
