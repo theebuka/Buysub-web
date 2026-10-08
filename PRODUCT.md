@@ -33,7 +33,7 @@ Naira pricing and human-handled setup for services that otherwise need a foreign
 ## Evidence on Hand
 - Live product catalog from the API (names, logos, categories, prices).
 - No testimonials, customer counts, ratings totals or press exist to quote; don't invent them.
-- Hero 3D phone mockup render (transparent background) will be supplied by the owner; a CSS phone tilted in perspective stands in until then.
+- Hero phone: a 3D mockup of the shop catalog from shots.so (owner's export), upscaled 4x with Real-ESRGAN and shipped at 2x as `public/home/hero-phone.png` (1360x2244, transparent). The 4x master is kept outside the repo.
 
 ## Product Principles
 1. The shortest path from "I want this service" to paying for it.

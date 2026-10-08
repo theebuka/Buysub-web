@@ -35,7 +35,7 @@ To watch changes live against the fixture API, use the `fixture-api` and `web-de
 
 | Route | File | Audience |
 |---|---|---|
-| `/` | `app/page.tsx` (edge) → `components/home/HomePage.tsx` | home: hero with the live shop in a phone, brand marquee and how it works, categories, a violet call to action (search lives in the header). The old partner section is kept unmounted in `components/partner/PartnerPromo.tsx` for the partner landing page. Old `/?category=…` style links redirect to `/shop` with their query; `?ref=` is recorded here |
+| `/` | `app/page.tsx` (edge) → `components/home/HomePage.tsx` | home: hero with a 3D phone mockup image (`public/home/hero-phone.png`), brand marquee and how it works, categories, a violet call to action (search lives in the header). The old partner section is kept unmounted in `components/partner/PartnerPromo.tsx` for the partner landing page. Old `/?category=…` style links redirect to `/shop` with their query; `?ref=` is recorded here |
 | `/shop`, `/shop/c/[category]` | `components/shop/ShopPage.tsx` | catalog: filters in the URL, quick view on card click |
 | `/shop/[slug]` | `app/shop/[slug]/page.tsx` (edge, fetches the product for metadata and schema.org JSON-LD) → `components/shop/ProductPage.tsx` | product page: buy box, frequently bought together, reviews, recently viewed; the quick view `pushState`s this URL |
 | `/saved` | `components/shop/SavedPage.tsx` | saved (heart) products, synced to the account when signed in (`lib/saved.ts`, `/v2/me/saved`), and recently viewed (this browser only) |

@@ -4,10 +4,10 @@
 // BUYSUB — Home (/)
 // ============================================================
 // Hero on a ruled grid: the headline (bottom left) and, in the right column,
-// the live shop in a tilted phone. Search lives in the header, so the hero
+// a 3D phone mockup of the shop. Search lives in the header, so the hero
 // has none. Then three sections: the brand marquee with how it works,
-// browse by category, and the partner card. AppShell renders this route full width (isFullBleed),
-// so every band sets its own gutters.
+// browse by category, and the closing call to action. AppShell renders this
+// route full width (isFullBleed), so every band sets its own gutters.
 //
 // Copy makes no promises the business hasn't made (no delivery times, no
 // guarantees). The marquee only shows services the loaded catalog sells.
@@ -26,14 +26,10 @@ import { ROUTES } from '@/lib/routes'
 import { BRANDS, type Brand } from './brands'
 import s from './home.module.css'
 
-// The phone in the hero. Until the 3D mockup render arrives, a CSS phone
-// tilted in perspective stands in. When it does, set MOCKUP to its path (a
-// transparent PNG in /public) and SCREEN to where the phone's screen sits in
-// it, in percent of the image; the live shop is placed there. An angled
-// screen also needs SCREEN.transform (a CSS transform matching the render's
-// perspective), or the render can carry a static screenshot instead.
-const MOCKUP: string | null = null
-const SCREEN = { left: 0, top: 0, width: 100, height: 100, radius: '11% / 5%', transform: 'none' }
+// The phone in the hero: a 3D mockup of the shop (shots.so, upscaled 4x with
+// Real-ESRGAN, saved at 2x: 1360x2244, transparent). The stage crops its
+// lower part at the fold.
+const HERO_PHONE = { src: '/home/hero-phone.png', width: 1360, height: 2244 }
 
 function useHomeData(products: Product[]) {
   return useMemo(() => {
@@ -63,54 +59,13 @@ function useHomeData(products: Product[]) {
   }, [products])
 }
 
-/** The live shop at phone width (390px), scaled into whatever box it's given. */
-function LiveShop() {
-  const box = useRef<HTMLDivElement>(null)
-  const [fit, setFit] = useState<{ s: number; h: number } | null>(null)
-  // On touch screens the frame would catch every vertical swipe, so it
-  // starts behind a tap-to-try layer (shown by CSS on coarse pointers only).
-  const [live, setLive] = useState(false)
-  useEffect(() => {
-    const el = box.current
-    if (!el) return
-    const measure = () => { const s = el.clientWidth / 390; setFit({ s, h: el.clientHeight / s }) }
-    measure()
-    const ro = new ResizeObserver(measure)
-    ro.observe(el)
-    return () => ro.disconnect()
-  }, [])
-  return (
-    <div ref={box} className={s.screen}>
-      <iframe
-        className={s.screenFrame} src="/shop" title="The BuySub shop, live" loading="lazy"
-        style={{ '--s': fit?.s ?? 0.72, height: fit ? `${fit.h}px` : '844px' } as React.CSSProperties}
-      />
-      {!live && (
-        <button type="button" className={s.tryShop} onClick={() => setLive(true)}>
-          <span className={s.tryLabel}>Tap to try the shop</span>
-        </button>
-      )}
-    </div>
-  )
-}
-
 function Device() {
-  if (MOCKUP) {
-    return (
-      <div className={s.mockup}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={MOCKUP} alt="" className={s.mockupImg} />
-        <div className={s.mockupScreen} style={{ left: `${SCREEN.left}%`, top: `${SCREEN.top}%`, width: `${SCREEN.width}%`, height: `${SCREEN.height}%`, borderRadius: SCREEN.radius, transform: SCREEN.transform }}>
-          <LiveShop />
-        </div>
-      </div>
-    )
-  }
-  // Placeholder until the mockup render is supplied.
   return (
-    <div className={s.phone}>
-      <LiveShop />
-    </div>
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={HERO_PHONE.src} width={HERO_PHONE.width} height={HERO_PHONE.height}
+      alt="The BuySub shop on a phone" className={s.heroPhone} fetchPriority="high" decoding="async"
+    />
   )
 }
 

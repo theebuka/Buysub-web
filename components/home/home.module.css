@@ -18,7 +18,7 @@
   border-bottom: var(--rule);
 }
 .titleCell { position: relative; padding: 40px var(--gut) var(--bs-space-8); }
-.stage { position: relative; overflow: hidden; height: 560px; perspective: 1800px; border-top: var(--rule); }
+.stage { position: relative; overflow: hidden; height: 560px; border-top: var(--rule); }
 
 @media (min-width: 1024px) {
   .hero {
@@ -60,49 +60,25 @@
 @media (max-width: 1023.98px) { .title { max-width: none; } }
 @keyframes rise { from { opacity: 0; transform: translateY(.35em); } to { opacity: 1; transform: none; } }
 
-/* The phone, tilted in perspective and cropped by the hero's bottom rule.
-   The live shop renders at 390px wide and is scaled to the screen
-   (LiveShop measures it), so it is the real page, not a picture. The edge
-   is a stack of 1px shadows on the side the tilt turns toward the viewer. */
-.phone {
-  --tilt: rotateX(12deg) rotateY(-22deg) rotateZ(4deg);
-  position: absolute; top: 48px; left: 50%;
-  width: 270px; aspect-ratio: 390 / 844; padding: 10px; box-sizing: content-box;
-  border-radius: 46px; background: #0B0B0F;
-  transform: translateX(-50%) var(--tilt);
-  transition: transform .9s var(--ease);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, .1),
-    -1px 1px 0 #24242c, -2px 2px 0 #24242c, -3px 3px 0 #1d1d24, -4px 4px 0 #1d1d24,
-    -5px 5px 0 #17171d, -6px 6px 0 #17171d, -7px 7px 0 #121217,
-    -40px 60px 80px -30px rgba(10, 10, 20, .4);
+/* The phone mockup. The image carries its own tilt and soft shadow (the
+   phone body is about 86% of its width); it is sized to the viewport height
+   so its lower part always runs off the fold, and the stage clips it. */
+.heroPhone {
+  position: absolute; top: 28px; left: 50%; translate: -50% 0;
+  width: 360px; height: auto; max-width: none; display: block;
+  user-select: none; -webkit-user-drag: none; pointer-events: none;
 }
-/* From 1024px the phone is taller than the stage, so its lower part runs off the fold. */
-@media (min-width: 1024px) { .phone { width: min(calc(100% - 72px), max(360px, calc((100dvh - var(--bs-header-h)) * .46))); top: 88px; } }
-@media (hover: hover) and (pointer: fine) {
-  .stage:hover .phone { --tilt: rotateX(4deg) rotateY(-8deg) rotateZ(1deg); }
+/* From 1024px the phone is wider than its column: the stage clips only the
+   bottom (the fold) and the right edge, so the tilted phone can lean over the
+   vertical rule on the left. */
+@media (min-width: 1024px) {
+  .stage { overflow: visible; clip-path: inset(0 0 0 -400px); }
+  .heroPhone { top: 56px; translate: -54% 0; width: max(440px, calc((100dvh - var(--bs-header-h)) * .68)); }
 }
 @media (prefers-reduced-motion: no-preference) {
-  .phone, .mockup { animation: lift 1.1s var(--ease) .15s both; }
+  .heroPhone { animation: lift 1.1s var(--ease) .15s both; }
 }
-@media (prefers-reduced-motion: reduce) { .phone { transition: none; } }
-@keyframes lift { from { opacity: 0; translate: 0 80px; } to { opacity: 1; translate: 0 0; } }
-.screen { position: relative; width: 100%; height: 100%; overflow: hidden; border-radius: 36px; background: var(--bs-bg-base); }
-.screenFrame { position: absolute; top: 0; left: 0; width: 390px; border: 0; transform-origin: 0 0; transform: scale(var(--s, .72)); }
-
-.mockup { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); height: 100%; }
-.mockupImg { display: block; height: 100%; width: auto; }
-.mockupScreen { position: absolute; overflow: hidden; }
-.mockupScreen .screen { border-radius: inherit; }
-
-/* Tap to try: covers the frame on touch screens until tapped. The pill sits
-   mid-screen because the phone's lower half runs off the hero's rule. */
-.tryShop { display: none; }
-@media (pointer: coarse) {
-  .tryShop { display: flex; align-items: center; justify-content: center; position: absolute; inset: 0; border: 0; padding: 0; background: transparent; cursor: pointer; font-family: inherit; }
-  .tryLabel { display: inline-flex; align-items: center; height: 36px; padding: 0 var(--bs-space-4); border-radius: var(--bs-radius-full); background: rgba(10, 10, 15, .82); color: #fff; font-size: var(--bs-text-sm); font-weight: 500; box-shadow: 0 8px 20px -10px rgba(0, 0, 0, .5); }
-  .tryShop:focus-visible .tryLabel { box-shadow: var(--bs-ring); }
-}
+@keyframes lift { from { opacity: 0; transform: translateY(80px); } to { opacity: 1; transform: none; } }
 
 /* ── Bands ───────────────────────────────────────────────────── */
 .band { padding: 96px 0; border-bottom: var(--rule); }
