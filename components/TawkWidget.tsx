@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
+import { isFramed } from '@/lib/framed'
 
 // Tawk.to live chat. Was an inline <script> in app/layout.tsx that ran
 // unconditionally on every route, so the widget mounted position:fixed over the
@@ -25,7 +26,7 @@ export function isChatRoute(pathname: string): boolean {
 
 export default function TawkWidget() {
   const pathname = usePathname()
-  const allowed = isChatRoute(pathname)
+  const allowed = isChatRoute(pathname) && !(typeof window !== 'undefined' && isFramed())
 
   useEffect(() => {
     const w = window as any
