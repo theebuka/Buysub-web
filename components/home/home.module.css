@@ -23,11 +23,13 @@
 @media (min-width: 1024px) {
   .hero {
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    grid-template-rows: minmax(220px, 1fr) auto;
-    min-height: min(calc(100dvh - var(--bs-header-h)), 980px);
+    grid-template-rows: minmax(0, 1fr) auto;
+    /* Exactly the first viewport, so the headline always clears the fold
+       and the phone runs off it. */
+    height: clamp(560px, calc(100dvh - var(--bs-header-h)), 980px);
   }
-  .titleCell { grid-column: 1; grid-row: 2; border-top: var(--rule); padding: 40px var(--gut) 40px calc(var(--gut) + 8px); display: flex; align-items: flex-end; }
-  .stage { grid-column: 2; grid-row: 1 / span 2; height: auto; min-height: 560px; border-top: 0; border-left: var(--rule); }
+  .titleCell { grid-column: 1; grid-row: 2; border-top: var(--rule); padding: 40px var(--gut) 72px calc(var(--gut) + 8px); display: flex; align-items: flex-end; }
+  .stage { grid-column: 2; grid-row: 1 / span 2; height: auto; min-height: 0; border-top: 0; border-left: var(--rule); }
 }
 
 .textLink { display: inline-flex; align-items: center; gap: var(--bs-space-2); font-weight: 500; color: var(--bs-text-primary); text-decoration: underline; text-underline-offset: 5px; text-decoration-color: var(--bs-border-strong); border-radius: 2px; }
@@ -75,7 +77,8 @@
     -5px 5px 0 #17171d, -6px 6px 0 #17171d, -7px 7px 0 #121217,
     -40px 60px 80px -30px rgba(10, 10, 20, .4);
 }
-@media (min-width: 1024px) { .phone { width: 320px; top: 64px; } }
+/* From 1024px the phone is taller than the stage, so its lower part runs off the fold. */
+@media (min-width: 1024px) { .phone { width: min(calc(100% - 72px), max(360px, calc((100dvh - var(--bs-header-h)) * .46))); top: 88px; } }
 @media (hover: hover) and (pointer: fine) {
   .stage:hover .phone { --tilt: rotateX(4deg) rotateY(-8deg) rotateZ(1deg); }
 }
