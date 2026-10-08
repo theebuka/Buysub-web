@@ -392,6 +392,15 @@ const PRODUCTS = [
     billing_type: 'subscription', billing_period: 'monthly',
     tags: null, domain: 'apple.com',
     stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 6 },
+  // On snapchat.com so the home marquee shows its Snapchat tile, the one
+  // brand drawn with an outline (white ghost, black stroke).
+  { id: 'p-snapchat', name: 'Snapchat+', slug: 'snapchat-plus',
+    category: 'social', description: 'Snapchat+ subscription.',
+    short_description: 'Early features', category_tagline: 'Social',
+    price_1m: 2500, price_3m: 7000, price_6m: null, price_1y: 26000,
+    billing_type: 'subscription', billing_period: 'monthly',
+    tags: null, domain: 'snapchat.com',
+    stock_status: 'in_stock', status: 'active', image_url: null, sort_order: 7 },
   // ── Rows 7-10 exist to make SponsoredProductCard reachable ─────────────
   // Marketplace calls interleaveAds(visible, sponsoredCards, 8), which inserts
   // an ad only after every 8th product. At six rows the modulo never fires, so

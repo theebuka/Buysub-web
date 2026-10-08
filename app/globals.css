@@ -115,3 +115,13 @@ input[type="checkbox"]:disabled, input[type="radio"]:disabled { opacity: .5; cur
 /* Show/hide by width. md (768) is the phone/desktop split for chrome. */
 @media (max-width: 767.98px) { .bs-desktop-only { display: none !important; } }
 @media (min-width: 768px)    { .bs-mobile-only  { display: none !important; } }
+
+/* Geist (OFL, Vercel), self-hosted. Display face for the home page only;
+   the app's text face stays Public Sans. */
+@font-face {
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2-variations'), url('/fonts/Geist-Variable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}

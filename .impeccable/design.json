@@ -1,0 +1,611 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-08T11:01:46.625843+00:00",
+  "title": "Design System: BuySub",
+  "extensions": {
+    "colorMeta": {
+      "violet": {
+        "role": "primary",
+        "displayName": "BuySub Violet",
+        "canonical": "#7C5CFF",
+        "oklch": "oklch(59.9% 0.230 286.2)",
+        "note": "--bs-accent; same in both themes. State marks with no text on them.",
+        "tonalRamp": [
+          "#0D0031",
+          "#260268",
+          "#4500B2",
+          "#6036DA",
+          "#7E5FFF",
+          "#9E92FF",
+          "#C3BFFF",
+          "#EAE9FF"
+        ]
+      },
+      "violet-fill": {
+        "role": "primary",
+        "displayName": "Violet Fill",
+        "canonical": "#7756FF",
+        "oklch": "oklch(58.6% 0.237 285.4)",
+        "note": "--bs-accent-fill; fills that carry white text.",
+        "tonalRamp": [
+          "#0C002F",
+          "#26006B",
+          "#430AAB",
+          "#5F34DE",
+          "#7D5DFF",
+          "#9D91FF",
+          "#C2BFFF",
+          "#E9E9FF"
+        ]
+      },
+      "violet-hover": {
+        "role": "primary",
+        "displayName": "Violet Hover",
+        "canonical": "#6B4EE6",
+        "oklch": "oklch(54.4% 0.218 285.3)",
+        "note": "--bs-accent-hover; primary hover.",
+        "tonalRamp": [
+          "#0C0030",
+          "#26006C",
+          "#4304AD",
+          "#5E3CD4",
+          "#7C63FC",
+          "#9C91FF",
+          "#C2BEFF",
+          "#E9E9FF"
+        ]
+      },
+      "violet-text": {
+        "role": "primary",
+        "displayName": "Violet Text",
+        "canonical": "#5B3FD4",
+        "oklch": "oklch(49.4% 0.215 283.9)",
+        "note": "--bs-accent-on-surface (light). Dark: #8A6DFF.",
+        "tonalRamp": [
+          "#0C0033",
+          "#24006C",
+          "#400BAC",
+          "#5B3ED3",
+          "#7965FB",
+          "#9A92FF",
+          "#C0BFFF",
+          "#E9EAFF"
+        ]
+      },
+      "paper": {
+        "role": "neutral",
+        "displayName": "Paper",
+        "canonical": "#F8F9FB",
+        "oklch": "oklch(98.2% 0.003 264.5)",
+        "note": "--bs-bg-base (light). Dark: #09090C.",
+        "tonalRamp": [
+          "#0B0B0C",
+          "#242526",
+          "#414243",
+          "#606163",
+          "#818284",
+          "#A4A5A7",
+          "#C8C9CB",
+          "#EDEEF0"
+        ]
+      },
+      "card-white": {
+        "role": "neutral",
+        "displayName": "Card White",
+        "canonical": "#FFFFFF",
+        "oklch": "oklch(100.0% 0.000 89.9)",
+        "note": "--bs-bg-card (light). Dark: #131318.",
+        "tonalRamp": [
+          "#0B0B0B",
+          "#252525",
+          "#424242",
+          "#616161",
+          "#828282",
+          "#A5A5A5",
+          "#C9C9C9",
+          "#EEEEEE"
+        ]
+      },
+      "paper-elevated": {
+        "role": "neutral",
+        "displayName": "Paper Elevated",
+        "canonical": "#F1F3F5",
+        "oklch": "oklch(96.3% 0.003 247.9)",
+        "note": "--bs-bg-elevated (light). Dark: #1A1A20.",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#242527",
+          "#414244",
+          "#606163",
+          "#818284",
+          "#A3A5A7",
+          "#C7C9CB",
+          "#EDEFF1"
+        ]
+      },
+      "paper-muted": {
+        "role": "neutral",
+        "displayName": "Paper Muted",
+        "canonical": "#E8EAED",
+        "oklch": "oklch(93.6% 0.005 258.3)",
+        "note": "--bs-bg-muted (light). Dark: #26262E.",
+        "tonalRamp": [
+          "#0A0B0D",
+          "#242527",
+          "#404244",
+          "#606164",
+          "#818285",
+          "#A3A5A8",
+          "#C7C9CC",
+          "#EDEFF2"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ink",
+        "canonical": "#1A1A2E",
+        "oklch": "oklch(22.8% 0.038 282.9)",
+        "note": "--bs-text-primary (light). Dark: #F7F7FA.",
+        "tonalRamp": [
+          "#09081B",
+          "#222337",
+          "#3F4056",
+          "#5E5F77",
+          "#7F8099",
+          "#A1A2BD",
+          "#C5C7E2",
+          "#EAECFF"
+        ]
+      },
+      "slate-secondary": {
+        "role": "neutral",
+        "displayName": "Slate Secondary",
+        "canonical": "#4A5568",
+        "oklch": "oklch(44.7% 0.034 261.3)",
+        "note": "--bs-text-secondary (light). Dark: #A6A6B3.",
+        "tonalRamp": [
+          "#040B19",
+          "#1C2536",
+          "#384255",
+          "#566275",
+          "#778397",
+          "#99A6BB",
+          "#BDCAE0",
+          "#E2EFFF"
+        ]
+      },
+      "slate-muted": {
+        "role": "neutral",
+        "displayName": "Slate Muted",
+        "canonical": "#66717F",
+        "oklch": "oklch(54.4% 0.026 254.5)",
+        "note": "--bs-text-muted (light). Dark: #8E8E9C.",
+        "tonalRamp": [
+          "#050C16",
+          "#1D2631",
+          "#394350",
+          "#586270",
+          "#788392",
+          "#9AA6B5",
+          "#BECADA",
+          "#E3F0FF"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Rule",
+        "canonical": "#E2E5E9",
+        "oklch": "oklch(92.1% 0.006 255.5)",
+        "note": "--bs-border-default (light). Dark: #2A2A33.",
+        "tonalRamp": [
+          "#090B0E",
+          "#232528",
+          "#404245",
+          "#5F6165",
+          "#808286",
+          "#A2A5A9",
+          "#C6C9CD",
+          "#ECEFF3"
+        ]
+      },
+      "rule-strong": {
+        "role": "neutral",
+        "displayName": "Rule Strong",
+        "canonical": "#D1D1D6",
+        "oklch": "oklch(86.2% 0.007 286.3)",
+        "note": "--bs-border-strong (light). Dark: #3E3E4A.",
+        "tonalRamp": [
+          "#0B0B0E",
+          "#252528",
+          "#414146",
+          "#616165",
+          "#828286",
+          "#A4A4A9",
+          "#C8C8CD",
+          "#EEEEF3"
+        ]
+      },
+      "success": {
+        "role": "status",
+        "displayName": "Success",
+        "canonical": "#059669",
+        "oklch": "oklch(59.6% 0.127 163.2)",
+        "note": "--bs-success (light). Dark: #22C55E. Status only.",
+        "tonalRamp": [
+          "#001204",
+          "#00301A",
+          "#005232",
+          "#00774C",
+          "#11996C",
+          "#48BE8E",
+          "#71E3B2",
+          "#B4FFDD"
+        ]
+      },
+      "warning": {
+        "role": "status",
+        "displayName": "Warning",
+        "canonical": "#D97706",
+        "oklch": "oklch(66.6% 0.157 58.3)",
+        "note": "--bs-warning (light). Dark: #F59E0B. Status only; includes rejected_pending.",
+        "tonalRamp": [
+          "#220000",
+          "#510000",
+          "#7A1D00",
+          "#9F4200",
+          "#C56500",
+          "#EC882A",
+          "#FFB472",
+          "#FFE7CF"
+        ]
+      },
+      "error": {
+        "role": "status",
+        "displayName": "Error",
+        "canonical": "#DC2626",
+        "oklch": "oklch(57.7% 0.215 27.3)",
+        "note": "--bs-error (light). Dark: #EF4444. Status only.",
+        "tonalRamp": [
+          "#220000",
+          "#4F0000",
+          "#810006",
+          "#BD0000",
+          "#E73430",
+          "#FF7366",
+          "#FFAFA5",
+          "#FFE5E0"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Home hero headline only. Geist, self-hosted at /fonts/Geist-Variable.woff2."
+      },
+      "display-close": {
+        "displayName": "Display close",
+        "purpose": "Headline of the home page's inverse close band."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Home section titles."
+      },
+      "lede": {
+        "displayName": "Lede",
+        "purpose": "The home hero's rotating line."
+      },
+      "title-display": {
+        "displayName": "Title display",
+        "purpose": "Home category card names."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "App page titles and KPI values (Public Sans)."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Customer body copy (Public Sans; real ₦ glyph)."
+      },
+      "body-dense": {
+        "displayName": "Body dense",
+        "purpose": "Admin body and table cells."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Buttons, tabs, active states."
+      }
+    },
+    "typeScale": {
+      "2xs": "11px",
+      "xs": "12px",
+      "sm": "13px",
+      "md": "14px",
+      "base": "15px",
+      "lg": "17px",
+      "xl": "20px",
+      "2xl": "24px",
+      "3xl": "32px"
+    },
+    "themes": {
+      "default": "light",
+      "mechanism": "[data-theme=\"light\"] on <html> overrides the dark :root in CSS_VARS (lib/constants.ts); the stored preference is bs_admin_theme"
+    },
+    "shadows": [
+      {
+        "name": "elev-1",
+        "value": "0 1px 3px rgba(0,0,0,0.06)",
+        "purpose": "Light theme resting lift for small floating items. Dark: 0 1px 2px rgba(0,0,0,0.28)."
+      },
+      {
+        "name": "elev-2",
+        "value": "0 4px 12px rgba(0,0,0,0.08)",
+        "purpose": "Dropdowns, popovers. Dark: 0 4px 16px rgba(0,0,0,0.35)."
+      },
+      {
+        "name": "elev-3",
+        "value": "0 16px 40px rgba(0,0,0,0.12)",
+        "purpose": "Drawers, modals. Dark: 0 16px 48px rgba(0,0,0,0.50)."
+      },
+      {
+        "name": "ring",
+        "value": "0 0 0 3px rgba(124,92,255,0.35)",
+        "purpose": "Keyboard focus on every interactive element."
+      },
+      {
+        "name": "home-search-hover",
+        "value": "0 6px 20px -12px rgba(0,0,0,.35)",
+        "purpose": "Hover feedback on the home search field."
+      },
+      {
+        "name": "home-phone",
+        "value": "0 40px 80px -30px rgba(10,10,20,.45), inset 0 0 0 1px rgba(255,255,255,.08)",
+        "purpose": "The hero phone (body #0B0B0F, 48px outer / 38px screen radius)."
+      },
+      {
+        "name": "home-logo-stack",
+        "value": "0 10px 24px -14px rgba(10,10,20,.5), 0 0 0 3px var(--bs-bg-elevated)",
+        "purpose": "Fanned product logos in home category cards."
+      },
+      {
+        "name": "brand-tile-hairline",
+        "value": "inset 0 0 0 1px rgba(0,0,0,.06)",
+        "purpose": "Edge on brand tiles so light brand colours hold on paper."
+      }
+    ],
+    "motion": [
+      {
+        "name": "dur-1",
+        "value": "120ms",
+        "purpose": "Hover and press feedback."
+      },
+      {
+        "name": "dur-2",
+        "value": "200ms",
+        "purpose": "State changes and fades."
+      },
+      {
+        "name": "dur-3",
+        "value": "280ms",
+        "purpose": "Drawer and modal entry."
+      },
+      {
+        "name": "ease-out",
+        "value": "cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Default easing; the home page uses the same curve for its entrances."
+      },
+      {
+        "name": "ease-inout",
+        "value": "cubic-bezier(0.4, 0, 0.2, 1)",
+        "purpose": "Symmetric transitions."
+      },
+      {
+        "name": "home-rise",
+        "value": "0.9s ease-out, 0.08s stagger per line",
+        "purpose": "Hero headline lines rise 0.35em."
+      },
+      {
+        "name": "home-lift",
+        "value": "1.1s ease-out, 0.15s delay",
+        "purpose": "The phone rises 60px into the hero stage."
+      },
+      {
+        "name": "home-line",
+        "value": "0.7s ease-out every 3.6s",
+        "purpose": "Rotating line enters from below; pauses on hover or focus, stops once a dot is chosen."
+      },
+      {
+        "name": "home-marquee",
+        "value": "60s linear infinite",
+        "purpose": "Brand rows; second row reversed; paused on hover/focus; static under reduced motion."
+      },
+      {
+        "name": "reduced-motion",
+        "value": "animation and transition durations forced to 1ms",
+        "purpose": "Global, in CSS_VARS."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "sm",
+        "value": "640px"
+      },
+      {
+        "name": "md",
+        "value": "768px"
+      },
+      {
+        "name": "lg",
+        "value": "1024px"
+      },
+      {
+        "name": "xl",
+        "value": "1280px"
+      }
+    ],
+    "layout": {
+      "pageMax": "1600px",
+      "gutter": "16px / 24px from 768 / 32px from 1280",
+      "headerHeight": "64px",
+      "controlHeights": {
+        "sm": "32px",
+        "md": "40px",
+        "lg": "48px",
+        "xl": "52px"
+      }
+    }
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Every primary action; the only filled violet control.",
+      "html": "<button class=\"ds-btn ds-btn-primary\">Become a partner</button>",
+      "css": ".ds-btn{font-family:var(--bs-font-sans);display:inline-flex;align-items:center;justify-content:center;gap:8px;height:48px;padding:0 20px;border-radius:var(--bs-radius-md);border:1px solid transparent;font-size:14px;font-weight:600;line-height:1;white-space:nowrap;cursor:pointer;transition:background 120ms cubic-bezier(0.16,1,0.3,1),border-color 120ms cubic-bezier(0.16,1,0.3,1),transform 120ms cubic-bezier(0.16,1,0.3,1)}.ds-btn:active{transform:translateY(1px)}.ds-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(124,92,255,.35)}.ds-btn-primary{background:var(--bs-accent-fill);color:#fff}.ds-btn-primary:hover{background:var(--bs-accent-hover)}"
+    },
+    {
+      "name": "Secondary Button",
+      "kind": "button",
+      "refersTo": "button-secondary",
+      "description": "Second action beside a primary.",
+      "html": "<button class=\"ds-btn-secondary\">View order</button>",
+      "css": ".ds-btn-secondary{font-family:var(--bs-font-sans);display:inline-flex;align-items:center;height:48px;padding:0 20px;border-radius:var(--bs-radius-md);border:1px solid var(--bs-border-default);background:var(--bs-bg-card);color:var(--bs-text-primary);font-size:14px;font-weight:600;cursor:pointer;transition:background 120ms,border-color 120ms}.ds-btn-secondary:hover{background:var(--bs-bg-elevated);border-color:var(--bs-border-strong)}.ds-btn-secondary:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(124,92,255,.35)}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Low-emphasis actions in toolbars and menus.",
+      "html": "<button class=\"ds-btn-ghost\">Cancel</button>",
+      "css": ".ds-btn-ghost{font-family:var(--bs-font-sans);display:inline-flex;align-items:center;height:48px;padding:0 20px;border-radius:var(--bs-radius-md);border:1px solid transparent;background:transparent;color:var(--bs-text-secondary);font-size:14px;font-weight:600;cursor:pointer;transition:background 120ms,color 120ms}.ds-btn-ghost:hover{background:var(--bs-bg-elevated);color:var(--bs-text-primary)}.ds-btn-ghost:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(124,92,255,.35)}"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "App form field.",
+      "html": "<input class=\"ds-input\" placeholder=\"Email address\" />",
+      "css": ".ds-input{font-family:var(--bs-font-sans);width:100%;height:48px;padding:0 14px;border-radius:var(--bs-radius-md);border:1px solid var(--bs-border-default);background:var(--bs-bg-input);color:var(--bs-text-primary);font-size:15px;transition:border-color 120ms,box-shadow 120ms}.ds-input::placeholder{color:var(--bs-text-muted)}.ds-input:hover{border-color:var(--bs-border-strong)}.ds-input:focus{outline:none;border-color:var(--bs-accent);box-shadow:0 0 0 3px rgba(124,92,255,.35)}"
+    },
+    {
+      "name": "Home Search",
+      "kind": "input",
+      "refersTo": "home-search",
+      "description": "Hero search trigger on the home page; opens the search palette.",
+      "html": "<button class=\"ds-search\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><span class=\"ds-search-text\">Search Netflix, Spotify, ChatGPT…</span><kbd class=\"ds-kbd\">/</kbd></button>",
+      "css": ".ds-search{display:flex;align-items:center;gap:12px;width:100%;height:60px;padding:0 12px 0 16px;border:1px solid var(--bs-text-primary);border-radius:var(--bs-radius-sm);background:var(--bs-bg-card);color:var(--bs-text-secondary);font-family:var(--bs-font-sans);font-size:15px;text-align:left;cursor:text;transition:box-shadow 120ms}.ds-search:hover{box-shadow:0 6px 20px -12px rgba(0,0,0,.35)}.ds-search:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(124,92,255,.35)}.ds-search-text{flex:1}.ds-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:4px;border:1px solid var(--bs-border-strong);font-family:inherit;font-size:12px;font-weight:600;color:var(--bs-text-muted)}"
+    },
+    {
+      "name": "Home Tag",
+      "kind": "chip",
+      "refersTo": "home-tag",
+      "description": "Outlined count tag on home category cards.",
+      "html": "<span class=\"ds-tag\">12 products</span>",
+      "css": ".ds-tag{display:inline-flex;align-items:center;height:28px;padding:0 8px;border:1px solid var(--bs-border-strong);border-radius:4px;font-family:var(--bs-font-sans);font-size:13px;color:var(--bs-text-primary)}"
+    },
+    {
+      "name": "App Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "Default container across app surfaces.",
+      "html": "<div class=\"ds-card\"><strong>Wallet</strong><p>₦12,500 available</p></div>",
+      "css": ".ds-card{background:var(--bs-bg-card);border:1px solid var(--bs-border-default);border-radius:var(--bs-radius-xl);padding:20px;font-family:var(--bs-font-sans);color:var(--bs-text-primary);transition:border-color 120ms}.ds-card:hover{border-color:var(--bs-border-strong)}.ds-card p{color:var(--bs-text-secondary);font-size:14px;margin-top:4px}"
+    },
+    {
+      "name": "Home Category Card",
+      "kind": "card",
+      "refersTo": "home-category-card",
+      "description": "Browse-by-category card on the home page: 2:1 media over a muted body.",
+      "html": "<a class=\"ds-cat\" href=\"#\"><span class=\"ds-cat-media\"><span class=\"ds-logo\" style=\"background:#E50914\"></span><span class=\"ds-logo\" style=\"background:#1ED760\"></span><span class=\"ds-logo\" style=\"background:#FF0000\"></span></span><span class=\"ds-cat-body\"><span class=\"ds-cat-name\">Streaming</span><span class=\"ds-cat-foot\"><span class=\"ds-tag\">12 products</span><svg width=\"18\" height=\"18\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><path d=\"M5 12h14M13 6l6 6-6 6\"/></svg></span></span></a>",
+      "css": ".ds-cat{display:flex;flex-direction:column;width:300px;border-radius:var(--bs-radius-md);overflow:hidden;background:var(--bs-bg-muted);color:var(--bs-text-primary);text-decoration:none}.ds-cat:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(124,92,255,.35)}.ds-cat-media{aspect-ratio:2/1;display:flex;align-items:center;justify-content:center;background:var(--bs-bg-elevated);border-bottom:1px solid var(--bs-border-default)}.ds-logo{width:64px;height:64px;border-radius:16px;box-shadow:0 10px 24px -14px rgba(10,10,20,.5),0 0 0 3px var(--bs-bg-elevated);transition:transform .6s cubic-bezier(.16,1,.3,1)}.ds-logo+.ds-logo{margin-left:-20px}.ds-logo:nth-child(1){transform:rotate(-8deg) translateY(4px)}.ds-logo:nth-child(3){transform:rotate(8deg) translateY(4px)}.ds-cat:hover .ds-logo:nth-child(1){transform:rotate(-14deg) translate(-10px,2px)}.ds-cat:hover .ds-logo:nth-child(3){transform:rotate(14deg) translate(10px,2px)}.ds-cat-body{display:flex;flex-direction:column;gap:32px;padding:20px}.ds-cat-name{font-family:'Geist',var(--bs-font-sans);font-size:24px;font-weight:500;letter-spacing:-.02em;line-height:1.15}.ds-cat-foot{display:flex;align-items:center;justify-content:space-between;color:var(--bs-text-secondary)}.ds-tag{display:inline-flex;align-items:center;height:28px;padding:0 8px;border:1px solid var(--bs-border-strong);border-radius:4px;font-family:var(--bs-font-sans);font-size:13px;color:var(--bs-text-primary)}"
+    },
+    {
+      "name": "Brand Tile",
+      "kind": "custom",
+      "refersTo": "home-brand-tile",
+      "description": "Marquee tile: the service's official colour with a white Simple Icons glyph.",
+      "html": "<a class=\"ds-brand\" href=\"#\"><span class=\"ds-brand-tile\" style=\"background:#E50914\"><svg viewBox=\"-1 -1 26 26\"><path fill=\"#fff\" d=\"m5.398 0 8.348 23.602c2.346.059 4.856.398 4.856.398L10.113 0H5.398zm8.489 0v9.172l4.715 13.33V0h-4.715zM5.398 1.5V24c1.873-.225 2.81-.312 4.715-.398V14.83L5.398 1.5z\"/></svg></span><span class=\"ds-brand-name\">Netflix</span></a>",
+      "css": ".ds-brand{display:flex;flex-direction:column;align-items:center;gap:12px;width:120px;color:var(--bs-text-secondary);text-decoration:none;font-family:var(--bs-font-sans)}.ds-brand-tile{display:grid;place-items:center;width:120px;height:120px;border-radius:28px;box-shadow:inset 0 0 0 1px rgba(0,0,0,.06);transition:transform .5s cubic-bezier(.16,1,.3,1)}.ds-brand-tile svg{width:54px;height:54px}.ds-brand:hover .ds-brand-tile{transform:translateY(-4px) rotate(-3deg)}.ds-brand:focus-visible{outline:none}.ds-brand:focus-visible .ds-brand-tile{box-shadow:0 0 0 3px rgba(124,92,255,.35)}.ds-brand-name{font-size:13px;font-weight:500}"
+    },
+    {
+      "name": "Site Header",
+      "kind": "nav",
+      "refersTo": "",
+      "description": "Sticky 64px header with a frosted page-ground fill and a 1px rule.",
+      "html": "<header class=\"ds-header\"><span class=\"ds-logo-word\">BuySub</span><nav class=\"ds-nav\"><button class=\"ds-nav-btn\" aria-expanded=\"true\">Browse</button><button class=\"ds-nav-btn\">Help</button></nav></header>",
+      "css": ".ds-header{display:flex;align-items:center;gap:16px;height:64px;padding:0 24px;background:color-mix(in srgb,var(--bs-bg-base) 88%,transparent);backdrop-filter:saturate(160%) blur(12px);border-bottom:1px solid var(--bs-border-default);color:var(--bs-text-primary);font-family:var(--bs-font-sans)}.ds-logo-word{font-size:17px;font-weight:700;letter-spacing:-.01em}.ds-nav{display:flex}.ds-nav-btn{font-family:inherit;height:40px;padding:0 12px;border:0;border-radius:var(--bs-radius-md);background:transparent;color:var(--bs-text-secondary);font-size:13px;font-weight:600;cursor:pointer}.ds-nav-btn:hover,.ds-nav-btn[aria-expanded=true]{background:var(--bs-bg-elevated);color:var(--bs-text-primary)}.ds-nav-btn:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(124,92,255,.35)}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Ruled Shopfront",
+    "overview": "**Creative North Star: \"The Ruled Shopfront\"**\n\nBuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.\n\nTwo registers share the same tokens. The app register (Public Sans, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and an inverse ink band to close. The home register is scoped to the home page; it is not a restyle of the app.\n\nConfirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.",
+    "keyCharacteristics": [
+      "Light paper ground (`paper`), white cards, ink text with a slight cool cast.",
+      "Violet only on primary actions and active states.",
+      "Depth by surface step and 1px border; shadows only for things that genuinely float.",
+      "Public Sans for all text; Geist 500 only for home display type.",
+      "Third-party services shown in their official brand colour (Simple Icons)."
+    ],
+    "rules": [
+      {
+        "name": "The Violet Is A Verb Rule",
+        "body": "Violet (`--bs-accent` #7C5CFF) appears only on primary actions and active or selected states. If nothing on screen can be pressed or is selected, there is no violet on screen.",
+        "section": "colors"
+      },
+      {
+        "name": "The Their Colour Rule",
+        "body": "A third-party service appears in its official brand colour from Simple Icons with a white glyph (Snapchat: white ghost with a black outline). Never recolour a brand to violet or grey, and never redraw a brand Simple Icons does not carry; leave it out.",
+        "section": "colors"
+      },
+      {
+        "name": "The Flat Colour Rule",
+        "body": "No gradients and no glows, on any surface, in either theme. Separation comes from a surface step or a 1px rule.",
+        "section": "colors"
+      },
+      {
+        "name": "The Two Faces Rule",
+        "body": "Geist is the home page's display face and nothing else: headline, section titles, the rotating line, category names. Body copy, buttons, inputs, prices and every app surface stay in Public Sans.",
+        "section": "typography"
+      },
+      {
+        "name": "The Sentence Case Rule",
+        "body": "All copy is sentence case. No uppercase kickers, no eyebrow labels over headings, no em dashes in visible copy. A heading stands alone.",
+        "section": "typography"
+      },
+      {
+        "name": "The Ruled Grid Rule",
+        "body": "On the home page, structure is drawn, not boxed: 1px `rule` lines divide the hero cells and close each band, and an ink cross (33px, 1px arms) marks the one point where the hero's rules meet, from 1024px up. The rules belong to the home register; app surfaces use cards and borders instead.",
+        "section": "layout"
+      },
+      {
+        "name": "The Surface Before Shadow Rule",
+        "body": "If a surface sits in the page, a tone step and a 1px border separate it. Reach for a shadow only when something truly floats over the page.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Scope Rule",
+        "body": "Corner radius follows the register: home surfaces stay at 10px or under (brand tiles excepted); app cards stay at 16 to 20px. Do not mix a home card into the app or round the home grid's cells.",
+        "section": "shapes"
+      }
+    ],
+    "dos": [
+      "Do use `--bs-accent-fill` (#7756FF) under any text and `--bs-accent` (#7C5CFF) for fills without text, rings and active marks.",
+      "Do separate surfaces with a tone step and a 1px `--bs-border-default` rule before reaching for a shadow.",
+      "Do keep customer controls at 48px or taller.",
+      "Do set Geist only on home display type, at weight 500 (450 for the rotating line) and -0.02em to -0.04em tracking.",
+      "Do show third-party services in their Simple Icons brand colour with a white glyph.",
+      "Do render `rejected_pending` in the warning tone.",
+      "Do honour reduced motion: entrances and the marquee stop, and the marquee becomes a scrollable row."
+    ],
+    "donts": [
+      "Don't use gradients or glows, on any surface or in either theme.",
+      "Don't put an eyebrow, kicker or uppercase label above a heading.",
+      "Don't use violet for decoration, illustration, section backgrounds or tinted panels.",
+      "Don't use title case or em dashes in visible copy.",
+      "Don't use Geist for body text, buttons, prices or any app surface.",
+      "Don't round home surfaces past 10px (brand tiles excepted) or square off app cards below 16px.",
+      "Don't use `--bs-text-faint` for text someone has to read.",
+      "Don't recolour or redraw a third-party brand mark."
+    ]
+  }
+}
