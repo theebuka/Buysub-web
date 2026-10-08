@@ -27,9 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           Sets data-theme before first paint so light-mode users do not see a
           dark flash. Everything is inside try/catch: localStorage throws in
           Safari private mode, and an uncaught throw in a head script blocks
-          render. The attribute is only ever set, never cleared, so an absent
-          key, a garbage value or a throw all fall through to :root, which is
-          dark. System preference is deliberately ignored. Every route is
+          render. Light unless the visitor chose dark (stored 'dark'), including
+          when storage is blocked. System preference is deliberately ignored. Every route is
           themeable since the storefront rebuild; see isThemeableRoute in
           lib/theme.ts.
         */}
@@ -37,9 +36,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           dangerouslySetInnerHTML={{
             __html:
               "(function(){try{" +
-                            "if(localStorage.getItem('bs_admin_theme')==='light')" +
+                            "if(localStorage.getItem('bs_admin_theme')!=='dark')" +
               "document.documentElement.setAttribute('data-theme','light');" +
-              "}catch(e){}})();",
+              "}catch(e){document.documentElement.setAttribute('data-theme','light');}})();",
           }}
         />
         <link rel="preconnect" href="https://fonts.googleapis.com" />

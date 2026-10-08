@@ -4,8 +4,9 @@
 // BUYSUB — Theme controller
 // ============================================================
 //
-// Dark is the default. Light is applied by putting data-theme="light" on
-// <html>, which activates the [data-theme="light"] block in CSS_VARS.
+// Light is the default; dark applies only when the visitor chose it (stored
+// 'dark'). Light is applied by putting data-theme="light" on <html>, which
+// activates the [data-theme="light"] block in CSS_VARS.
 //
 // The attribute is set before first paint by the inline script in
 // app/layout.tsx; this hook keeps it in sync afterwards. Both use the same
@@ -30,13 +31,13 @@ export function isThemeableRoute(_pathname: string): boolean {
   return true
 }
 
-// Anything that is not exactly 'light' means dark: absent key, garbage value,
-// or a throw. Matches how the four existing surfaces already read it.
+// Anything that is not exactly 'dark' means light: absent key, garbage value,
+// or a throw. The pre-paint script in app/layout.tsx reads it the same way.
 function readStoredTheme(): ThemeName {
   try {
-    return localStorage.getItem(THEME_STORAGE_KEY) === 'light' ? 'light' : 'dark'
+    return localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : 'light'
   } catch {
-    return 'dark'
+    return 'light'
   }
 }
 
@@ -73,11 +74,11 @@ export function syncThemeToRoute(pathname: string) {
  * Returns the current theme plus a toggle.
  *
  * `mounted` is false on the first render and true after the effect runs.
- * Render the dark fallback until it flips: localStorage must never be read
+ * Render the light fallback until it flips: localStorage must never be read
  * during render or hydration will mismatch.
  */
 export function useTheme() {
-  const [theme, setTheme] = useState<ThemeName>('dark')
+  const [theme, setTheme] = useState<ThemeName>('light')
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
