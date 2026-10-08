@@ -33,7 +33,7 @@ Naira pricing and human-handled setup for services that otherwise need a foreign
 ## Evidence on Hand
 - Live product catalog from the API (names, logos, categories, prices).
 - No testimonials, customer counts, ratings totals or press exist to quote; don't invent them.
-- Hero mockup photo (hand holding a phone, transparent background) will be supplied by the owner; a same-size placeholder stands in until then.
+- Hero 3D phone mockup render (transparent background) will be supplied by the owner; a CSS phone tilted in perspective stands in until then.
 
 ## Product Principles
 1. The shortest path from "I want this service" to paying for it.

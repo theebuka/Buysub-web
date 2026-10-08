@@ -3,10 +3,11 @@
 // ============================================================
 // BUYSUB — Home (/)
 // ============================================================
-// Hero on a ruled grid: the live shop in a phone (top left), a rotating line
-// with its pager (top right), the headline (bottom left) and search (bottom
-// right). Then three sections: the brand marquee, browse by category, and
-// the partner close. AppShell renders this route full width (isFullBleed),
+// Hero on a ruled grid: the lede and the shop button (top left), the headline
+// (bottom left), and a right column with the rotating line and its pager over
+// the live shop in a tilted phone. Search lives in the header, so the hero
+// has none. Then three sections: the brand marquee with how it works,
+// browse by category, and the partner card. AppShell renders this route full width (isFullBleed),
 // so every band sets its own gutters.
 //
 // Copy makes no promises the business hasn't made (no delivery times, no
@@ -14,22 +15,26 @@
 
 import Link from 'next/link'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { ButtonLink, Icon, ProductLogo, Skeleton } from '@/components/ui'
+import { ButtonLink, Icon, ProductLogo, Skeleton, type IconName } from '@/components/ui'
 import { useProducts } from '@/lib/useProducts'
 import { useReferral } from '@/lib/useReferral'
-import { getCategoryList, TAB_ORDER, type Product } from '@/lib/constants'
+import { getCategoryList, PERIODS, TAB_ORDER, WHATSAPP_NUMBER, type Product } from '@/lib/constants'
 import { categoryHref } from '@/lib/catalog'
-import { categoryLabel } from '@/lib/format'
+import { categoryLabel, fmtNGN } from '@/lib/format'
+import { fromPrice } from '@/lib/pricing'
+import { useSiteStatus } from '@/lib/siteStatus'
 import { ROUTES } from '@/lib/routes'
-import { shop } from '@/lib/shopBus'
 import { BRANDS, type Brand } from './brands'
 import s from './home.module.css'
 
-// The phone in the hero. When the hand photo arrives, set HAND to its path
-// (a transparent PNG in /public) and SCREEN to where the phone's screen sits
-// in it, in percent of the image; the live shop is placed there.
-const HAND: string | null = null
-const SCREEN = { left: 0, top: 0, width: 100, height: 100, radius: '11% / 5%' }
+// The phone in the hero. Until the 3D mockup render arrives, a CSS phone
+// tilted in perspective stands in. When it does, set MOCKUP to its path (a
+// transparent PNG in /public) and SCREEN to where the phone's screen sits in
+// it, in percent of the image; the live shop is placed there. An angled
+// screen also needs SCREEN.transform (a CSS transform matching the render's
+// perspective), or the render can carry a static screenshot instead.
+const MOCKUP: string | null = null
+const SCREEN = { left: 0, top: 0, width: 100, height: 100, radius: '11% / 5%', transform: 'none' }
 
 const LINES = ['Priced in Naira.', 'Paid by card, transfer or WhatsApp.', 'Set up for you by our team.']
 const LINE_MS = 3600
@@ -50,8 +55,16 @@ function useHomeData(products: Product[]) {
         || products.find(p => p.name.toLowerCase().startsWith(name))
       if (hit) brands.push({ ...b, q: hit.name })
     }
+    // Three priced products for the how-it-works list, the marquee's first.
+    const priced: { p: Product; price: number; period: string }[] = []
+    const seen = new Set<string>()
+    for (const p of [...brands.map(b => products.find(x => x.name === b.q)!), ...products]) {
+      const f = p && !seen.has(p.id) ? fromPrice(p) : null
+      if (f) { seen.add(p.id); priced.push({ p, ...f }) }
+      if (priced.length === 3) break
+    }
     // The same count the shop shows for an unfiltered catalog.
-    return { cats, brands, count: products.length }
+    return { cats, brands, priced, count: products.length }
   }, [products])
 }
 
@@ -87,18 +100,18 @@ function LiveShop() {
 }
 
 function Device() {
-  if (HAND) {
+  if (MOCKUP) {
     return (
-      <div className={s.hand}>
+      <div className={s.mockup}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={HAND} alt="" className={s.handImg} />
-        <div className={s.handScreen} style={{ left: `${SCREEN.left}%`, top: `${SCREEN.top}%`, width: `${SCREEN.width}%`, height: `${SCREEN.height}%`, borderRadius: SCREEN.radius }}>
+        <img src={MOCKUP} alt="" className={s.mockupImg} />
+        <div className={s.mockupScreen} style={{ left: `${SCREEN.left}%`, top: `${SCREEN.top}%`, width: `${SCREEN.width}%`, height: `${SCREEN.height}%`, borderRadius: SCREEN.radius, transform: SCREEN.transform }}>
           <LiveShop />
         </div>
       </div>
     )
   }
-  // Placeholder until the hand photo is supplied: the same phone, no hand.
+  // Placeholder until the mockup render is supplied.
   return (
     <div className={s.phone}>
       <LiveShop />
@@ -181,46 +194,176 @@ function Marquee({ brands }: { brands: Brand[] }) {
   )
 }
 
+type Priced = { p: Product; price: number; period: string }
+
+// How it works: three steps, each over a small piece of the real UI it describes.
+function StepPrices({ priced, loading }: { priced: Priced[]; loading: boolean }) {
+  return (
+    <ul className={s.vList}>
+      {loading
+        ? Array.from({ length: 3 }, (_, i) => <li key={i} className={s.vRow}><Skeleton width={28} height={28} radius="8px" /><Skeleton width="50%" height={12} /></li>)
+        : priced.map(({ p, price, period }) => (
+            <li key={p.id} className={s.vRow}>
+              <ProductLogo product={p} size={28} radius="8px" />
+              <span className={s.vName}>{p.name}</span>
+              <span className={s.vPrice}>{fmtNGN(price)} <span className={s.vMuted}>{PERIODS[period]?.label}</span></span>
+            </li>
+          ))}
+    </ul>
+  )
+}
+
+function StepPay() {
+  const { services } = useSiteStatus()
+  // Only the options checkout offers right now (admins can switch them off).
+  const ways: { icon: IconName; label: string; on: boolean }[] = [
+    { icon: 'card', label: 'Card', on: services.paystack },
+    { icon: 'send', label: 'Bank transfer', on: services.paystack },
+    { icon: 'wallet', label: 'BuySub wallet', on: services.wallet_pay },
+    { icon: 'message', label: 'WhatsApp', on: services.whatsapp },
+  ].filter(w => w.on)
+  return (
+    <ul className={s.vList}>
+      {ways.map((w, i) => (
+        <li key={w.label} className={`${s.vRow} ${i === 0 ? s.vOn : ''}`}>
+          <Icon name={w.icon} size={18} />
+          <span className={s.vName}>{w.label}</span>
+          <span className={s.radio} aria-hidden="true" />
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+const SETUP = ['Payment received', 'Our team sets it up', 'Access details sent']
+
+function StepSetup() {
+  return (
+    <ol className={s.track3}>
+      {SETUP.map((l, i) => (
+        <li key={l} className={`${s.tStep} ${i === 0 ? s.tDone : i === 1 ? s.tNow : ''}`}>
+          <span className={s.tMark} aria-hidden="true">{i === 0 && <Icon name="check" size={12} />}</span>
+          {l}
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function HowItWorks({ priced, loading }: { priced: Priced[]; loading: boolean }) {
+  const steps = [
+    { title: 'Pick it, priced in Naira', body: 'Search or browse the catalog. Every price is in Naira and shown before you pay, so you don’t need a dollar card.', visual: <StepPrices priced={priced} loading={loading} /> },
+    { title: 'Pay your way', body: 'Choose how to pay at checkout. Card and bank transfer go through Paystack.', visual: <StepPay /> },
+    { title: 'We set it up', body: 'Our team sets up the subscription and sends you the access details. Follow each order from your account.', visual: <StepSetup /> },
+  ]
+  return (
+    <div className={s.how} id="how">
+      <div className={s.howHead}>
+        <h3 className={s.h3}>How it works</h3>
+        <p className={s.howNote}>
+          Questions at any step?{' '}
+          <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className={s.textLink}>Chat with us on WhatsApp</a>
+        </p>
+      </div>
+      <ol className={s.steps}>
+        {steps.map((st, i) => (
+          <li key={st.title} className={s.step}>
+            <div className={s.visual} aria-hidden="true">{st.visual}</div>
+            <span className={s.num}>{String(i + 1).padStart(2, '0')}</span>
+            <h4 className={s.stepTitle}>{st.title}</h4>
+            <p className={s.stepBody}>{st.body}</p>
+          </li>
+        ))}
+      </ol>
+    </div>
+  )
+}
+
+const PARTNER_STEPS = [
+  ['Apply', 'Tell us about you or your business. We review every application.'],
+  ['Share your link', 'Send it to friends, followers or customers, for the whole shop or one product.'],
+  ['Earn commission', 'When someone buys through your link, you earn commission on the sale.'],
+]
+
+function PartnerCard() {
+  return (
+    <section className={s.partner} aria-labelledby="partner-title">
+      <div className={s.partnerCard}>
+        <div className={s.partnerMain}>
+          <h2 id="partner-title" className={s.partnerTitle}>Earn on every subscription you refer</h2>
+          <p className={s.partnerText}>Join the BuySub partner programme and get a link of your own.</p>
+          <div className={s.partnerBtns}>
+            <ButtonLink href={ROUTES.partner.apply} size="xl" iconRight="arrowRight">Become a partner</ButtonLink>
+            <ButtonLink href={ROUTES.loginNext(ROUTES.partner.home)} size="xl" variant="secondary">Partner sign in</ButtonLink>
+          </div>
+        </div>
+        <div className={s.partnerSide}>
+          <div className={s.refLink} aria-hidden="true">
+            <span className={s.refLabel}>Your link</span>
+            <span className={s.refUrl}>app.buysub.ng/shop?ref=<b>YOURNAME</b></span>
+            <Icon name="copy" size={16} />
+          </div>
+          <ol className={s.pSteps}>
+            {PARTNER_STEPS.map(([t, b], i) => (
+              <li key={t} className={s.pStep}>
+                <span className={s.num}>{String(i + 1).padStart(2, '0')}</span>
+                <span><strong className={s.pStepTitle}>{t}</strong><span className={s.pStepBody}>{b}</span></span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      </div>
+    </section>
+  )
+}
+
 export default function HomePage() {
   useReferral() // records ?ref= from partner links to the home page
   const { products, loading } = useProducts()
-  const { cats, brands, count } = useHomeData(products)
+  const { cats, brands, priced, count } = useHomeData(products)
+  // Name only brands the catalog sells.
+  const named = brands.slice(0, 3).map(b => b.name)
+  const lede = named.length === 3
+    ? `${named[0]}, ${named[1]}, ${named[2]} and more, priced in Naira and set up for you.`
+    : 'Streaming, music, AI tools and more, priced in Naira and set up for you.'
 
   return (
     <div className={s.home}>
       <section className={s.hero} aria-labelledby="home-title">
+        <div className={s.introCell}>
+          <p className={s.lede}>{lede}</p>
+          <div className={s.ctas}>
+            <ButtonLink href={ROUTES.shop} size="xl" iconRight="arrowRight">Browse all {count ? `${count} ` : ''}products</ButtonLink>
+            <a href="#how" className={s.textLink}>How it works</a>
+          </div>
+        </div>
         <div className={s.titleCell}>
+          <span className={s.cross} aria-hidden="true" />
           <h1 id="home-title" className={s.title}>
             <span className={s.titleLine}>Every subscription</span>{' '}
             <span className={s.titleLine}>you use, <span className={s.nowrap}>in one place.</span></span>
           </h1>
         </div>
-        <div className={s.searchCell}>
-          <span className={s.cross} aria-hidden="true" />
-          <button type="button" className={s.search} onClick={() => shop.openSearch()}>
-            <Icon name="search" size={20} />
-            <span className={s.searchText}>Search Netflix, Spotify, ChatGPT…</span>
-            <kbd className={s.kbd}>/</kbd>
-          </button>
-          <Link href={ROUTES.shop} className={s.browseAll}>
-            Browse all {count ? `${count} ` : ''}products <Icon name="arrowRight" size={16} />
-          </Link>
+        <div className={s.side}>
+          <div className={s.aside}><Rotator /></div>
+          <div className={s.stage}><Device /></div>
         </div>
-        <div className={s.aside}><Rotator /></div>
-        <div className={s.stage}><Device /></div>
       </section>
 
-      {(loading || brands.length > 0) && (
-        <section className={s.band} aria-labelledby="brands-title">
-          <div className={s.head}>
-            <h2 id="brands-title" className={s.h2}>The apps you already use</h2>
-            <ButtonLink href={ROUTES.shop} size="lg">View all</ButtonLink>
-          </div>
-          {loading
-            ? <div className={s.marqueeLoading}>{Array.from({ length: 12 }, (_, i) => <Skeleton key={i} width={120} height={120} radius="28px" />)}</div>
-            : <Marquee brands={brands} />}
-        </section>
-      )}
+      <section className={s.band} aria-labelledby={loading || brands.length ? 'brands-title' : undefined} aria-label={loading || brands.length ? undefined : 'How it works'}>
+        {(loading || brands.length > 0) && (
+          <>
+            <div className={s.head}>
+              <h2 id="brands-title" className={s.h2}>The apps you already use</h2>
+              <ButtonLink href={ROUTES.shop} size="lg">View all</ButtonLink>
+            </div>
+            {loading
+              ? <div className={s.marqueeLoading}>{Array.from({ length: 12 }, (_, i) => <Skeleton key={i} width={120} height={120} radius="28px" />)}</div>
+              : <Marquee brands={brands} />}
+          </>
+        )}
+        <HowItWorks priced={priced} loading={loading} />
+      </section>
 
       <section className={s.band} aria-labelledby="cats-title">
         <div className={s.head}>
@@ -246,16 +389,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      <section className={s.close} aria-labelledby="partner-title">
-        <h2 id="partner-title" className={s.closeTitle}>Earn on every subscription you refer</h2>
-        <div className={s.closeSide}>
-          <p className={s.closeText}>Share your link with friends, followers or customers. When they buy, you earn commission.</p>
-          <div className={s.closeBtns}>
-            <ButtonLink href={ROUTES.partner.apply} size="xl" iconRight="arrowRight">Become a partner</ButtonLink>
-            <Link href={ROUTES.loginNext(ROUTES.partner.home)} className={s.closeLink}>Partner sign in</Link>
-          </div>
-        </div>
-      </section>
+      <PartnerCard />
     </div>
   )
 }

@@ -282,9 +282,9 @@
         "displayName": "Display",
         "purpose": "Home hero headline only. Geist, self-hosted at /fonts/Geist-Variable.woff2."
       },
-      "display-close": {
-        "displayName": "Display close",
-        "purpose": "Headline of the home page's inverse close band."
+      "display-partner": {
+        "displayName": "Display partner",
+        "purpose": "Headline of the home page's partner card."
       },
       "headline": {
         "displayName": "Headline",
@@ -350,11 +350,6 @@
         "name": "ring",
         "value": "0 0 0 3px rgba(124,92,255,0.35)",
         "purpose": "Keyboard focus on every interactive element."
-      },
-      {
-        "name": "home-search-hover",
-        "value": "0 6px 20px -12px rgba(0,0,0,.35)",
-        "purpose": "Hover feedback on the home search field."
       },
       {
         "name": "home-phone",
@@ -488,14 +483,6 @@
       "css": ".ds-input{font-family:var(--bs-font-sans);width:100%;height:48px;padding:0 14px;border-radius:var(--bs-radius-md);border:1px solid var(--bs-border-default);background:var(--bs-bg-input);color:var(--bs-text-primary);font-size:15px;transition:border-color 120ms,box-shadow 120ms}.ds-input::placeholder{color:var(--bs-text-muted)}.ds-input:hover{border-color:var(--bs-border-strong)}.ds-input:focus{outline:none;border-color:var(--bs-accent);box-shadow:0 0 0 3px rgba(124,92,255,.35)}"
     },
     {
-      "name": "Home Search",
-      "kind": "input",
-      "refersTo": "home-search",
-      "description": "Hero search trigger on the home page; opens the search palette.",
-      "html": "<button class=\"ds-search\"><svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\"><circle cx=\"11\" cy=\"11\" r=\"7\"/><path d=\"m20 20-3.5-3.5\"/></svg><span class=\"ds-search-text\">Search Netflix, Spotify, ChatGPT…</span><kbd class=\"ds-kbd\">/</kbd></button>",
-      "css": ".ds-search{display:flex;align-items:center;gap:12px;width:100%;height:60px;padding:0 12px 0 16px;border:1px solid var(--bs-text-primary);border-radius:var(--bs-radius-sm);background:var(--bs-bg-card);color:var(--bs-text-secondary);font-family:var(--bs-font-sans);font-size:15px;text-align:left;cursor:text;transition:box-shadow 120ms}.ds-search:hover{box-shadow:0 6px 20px -12px rgba(0,0,0,.35)}.ds-search:focus-visible{outline:none;box-shadow:0 0 0 3px rgba(124,92,255,.35)}.ds-search-text{flex:1}.ds-kbd{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:26px;border-radius:4px;border:1px solid var(--bs-border-strong);font-family:inherit;font-size:12px;font-weight:600;color:var(--bs-text-muted)}"
-    },
-    {
       "name": "Home Tag",
       "kind": "chip",
       "refersTo": "home-tag",
@@ -538,7 +525,7 @@
   ],
   "narrative": {
     "northStar": "The Ruled Shopfront",
-    "overview": "**Creative North Star: \"The Ruled Shopfront\"**\n\nBuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.\n\nTwo registers share the same tokens. The app register (Public Sans, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and an inverse ink band to close. The home register is scoped to the home page; it is not a restyle of the app.\n\nConfirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.",
+    "overview": "**Creative North Star: \"The Ruled Shopfront\"**\n\nBuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.\n\nTwo registers share the same tokens. The app register (Public Sans, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a muted partner card to close. The home register is scoped to the home page; it is not a restyle of the app.\n\nConfirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.",
     "keyCharacteristics": [
       "Light paper ground (`paper`), white cards, ink text with a slight cool cast.",
       "Violet only on primary actions and active states.",
