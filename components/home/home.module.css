@@ -210,12 +210,62 @@
 .tStep + .tStep::before { content: ""; position: absolute; left: 10px; top: -12px; height: 24px; width: 1px; background: var(--bs-border-strong); }
 .tMark { display: grid; place-items: center; width: 20px; height: 20px; flex: none; box-sizing: border-box; border-radius: 50%; border: 1.5px solid var(--bs-border-strong); background: var(--bs-bg-muted); position: relative; z-index: 1; }
 .tDone, .tNow { color: var(--bs-text-primary); font-weight: 500; }
+.tMark svg { opacity: 0; }
 .tDone .tMark { background: var(--bs-text-primary); border-color: var(--bs-text-primary); color: var(--bs-bg-base); }
+.tDone .tMark svg { opacity: 1; }
 .tNow .tMark { border: 6px solid var(--bs-accent); }
 @media (prefers-reduced-motion: no-preference) {
   .tNow .tMark::after { content: ""; position: absolute; inset: -11px; border-radius: 50%; border: 1px dashed var(--bs-accent); animation: spin 8s linear infinite; }
 }
 @keyframes spin { to { transform: rotate(1turn); } }
+
+/* How it works, in motion. Each visual loops the thing it describes:
+   prices are browsed row by row, the selected payment option moves
+   through the list, and the order runs from paid to access sent. Static
+   (first row, first option, step two in progress) under reduced motion. */
+@media (prefers-reduced-motion: no-preference) {
+  .cycle3, .cycle4 { animation: rowOn var(--cyc) var(--ease) infinite both; animation-delay: calc(var(--n) * var(--cyc) / var(--count)); }
+  .cycle3 { --cyc: 6s; --count: 3; }
+  .cycle4 { --cyc: 8s; --count: 4; }
+  .cycle4 .radio { animation: radioOn var(--cyc) var(--ease) infinite both; animation-delay: inherit; }
+  .cycle3:nth-child(1), .cycle4:nth-child(1) { --n: 0; }
+  .cycle3:nth-child(2), .cycle4:nth-child(2) { --n: 1; }
+  .cycle3:nth-child(3), .cycle4:nth-child(3) { --n: 2; }
+  .cycle4:nth-child(4) { --n: 3; }
+
+  .tStep:nth-child(2) .tMark { animation: markTwo 9s var(--ease) infinite; }
+  .tStep:nth-child(2) .tMark svg { animation: tickTwo 9s var(--ease) infinite; }
+  .tStep:nth-child(2) .tMark::after { animation: spin 8s linear infinite, ringTwo 9s linear infinite; }
+  .tStep:nth-child(3) { animation: textThree 9s var(--ease) infinite; }
+  .tStep:nth-child(3) .tMark { animation: markThree 9s var(--ease) infinite; }
+  .tStep:nth-child(3) .tMark svg { animation: tickThree 9s var(--ease) infinite; }
+  .tStep:nth-child(3) .tMark::after { content: ""; position: absolute; inset: -11px; border-radius: 50%; border: 1px dashed var(--bs-accent); animation: spin 8s linear infinite, ringThree 9s linear infinite; }
+}
+/* Each item is on for the first 22% of its cycle; the delays stagger them. */
+@keyframes rowOn {
+  0% { border-color: var(--bs-accent); transform: translateX(6px); box-shadow: 0 10px 24px -16px rgba(var(--bs-accent-rgb), .7); }
+  22% { border-color: var(--bs-accent); transform: translateX(6px); box-shadow: 0 10px 24px -16px rgba(var(--bs-accent-rgb), .7); }
+  28%, 100% { border-color: var(--bs-border-default); transform: none; box-shadow: none; }
+}
+@keyframes radioOn {
+  0%, 22% { border: 5px solid var(--bs-accent); }
+  28%, 100% { border: 1.5px solid var(--bs-border-strong); }
+}
+/* Step two: in progress, then done at 40%. Step three: waiting, in progress from 45%, done at 80%. */
+@keyframes markTwo {
+  0%, 36% { border: 6px solid var(--bs-accent); background: var(--bs-bg-muted); }
+  42%, 100% { border: 1.5px solid var(--bs-text-primary); background: var(--bs-text-primary); color: var(--bs-bg-base); }
+}
+@keyframes tickTwo { 0%, 38% { opacity: 0; } 44%, 100% { opacity: 1; } }
+@keyframes ringTwo { 0%, 38% { opacity: 1; } 40%, 100% { opacity: 0; } }
+@keyframes markThree {
+  0%, 40% { border: 1.5px solid var(--bs-border-strong); background: var(--bs-bg-muted); }
+  46%, 76% { border: 6px solid var(--bs-accent); background: var(--bs-bg-muted); }
+  82%, 100% { border: 1.5px solid var(--bs-text-primary); background: var(--bs-text-primary); color: var(--bs-bg-base); }
+}
+@keyframes tickThree { 0%, 78% { opacity: 0; } 84%, 100% { opacity: 1; } }
+@keyframes ringThree { 0%, 44% { opacity: 0; } 46%, 78% { opacity: 1; } 80%, 100% { opacity: 0; } }
+@keyframes textThree { 0%, 42% { color: var(--bs-text-muted); font-weight: 400; } 46%, 100% { color: var(--bs-text-primary); font-weight: 500; } }
 
 /* Closer: the last call to action, a violet card inset in the gutters.
    White text sits on --bs-accent-fill (4.61:1). */
@@ -245,7 +295,7 @@
 .closerBtn:focus-visible, .closerGhost:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
 /* Orbit art: brand tiles around the BuySub mark, on two dashed white rings. */
-.art { position: relative; width: 100%; max-width: 460px; aspect-ratio: 1.1; justify-self: center; }
+.art { position: relative; width: 100%; max-width: 330px; aspect-ratio: 1.1; justify-self: center; }
 .ring { position: absolute; left: 50%; top: 50%; width: 80%; aspect-ratio: 1; border-radius: 50%; border: 1px dashed rgba(255, 255, 255, .45); transform: translate(-50%, -50%); }
 .ringInner { width: 50%; border-style: solid; border-color: rgba(255, 255, 255, .22); }
 .hub {
@@ -269,4 +319,4 @@
   0%, 100% { transform: translate(-50%, -50%) rotate(var(--r)); }
   50% { transform: translate(-50%, calc(-50% - 10px)) rotate(calc(var(--r) * -.5)); }
 }
-@media (max-width: 1023.98px) { .art { max-width: 360px; } }
+@media (max-width: 1023.98px) { .art { max-width: 180px; justify-self: start; } }

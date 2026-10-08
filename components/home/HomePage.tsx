@@ -174,7 +174,7 @@ function StepPrices({ priced, loading }: { priced: Priced[]; loading: boolean })
       {loading
         ? Array.from({ length: 3 }, (_, i) => <li key={i} className={s.vRow}><Skeleton width={28} height={28} radius="8px" /><Skeleton width="50%" height={12} /></li>)
         : priced.map(({ p, price, period }) => (
-            <li key={p.id} className={s.vRow}>
+            <li key={p.id} className={`${s.vRow} ${s.cycle3}`}>
               <ProductLogo product={p} size={28} radius="8px" />
               <span className={s.vName}>{p.name}</span>
               <span className={s.vPrice}>{fmtNGN(price)} <span className={s.vMuted}>{PERIODS[period]?.label}</span></span>
@@ -196,7 +196,7 @@ function StepPay() {
   return (
     <ul className={s.vList}>
       {ways.map((w, i) => (
-        <li key={w.label} className={`${s.vRow} ${i === 0 ? s.vOn : ''}`}>
+        <li key={w.label} className={`${s.vRow} ${i === 0 ? s.vOn : ''} ${ways.length === 4 ? s.cycle4 : ''}`}>
           <Icon name={w.icon} size={18} />
           <span className={s.vName}>{w.label}</span>
           <span className={s.radio} aria-hidden="true" />
@@ -213,7 +213,7 @@ function StepSetup() {
     <ol className={s.track3}>
       {SETUP.map((l, i) => (
         <li key={l} className={`${s.tStep} ${i === 0 ? s.tDone : i === 1 ? s.tNow : ''}`}>
-          <span className={s.tMark} aria-hidden="true">{i === 0 && <Icon name="check" size={12} />}</span>
+          <span className={s.tMark} aria-hidden="true"><Icon name="check" size={12} /></span>
           {l}
         </li>
       ))}
