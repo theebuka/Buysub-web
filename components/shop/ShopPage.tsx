@@ -277,7 +277,7 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
             <div className={s.toolbarRight}>
               <span className={s.filterBtn}><Button variant="secondary" size="md" icon="filter" onClick={() => setFiltersOpen(true)}>Filters{active.length ? ` (${active.length})` : ''}</Button></span>
               <span className={`${s.sortLabel} bs-desktop-only`}>Sort by</span>
-              <Select fieldSize="md" aria-label="Sort by" value={f.sort} onChange={e => set({ sort: e.target.value as Sort })} style={{ width: 'auto', minWidth: 190 }}>
+              <Select fieldSize="md" aria-label="Sort by" value={f.sort} onChange={e => set({ sort: e.target.value as Sort })} style={{ width: 190, minWidth: 0 }}>
                 {SORTS.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
               </Select>
             </div>

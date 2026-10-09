@@ -805,7 +805,7 @@ function SplitLayout({ children }: { children: React.ReactNode }) {
         }
         /* Paired fields cannot share a 360px row. */
         @media (max-width: 600px) {
-          .bs-field-row { grid-template-columns: 1fr !important; }
+          .bs-field-row { grid-template-columns: minmax(0, 1fr) !important; }
         }
       `}</style>
 

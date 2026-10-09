@@ -98,7 +98,7 @@
 .toolbar { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--bs-space-3); flex-wrap: wrap; margin-bottom: var(--bs-space-4); }
 .title { font-size: var(--bs-text-2xl); font-weight: var(--bs-weight-bold); line-height: var(--bs-leading-tight); color: var(--bs-text-primary); letter-spacing: -.01em; }
 .titleSub { margin-top: var(--bs-space-1); font-size: var(--bs-text-sm); color: var(--bs-text-muted); }
-.toolbarRight { display: flex; align-items: center; gap: var(--bs-space-2); }
+.toolbarRight { display: flex; align-items: center; gap: var(--bs-space-2); min-width: 0; }
 .sortLabel { font-size: var(--bs-text-sm); color: var(--bs-text-muted); white-space: nowrap; }
 .chips { display: flex; gap: var(--bs-space-2); overflow-x: auto; scrollbar-width: none; margin: 0 calc(-1 * var(--bs-page-gutter)) var(--bs-space-4); padding: 0 var(--bs-page-gutter); }
 .chips::-webkit-scrollbar { display: none; }

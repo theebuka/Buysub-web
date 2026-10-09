@@ -35,14 +35,21 @@ import { fromPrice } from '@/lib/pricing'
 import { fmtNGN, initials, categoryLabel } from '@/lib/format'
 import { ROUTES, EXTERNAL, isStaff } from '@/lib/routes'
 import { shop, SHOP_EVENTS } from '@/lib/shopBus'
-import { LogoFull } from '@/components/brand/Logo'
+import { LogoFull, LogoMark } from '@/components/brand/Logo'
 import css from './nav.module.css'
 
 // ── Logo ─────────────────────────────────────────────────────
-export function Logo() {
+// `compact`: below 375px the header row can't fit the full mark beside its
+// four icon buttons, so it drops to the logomark.
+export function Logo({ compact = false }: { compact?: boolean }) {
   return (
     <Link href={ROUTES.home} className={css.logo} aria-label="BuySub home">
-      <LogoFull height={30} title="BuySub" />
+      {compact ? (
+        <>
+          <span className={css.logoFull}><LogoFull height={30} title="BuySub" /></span>
+          <span className={css.logoMark}><LogoMark size={32} title="BuySub" /></span>
+        </>
+      ) : <LogoFull height={30} title="BuySub" />}
     </Link>
   )
 }
@@ -451,7 +458,7 @@ export default function SiteHeader() {
         <span className={css.narrow}>
           <IconButton icon="menu" label="Open menu" onClick={() => setNavOpen(true)} />
         </span>
-        <Logo />
+        <Logo compact />
         <nav aria-label="Primary" className={`${css.primary} ${css.wide}`}>
           <BrowseMenu />
         </nav>

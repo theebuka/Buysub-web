@@ -16,6 +16,9 @@
 .hero {
   display: grid; grid-template-columns: minmax(0, 1fr);
   border-bottom: var(--rule);
+  /* The stage's clip-path hides the phone past the right edge but still lets it
+     widen the page; this stops the sideways scroll. */
+  overflow-x: clip;
 }
 .titleCell { position: relative; padding: 40px var(--gut) var(--bs-space-8); }
 .stage { position: relative; overflow: hidden; height: 560px; border-top: var(--rule); }
@@ -168,7 +171,8 @@
 .stepBody { margin-top: var(--bs-space-2); color: var(--bs-text-secondary); line-height: var(--bs-leading-relaxed); max-width: 42ch; }
 
 /* The small pieces of UI inside each step. */
-.vList { list-style: none; margin: 0; padding: 0; width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 6px; }
+/* 20px short of full width: the active rung shifts right 10px and scales 4%. */
+.vList { list-style: none; margin: 0; padding: 0; width: calc(100% - 20px); max-width: 320px; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
 .vRow {
   display: flex; align-items: center; gap: var(--bs-space-3); height: 44px; padding: 0 var(--bs-space-3);
   border-radius: 8px; background: var(--bs-bg-card); border: 1px solid var(--bs-border-default);
