@@ -102,16 +102,16 @@ export default function PartnersLanding() {
         </ol>
       </section>
 
-      <section className={`${h.band} ${s.faqBand}`} aria-labelledby="faq-title">
-        <div className={s.faqHead}>
+      <section className={`${h.band} ${h.faqBand}`} aria-labelledby="faq-title">
+        <div className={h.faqHead}>
           <h2 id="faq-title" className={h.h2}>Questions</h2>
-          <p className={s.faqNote}>Anything else? <Link href={ROUTES.help} className={h.textLink}>Visit the help centre</Link></p>
+          <p className={h.faqNote}>Anything else? <Link href={ROUTES.help} className={h.textLink}>Visit the help centre</Link></p>
         </div>
-        <div className={s.faqs}>
+        <div className={h.faqs}>
           {FAQS.map(([q, a]) => (
-            <details key={q} className={s.faq}>
-              <summary className={s.q}>{q}<Icon name="plus" size={18} /></summary>
-              <p className={s.a}>{a}</p>
+            <details key={q} className={h.faq}>
+              <summary className={h.q}>{q}<Icon name="plus" size={18} /></summary>
+              <p className={h.a}>{a}</p>
             </details>
           ))}
         </div>

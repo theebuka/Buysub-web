@@ -126,7 +126,7 @@ export default function OrderDetail({ orderRef }: { orderRef: string }) {
             {discount > 0 && <div><dt>Discount{o.discount_code ? ` (${o.discount_code})` : ''}</dt><dd className={s.pos}>−{fmtNGN(discount)}</dd></div>}
             <div className={s.totalLine}><dt>Total</dt><dd>{fmtNGN(orderValue(o))}</dd></div>
             {wallet > 0 && <div><dt>Paid from wallet</dt><dd>{fmtNGN(wallet)}</dd></div>}
-            {wallet > 0 && Number(o.total_ngn) > 0 && <div><dt>{o.payment_method === 'paystack' ? 'Paid via Paystack' : 'Balance'}</dt><dd>{fmtNGN(o.total_ngn)}</dd></div>}
+            {wallet > 0 && Number(o.total_ngn) > 0 && <div><dt>{o.payment_method === 'paystack' ? 'Paid by card or transfer' : 'Balance'}</dt><dd>{fmtNGN(o.total_ngn)}</dd></div>}
             {o.currency && o.currency !== 'NGN' && o.display_total ? (
               <div><dt>Shown at checkout</dt><dd>{new Intl.NumberFormat(undefined, { style: 'currency', currency: o.currency }).format(Number(o.display_total))}</dd></div>
             ) : null}

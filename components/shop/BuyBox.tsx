@@ -133,7 +133,7 @@ export function BuyBox({ product: p, onAdded }: { product: Product; onAdded?: ()
         {offer.deliveryTime && <div className={s.sellerRow}><Icon name="clock" size={16} /> Delivery: <b>{offer.deliveryTime}</b></div>}
         {offer.deliveryMethod && <div className={s.sellerRow}><Icon name="zap" size={16} /> {offer.deliveryMethod}</div>}
         {p.region && <div className={s.sellerRow}><Icon name="globe" size={16} /> Region: <b>{p.region}</b></div>}
-        <div className={s.sellerRow}><Icon name="lock" size={16} /> Secure checkout with Paystack</div>
+        <div className={s.sellerRow}><Icon name="lock" size={16} /> Secure checkout</div>
       </div>
     </div>
   )

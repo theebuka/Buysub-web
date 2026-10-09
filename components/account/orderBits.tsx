@@ -27,7 +27,7 @@ export function itemsSummary(order: Pick<MyOrder, 'order_items'>): string {
 }
 
 export const PAYMENT_LABEL: Record<string, string> = {
-  paystack: 'Paystack', whatsapp: 'WhatsApp order', bank_transfer: 'Bank transfer',
+  paystack: 'Card or transfer', whatsapp: 'WhatsApp order', bank_transfer: 'Bank transfer',
   cash: 'Cash', wallet: 'Wallet', free: 'No charge',
 }
 
@@ -36,10 +36,11 @@ export function orderValue(o: Pick<MyOrder, 'total_ngn' | 'wallet_ngn'>): number
   return (Number(o.total_ngn) || 0) + (Number(o.wallet_ngn) || 0)
 }
 
-/** "Wallet", or "Paystack and wallet" when the wallet covered part of it. */
+/** "Wallet", or "Wallet and card or transfer" when the wallet covered part of it. */
 export function paymentLabel(o: Pick<MyOrder, 'payment_method' | 'wallet_ngn'>): string {
   const base = PAYMENT_LABEL[o.payment_method] || o.payment_method
-  return Number(o.wallet_ngn) > 0 && o.payment_method !== 'wallet' ? `${base} and wallet` : base
+  if (!(Number(o.wallet_ngn) > 0) || o.payment_method === 'wallet') return base
+  return o.payment_method === 'paystack' ? 'Wallet and card or transfer' : `${base} and wallet`
 }
 
 /**

@@ -5,8 +5,8 @@
 // ============================================================
 // Hero on a ruled grid: the headline (bottom left) and, in the right column,
 // a 3D phone mockup of the shop. Search lives in the header, so the hero
-// has none. Then three sections: the brand marquee with how it works,
-// browse by category, and the closing call to action. AppShell renders this
+// has none. Then the brand marquee with how it works, browse by category,
+// common questions, and the closing call to action. AppShell renders this
 // route full width (isFullBleed), so every band sets its own gutters.
 //
 // Copy makes no promises the business hasn't made (no delivery times, no
@@ -224,7 +224,7 @@ function StepPay({ priced }: { priced: Priced[] }) {
       case 'card': return (
         <span className={s.field}><Icon name="card" size={16} /><span className={s.fieldText}>1234 1234 1234 1234</span><span className={s.fieldSide}>MM / YY</span></span>
       )
-      case 'transfer': return <span className={s.paneNote}>Pay into the account Paystack shows you at checkout.</span>
+      case 'transfer': return <span className={s.paneNote}>Pay into the account shown at checkout.</span>
       case 'wallet': return <span className={s.paneNote}>Your BuySub balance pays first; card or transfer covers the rest.</span>
       case 'whatsapp': return (
         <span className={s.bubble}>Hi, I’d like {first ? first.p.name : 'to order'}<span className={s.ticks}><Icon name="check" size={11} /><Icon name="check" size={11} /></span></span>
@@ -270,7 +270,7 @@ function StepSetup() {
 function HowItWorks({ priced, loading }: { priced: Priced[]; loading: boolean }) {
   const steps = [
     { title: 'Pick it, priced in Naira', body: 'Search or browse the catalog. Every price is in Naira and shown before you pay, so you don’t need a dollar card.', visual: <StepPrices priced={priced} loading={loading} /> },
-    { title: 'Pay your way', body: 'Choose how to pay at checkout. Card and bank transfer go through Paystack.', visual: <StepPay priced={priced} /> },
+    { title: 'Pay your way', body: 'Choose how to pay at checkout: card, bank transfer, your wallet or WhatsApp.', visual: <StepPay priced={priced} /> },
     { title: 'We set it up', body: 'Our team sets up the subscription and sends you the access details. Follow each order from your account.', visual: <StepSetup /> },
   ]
   return (
@@ -321,6 +321,36 @@ function OrbitArt({ brands }: { brands: Brand[] }) {
         </span>
       ))}
     </div>
+  )
+}
+
+// Answers describe what the shop does today; no delivery times or guarantees.
+const FAQS: [string, React.ReactNode][] = [
+  ['How does BuySub work?', 'Pick a subscription and pay in Naira. Our team sets it up and sends you the access details, and you can follow the order from your account.'],
+  ['Do I need a dollar card?', 'No. Every price is in Naira and you pay in Naira, so you can get services that usually need a foreign card.'],
+  ['How can I pay?', 'By card or bank transfer at checkout, with your BuySub wallet balance, or by placing your order on WhatsApp. Checkout shows the options open at the time.'],
+  ['How do I get my subscription?', 'Once your payment is confirmed, our team sets up the subscription and sends you the access details. Your account shows where each order is.'],
+  ['Does my plan renew by itself?', 'No. Your account shows when each plan ends, and you can renew it from there when you’re ready.'],
+  ['What if something goes wrong?', <>Open the order in your account and choose Get help, or <a href={`https://wa.me/${WHATSAPP_NUMBER}`} target="_blank" rel="noopener noreferrer" className={s.textLink}>message us on WhatsApp</a>. A person on our team will reply.</>],
+  ['Can I earn with BuySub?', <>Yes. Stores and creators can join the <Link href={ROUTES.partner.programme} className={s.textLink}>partner programme</Link> and earn commission on orders placed through their link.</>],
+]
+
+function Faq() {
+  return (
+    <section className={`${s.band} ${s.faqBand}`} aria-labelledby="faq-title">
+      <div className={s.faqHead}>
+        <h2 id="faq-title" className={s.h2}>Questions</h2>
+        <p className={s.faqNote}>Anything else? <Link href={ROUTES.help} className={s.textLink}>Visit the help centre</Link></p>
+      </div>
+      <div className={s.faqs}>
+        {FAQS.map(([q, a]) => (
+          <details key={q} className={s.faq}>
+            <summary className={s.q}>{q}<Icon name="plus" size={18} /></summary>
+            <p className={s.a}>{a}</p>
+          </details>
+        ))}
+      </div>
+    </section>
   )
 }
 
@@ -399,6 +429,8 @@ export default function HomePage() {
               ))}
         </div>
       </section>
+
+      <Faq />
 
       <Closer brands={brands} />
     </div>

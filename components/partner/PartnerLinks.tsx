@@ -106,8 +106,8 @@ export default function PartnerLinks() {
   return (
     <>
       <PageHead title="Referral links" lede="Send people straight to what they want. Every link here carries your code." />
-      <div className={`${s.panel} ${s.panelPad}`} style={{ display: 'grid', gap: 'var(--bs-space-5)' }}>
-        <div style={{ display: 'grid', gap: 'var(--bs-space-4)', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))' }}>
+      <div className={`${s.panel} ${s.panelPad}`} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--bs-space-5)' }}>
+        <div style={{ display: 'grid', gap: 'var(--bs-space-4)', gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 220px), 1fr))' }}>
           <Field label="Link to">
             {p => (
               <Select {...p} value={kind} onChange={e => setKind(e.target.value as Kind)}>
@@ -143,7 +143,7 @@ export default function PartnerLinks() {
             </Field>
           )}
         </div>
-        <div style={{ display: 'grid', gap: 'var(--bs-space-2)' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 'var(--bs-space-2)' }}>
           <span className={s.statLabel}>Your link</span>
           <div style={{ display: 'flex', gap: 'var(--bs-space-2)', flexWrap: 'wrap' }}>
             <div style={{ flex: '1 1 320px', minWidth: 0 }}><CopyField value={url} label="Copy link" /></div>

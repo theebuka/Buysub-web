@@ -30,7 +30,7 @@ type Payout = {
 function Destination({ d }: { d: Payout['payout_details'] }) {
   if (/crypto/i.test(d.payout_method || '') || d.wallet_address) {
     return (
-      <div style={{ display: 'grid', gap: 4, minWidth: 220 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 4, minWidth: 'min(220px, 100%)' }}>
         <span className={s.secondary}>{d.crypto_token || 'Crypto'}{d.crypto_chain ? ` on ${d.crypto_chain}` : ''}</span>
         {d.wallet_address && <CopyField value={d.wallet_address} label="Copy address" display={`${d.wallet_address.slice(0, 8)}…${d.wallet_address.slice(-6)}`} />}
       </div>

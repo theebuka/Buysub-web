@@ -62,9 +62,9 @@ function Section({ id, title, desc, keys, profile, children }: {
 
 function ReadOnly({ label, value }: { label: string; value?: string | null }) {
   return (
-    <div style={{ display: 'grid', gap: 2 }}>
+    <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
       <span className={s.muted}>{label}</span>
-      <span style={{ fontSize: 'var(--bs-text-sm)', color: 'var(--bs-text-primary)' }}>{value || 'Not provided'}</span>
+      <span style={{ fontSize: 'var(--bs-text-sm)', color: 'var(--bs-text-primary)', overflowWrap: 'anywhere' }}>{value || 'Not provided'}</span>
     </div>
   )
 }
@@ -83,7 +83,7 @@ export default function PartnerProfile() {
             <h2 className={s.h2}>Store</h2>
             <p className={s.secondary} style={{ marginTop: 4, lineHeight: 1.5 }}>From your application. Contact us to change these, as they need a new review.</p>
           </div>
-          <div className={s.setForm} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+          <div className={s.setForm} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
             <ReadOnly label="Store name" value={profile.store_name} />
             <ReadOnly label="Owner" value={profile.owner_name} />
             <ReadOnly label="Owner email" value={profile.owner_email} />
@@ -96,7 +96,7 @@ export default function PartnerProfile() {
               <h2 className={s.h2}>Registered business</h2>
               <p className={s.secondary} style={{ marginTop: 4, lineHeight: 1.5 }}>Contact us to change these, as they need a new review.</p>
             </div>
-            <div className={s.setForm} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+            <div className={s.setForm} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 180px), 1fr))' }}>
               <ReadOnly label="Legal name" value={profile.legal_name} />
               <ReadOnly label="CAC number" value={profile.cac_number} />
               <ReadOnly label="Registration year" value={profile.registration_year ? String(profile.registration_year) : null} />

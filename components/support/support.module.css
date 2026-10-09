@@ -1,7 +1,7 @@
 /* Support inbox: list pane + conversation pane in one bordered panel.
    Neutral surfaces; the user's own messages are the only filled bubbles. */
 
-.inbox { display: grid; grid-template-columns: 1fr; height: min(720px, calc(100dvh - var(--bs-header-h) - 200px)); min-height: 520px; background: var(--bs-bg-card); border: 1px solid var(--bs-border-default); border-radius: var(--bs-radius-lg); overflow: hidden; }
+.inbox { display: grid; grid-template-columns: minmax(0, 1fr); height: min(720px, calc(100dvh - var(--bs-header-h) - 200px)); min-height: 520px; background: var(--bs-bg-card); border: 1px solid var(--bs-border-default); border-radius: var(--bs-radius-lg); overflow: hidden; }
 @media (min-width: 900px) { .inbox { grid-template-columns: 320px minmax(0, 1fr); } }
 @media (max-width: 899.98px) {
   .inboxOpen .listPane { display: none; }

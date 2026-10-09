@@ -53,7 +53,7 @@ export function toOffers(p: Product): Offer[] {
 
 /** The default steps when a product has no how_it_works of its own. */
 export const DEFAULT_STEPS = [
-  'Choose a plan and pay securely with Paystack, or order on WhatsApp.',
+  'Choose a plan and pay securely by card or bank transfer, or order on WhatsApp.',
   'We confirm your order and set up your subscription.',
   'You get a receipt by email, and our team sends your access details.',
   'Track the order any time from your account.',
@@ -81,7 +81,7 @@ export function faqs(p: Product): { q: string; a: string }[] {
 }
 
 export const TRUST_POINTS = [
-  { icon: 'shield', title: 'Secure payment', text: 'Cards and bank transfer through Paystack.' },
+  { icon: 'shield', title: 'Secure payment', text: 'Pay by card or bank transfer.' },
   { icon: 'receipt', title: 'Order tracking', text: 'Every order and receipt is in your account.' },
   { icon: 'message', title: 'Real support', text: 'Talk to a person on WhatsApp.' },
 ] as const

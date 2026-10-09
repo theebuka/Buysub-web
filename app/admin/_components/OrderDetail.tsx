@@ -105,11 +105,11 @@ export function OrderDetail({ orderRef }: { orderRef: string }) {
                   <tbody>
                     {items.map((it, i) => (
                       <tr key={it.id || i}>
-                        <td style={{ whiteSpace: 'normal', minWidth: 220 }}><span className={s.strong} style={{ fontWeight: 'var(--bs-weight-medium)' as any }}>{it.product_name}</span>{it.category && <span className={s.muted} style={{ display: 'block', fontSize: 'var(--bs-text-xs)' }}>{it.category}</span>}</td>
-                        <td className={s.secondary}>{it.billing_period || (it.duration_months ? `${it.duration_months} mo` : 'One-time')}</td>
-                        <td style={{ textAlign: 'right' }}>{it.quantity}</td>
-                        <td style={{ textAlign: 'right' }}>{fmtNGN(it.unit_price_ngn)}</td>
-                        <td style={{ textAlign: 'right' }}>{fmtNGN(it.total_price_ngn ?? it.unit_price_ngn * it.quantity)}</td>
+                        <td className={s.cellLead} style={{ whiteSpace: 'normal', minWidth: 220 }}><span className={s.strong} style={{ fontWeight: 'var(--bs-weight-medium)' as any }}>{it.product_name}</span>{it.category && <span className={s.muted} style={{ display: 'block', fontSize: 'var(--bs-text-xs)' }}>{it.category}</span>}</td>
+                        <td className={s.secondary} data-label="Period">{it.billing_period || (it.duration_months ? `${it.duration_months} mo` : 'One-time')}</td>
+                        <td style={{ textAlign: 'right' }} data-label="Qty">{it.quantity}</td>
+                        <td style={{ textAlign: 'right' }} data-label="Unit">{fmtNGN(it.unit_price_ngn)}</td>
+                        <td style={{ textAlign: 'right' }} data-label="Total">{fmtNGN(it.total_price_ngn ?? it.unit_price_ngn * it.quantity)}</td>
                       </tr>
                     ))}
                   </tbody>

@@ -16,7 +16,12 @@ export type DTColumn<R> = {
   cell: (row: R) => ReactNode
   align?: 'left' | 'right' | 'center'
   width?: number | string
+  /** Label on the phone card when `header` isn't plain text. */
+  label?: string
 }
+
+/** The phone card's label for a cell: the header text, or `label` when the header is markup. */
+const colLabel = <R,>(c: DTColumn<R>) => c.label ?? (typeof c.header === 'string' ? c.header : undefined)
 
 export type FilterOption = { value: string; label: string; count?: number | null }
 
@@ -153,7 +158,7 @@ export function DataTable<R>({
             : rows.map(r => { const k = rowKey(r); return <div key={k} className={s.cardCell}>{card(r, { checked: selected.has(k), toggle: () => toggle(k) })}</div> })}
         </div>
       ) : (
-        <div className={s.tableWrap} aria-busy={loading || undefined}>
+        <div className={`${s.tableWrap} ${selectable ? s.tableSelectable : ''}`} aria-busy={loading || undefined}>
           <table className={s.table} style={{ opacity: loading && !showSkeleton ? 0.6 : 1, transition: 'opacity var(--bs-dur-1) var(--bs-ease-out)' }}>
             {caption && <caption className="sr-only">{caption}</caption>}
             <thead>
@@ -192,7 +197,12 @@ export function DataTable<R>({
                           <input type="checkbox" className={s.check} aria-label="Select row" checked={selected.has(k)} onChange={() => toggle(k)} />
                         </td>
                       )}
-                      {columns.map(c => <td key={c.key} style={{ textAlign: c.align }}>{c.cell(r)}</td>)}
+                      {columns.map((c, i) => (
+                        <td key={c.key} style={{ textAlign: c.align }} data-label={i > 0 ? colLabel(c) : undefined}
+                          className={i === 0 ? s.cellLead : c.key === 'actions' ? s.cellActions : undefined}>
+                          {c.cell(r)}
+                        </td>
+                      ))}
                     </tr>
                   )
                 })}

@@ -30,7 +30,7 @@ function describe(t: Txn): { title: string; sub: string } {
 
 const QUICK = [2000, 5000, 10000, 20000]
 
-/** "Add money": Paystack top-up. Paystack sends the shopper back here with ?reference=. */
+/** "Add money": card or transfer top-up via Paystack. Paystack sends the shopper back here with ?reference=. */
 function AddMoney({ min, max }: { min: number; max: number }) {
   const [amount, setAmount] = useState('')
   const [busy, setBusy] = useState(false)
@@ -56,7 +56,7 @@ function AddMoney({ min, max }: { min: number; max: number }) {
         ))}
       </div>
       <div className={s.fundRow}>
-        <Field label="Amount (₦)" hint={`${fmtNGN(min)} to ${fmtNGN(max)}. Paid securely with Paystack.`} error={error || undefined}>
+        <Field label="Amount (₦)" hint={`${fmtNGN(min)} to ${fmtNGN(max)}. Paid securely by card or bank transfer.`} error={error || undefined}>
           {p => <Input {...p} inputMode="numeric" value={amount} placeholder="5000"
             onChange={e => { setAmount(e.target.value); setError('') }}
             onKeyDown={e => { if (e.key === 'Enter') go() }} />}
@@ -98,7 +98,7 @@ export default function Wallet() {
     <>
       <PageHead title="Wallet" lede="Your BuySub balance and every change to it." />
       <div className={`${s.panel} ${s.stats}`} style={{ gridTemplateColumns: '1fr' }}>
-        <div className={s.stat}>
+        <div className={`${s.stat} ${s.statHero}`}>
           <span className={s.statLabel}>Available balance</span>
           <span className={s.statValue} style={{ fontSize: 'var(--bs-text-3xl)' }}>
             {wallet.loading ? <Skeleton width={160} height={36} /> : wallet.error ? 'Unavailable' : fmtNGN(wallet.data?.balance_ngn ?? 0)}
