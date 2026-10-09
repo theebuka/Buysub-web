@@ -24,9 +24,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   // /login and /order/verify are standalone full-height pages that carry their
   // own navigation, so the navbar and footer would double up on both. Phase 11
   // must not remove either from this list — see REFACTOR.md.
-  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners") || pathname.startsWith("/dashboard") || pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/reset-password") || pathname.startsWith("/order/verify")
-  // The home page runs full width; its sections set their own gutters.
-  const isFullBleed = pathname === "/"
+  const isNoShell = pathname.startsWith("/admin") || pathname.startsWith("/partners/") || pathname.startsWith("/dashboard") || pathname.startsWith("/login") || pathname.startsWith("/signup") || pathname.startsWith("/reset-password") || pathname.startsWith("/order/verify")
+  // The home page and the partner landing page run full width; their
+  // sections set their own gutters.
+  const isFullBleed = pathname === "/" || pathname === "/partners"
   const [stepIndex, setStepIndex] = useState(0)
   const dialogRef = useRef<HTMLDivElement>(null)
 
@@ -397,10 +398,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* isNoShell means no navbar. The footer is a separate decision: this was
           `!isAdmin`, which let it render on /partners and /dashboard despite
-          them being no-shell routes. /partners is the one exception — a public
-          application form whose only navigation IS the footer. /partners/dashboard
-          is authenticated and keeps no chrome, so this cannot be a startsWith. */}
-      {(!isNoShell || pathname === '/partners' || pathname === '/partners/') && <SiteFooter />}
+          them being no-shell routes. /partners/apply is the one exception — a
+          public application form whose only navigation IS the footer.
+          /partners/dashboard (a redirect stub) keeps no chrome. The /partners
+          landing page has the full shell. */}
+      {(!isNoShell || pathname.startsWith('/partners/apply')) && <SiteFooter />}
     </>
   )
 }

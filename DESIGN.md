@@ -283,8 +283,8 @@ A 120px square (88px under 640px) at 28px radius, filled with the service's offi
 ### Closer (home)
 The last section is the shopper's call to action: a Violet Fill card at 10px radius inset in the page gutters (96px section padding, 144px from 1024px; 80px/64px card padding). Left: the display-closer headline in white, a 17px white lede, a 52px white button with ink text ("Browse the shop") and an underlined white WhatsApp link. Right: orbit art standing in until a mascot exists: the white BuySub tile (28% radius, the tint logomark) on two thin white rings (the outer dashed and turning once in 90s), with up to six brand tiles of apps the catalog sells placed around it, tilted and bobbing gently (static under reduced motion). The art is 330px wide (280px from 640 to 1023px, beside the text) so the card keeps the height it had with a benefits list; under 640px the art is hidden and the card is text only. This is the one place violet is a surface, at the owner's request.
 
-### Partner promo (kept for the partner landing page)
-`components/partner/PartnerPromo.tsx`, not mounted. The section that closed the home page before the closer: a Paper Muted card with the partner headline, lede, "Become a partner" and "Partner sign in" buttons, a decorative referral-link field and three ruled steps.
+### Partner landing page (/partners)
+Built from the home register (it imports home.module.css). It opens with the partner promo (`components/partner/PartnerPromo.tsx`, the section that once closed the home page): a Paper Muted card with the partner headline as the page's h1, lede, "Become a partner" and "Partner sign in" buttons, a decorative referral-link field and three ruled steps. Then "What partners get" in the how-it-works pattern (three ruled columns, each over a piece of the portal: the link builder, a 30-day clicks chart drawn as an illustrative shape, payout schedule and method), "Questions" as ruled details rows with a plus that turns to a cross (title beside the list from 1024px), and a violet closer card without art. While applications are switched off, apply buttons are replaced by a closed notice.
 
 ## Do's and Don'ts
 

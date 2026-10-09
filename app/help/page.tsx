@@ -12,7 +12,7 @@ const TOPICS: { icon: IconName; title: string; text: string; href: string; cta: 
   { icon: 'receipt', title: 'Track an order', text: 'See the status of every order you’ve placed, and its reference.', href: ROUTES.account.orders, cta: 'View my orders' },
   { icon: 'wallet', title: 'Wallet and refunds', text: 'Check your wallet balance and transaction history.', href: ROUTES.account.wallet, cta: 'Open wallet' },
   { icon: 'user', title: 'Account and sign in', text: 'Reset your password or update your name and phone number.', href: ROUTES.login, cta: 'Go to sign in' },
-  { icon: 'users', title: 'Partner programme', text: 'Earn commission on every subscription you refer.', href: ROUTES.partner.apply, cta: 'Learn more' },
+  { icon: 'users', title: 'Partner programme', text: 'Earn commission on every subscription you refer.', href: ROUTES.partner.programme, cta: 'Learn more' },
   { icon: 'help', title: 'Frequently asked questions', text: 'Delivery, payment and renewal questions, answered.', href: EXTERNAL.faq, cta: 'Read the FAQs', external: true },
   { icon: 'message', title: 'Contact form', text: 'Not urgent? Send us a message and we’ll reply by email.', href: EXTERNAL.contact, cta: 'Send a message', external: true },
 ]

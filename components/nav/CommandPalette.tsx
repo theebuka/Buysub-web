@@ -95,7 +95,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       out.push(
         { id: 'l-orders', group: 'Go to', label: 'My orders', icon: 'receipt', run: () => go(signedIn ? ROUTES.account.orders : ROUTES.login) },
         { id: 'l-wallet', group: 'Go to', label: 'Wallet', icon: 'wallet', run: () => go(signedIn ? ROUTES.account.wallet : ROUTES.login) },
-        { id: 'l-partner', group: 'Go to', label: 'Partner programme', icon: 'users', run: () => go(ROUTES.partner.apply) },
+        { id: 'l-partner', group: 'Go to', label: 'Partner programme', icon: 'users', run: () => go(ROUTES.partner.programme) },
         { id: 'l-help', group: 'Go to', label: 'Help centre', icon: 'help', run: () => go(ROUTES.help) },
       )
       return out

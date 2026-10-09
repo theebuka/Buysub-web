@@ -245,7 +245,7 @@ function AccountPanel({ session, close }: { session: SessionState; close: () => 
         </span>
         <Icon name="chevronRight" size={16} />
       </Link>
-      <Link href={session.partner ? ROUTES.partner.home : ROUTES.partner.apply} className={css.inviteCard} onClick={close} data-menu-item>
+      <Link href={session.partner ? ROUTES.partner.home : ROUTES.partner.programme} className={css.inviteCard} onClick={close} data-menu-item>
         <Icon name="gift" size={18} />
         <span style={{ flex: 1 }}>
           <span className={css.inviteTitle}>Invite & earn</span>
@@ -352,7 +352,7 @@ function MobileNav({ open, onClose, session, onSearch }: {
         ) : null}
         <div className={css.drawerSection}>
           <MenuLabel>Earn</MenuLabel>
-          <MenuItem href={ROUTES.partner.apply} icon="gift" onClick={onClose}>Partner programme</MenuItem>
+          <MenuItem href={ROUTES.partner.programme} icon="gift" onClick={onClose}>Partner programme</MenuItem>
           <MenuItem href={ROUTES.loginNext(ROUTES.partner.home)} icon="users" onClick={onClose}>Partner sign in</MenuItem>
         </div>
         <div className={css.drawerSection}>
@@ -463,7 +463,7 @@ export default function SiteHeader() {
         </button>
 
         <div className={css.actions}>
-          <Link href={ROUTES.partner.apply} className={`${css.navBtn} ${css.wide}`}>
+          <Link href={ROUTES.partner.programme} className={`${css.navBtn} ${css.wide}`}>
             <Icon name="gift" size={16} /> Earn
           </Link>
           <span className={css.narrow}>

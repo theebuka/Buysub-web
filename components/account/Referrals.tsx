@@ -44,7 +44,7 @@ export default function Referrals() {
       <>
         <PageHead title="Refer and earn" />
         <div className={s.panel}>
-          <PanelEmpty title="Not open yet" action={<ButtonLink href={ROUTES.partner.apply} variant="secondary" size="md">See the partner programme</ButtonLink>}>
+          <PanelEmpty title="Not open yet" action={<ButtonLink href={ROUTES.partner.programme} variant="secondary" size="md">See the partner programme</ButtonLink>}>
             Refer and earn isn’t running right now. Businesses and creators can earn commission as BuySub partners.
           </PanelEmpty>
         </div>

@@ -1,0 +1,49 @@
+/* Partner landing page (/partners). Builds on the home page's display styles
+   (home.module.css, imported as `h` in the component); this file holds only
+   what the page adds. */
+
+/* The partner section opens the page, so it sits closer to the header. */
+.top { padding-top: 32px; padding-bottom: 0; }
+@media (min-width: 1024px) { .top { padding-top: 48px; padding-bottom: 0; } }
+
+/* Benefit visuals */
+.stack { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px; }
+.linkOut {
+  display: flex; align-items: center; gap: var(--bs-space-2); height: 40px; padding: 0 var(--bs-space-3);
+  border-radius: 8px; border: 1px dashed var(--bs-border-strong); background: var(--bs-bg-card);
+  font-size: 12px; color: var(--bs-text-secondary);
+}
+.linkOut svg { flex: none; color: var(--bs-text-secondary); }
+.linkUrl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.linkUrl b { font-weight: 600; color: var(--bs-accent-on-surface); }
+
+.chartLabel { font-size: 12.5px; font-weight: 600; color: var(--bs-text-primary); }
+.bars { display: flex; align-items: flex-end; gap: 3px; height: 92px; }
+.bars > span { flex: 1; min-height: 3px; border-radius: 3px 3px 0 0; background: rgba(var(--bs-accent-rgb), .5); }
+.bars > .barOn { background: var(--bs-accent); }
+.axis { display: flex; justify-content: space-between; font-size: 11px; color: var(--bs-text-muted); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { display: inline-flex; align-items: center; height: 30px; padding: 0 var(--bs-space-3); border-radius: var(--bs-radius-full); border: 1px solid var(--bs-border-default); background: var(--bs-bg-card); font-size: 12px; font-weight: 500; color: var(--bs-text-primary); }
+.chipOn { border-color: var(--bs-accent); background: rgba(var(--bs-accent-rgb), .08); color: var(--bs-accent-on-surface); }
+
+/* Questions: the title beside the list from 1024px. */
+.faqBand { display: grid; gap: 32px; padding-left: var(--bs-page-gutter); padding-right: var(--bs-page-gutter); }
+@media (min-width: 1024px) { .faqBand { grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: 64px; } }
+.faqHead { display: flex; flex-direction: column; gap: var(--bs-space-4); }
+.faqNote { color: var(--bs-text-secondary); }
+.faqs { border-top: 1px solid var(--bs-border-default); }
+.faq { border-bottom: 1px solid var(--bs-border-default); }
+.q {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--bs-space-4);
+  min-height: 64px; padding: var(--bs-space-4) 0; cursor: pointer; list-style: none;
+  font-family: 'Geist', var(--bs-font-sans); font-size: clamp(17px, 1.4vw, 20px); font-weight: 500; letter-spacing: -.01em; color: var(--bs-text-primary);
+}
+.q::-webkit-details-marker { display: none; }
+.q svg { flex: none; color: var(--bs-text-secondary); transition: transform .3s var(--bs-ease-out); }
+.faq[open] .q svg { transform: rotate(45deg); }
+.q:focus-visible { outline: none; box-shadow: var(--bs-ring); border-radius: 4px; }
+.a { padding: 0 0 var(--bs-space-5); max-width: 62ch; color: var(--bs-text-secondary); line-height: var(--bs-leading-relaxed); }
+
+/* The closing card has no art, so its text runs the full width. */
+.closerCard { grid-template-columns: minmax(0, 1fr) !important; }

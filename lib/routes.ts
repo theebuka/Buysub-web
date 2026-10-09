@@ -35,7 +35,8 @@ export const ROUTES = {
   },
   saved: '/saved',
   partner: {
-    apply: '/partners',
+    programme: '/partners',
+    apply: '/partners/apply',
     home: '/partner',
     links: '/partner/links',
     conversions: '/partner/conversions',

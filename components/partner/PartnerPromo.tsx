@@ -1,9 +1,10 @@
 // ============================================================
 // BUYSUB — Partner promo
 // ============================================================
-// The partner section that closed the home page until the shopper call to
-// action replaced it. Not mounted anywhere yet: it is kept, unchanged, for
-// the partner landing page.
+// The partner section that used to close the home page; it now opens the
+// partner landing page (/partners, components/partner/PartnersLanding.tsx).
+// While admins have applications switched off, the apply button gives way to
+// a closed notice.
 
 import { ButtonLink, Icon } from '@/components/ui'
 import { ROUTES } from '@/lib/routes'
@@ -15,15 +16,18 @@ const PARTNER_STEPS = [
   ['Earn commission', 'When someone buys through your link, you earn commission on the sale.'],
 ]
 
-export default function PartnerPromo() {
+export default function PartnerPromo({ headingLevel = 'h2', open = true, className }: { headingLevel?: 'h1' | 'h2'; open?: boolean; className?: string }) {
+  const Heading = headingLevel
   return (
-    <section className={s.partner} aria-labelledby="partner-title">
+    <section className={`${s.partner} ${className ?? ''}`} aria-labelledby="partner-title">
       <div className={s.partnerCard}>
         <div className={s.partnerMain}>
-          <h2 id="partner-title" className={s.partnerTitle}>Earn on every subscription you refer</h2>
-          <p className={s.partnerText}>Join the BuySub partner programme and get a link of your own.</p>
+          <Heading id="partner-title" className={s.partnerTitle}>Earn on every subscription you refer</Heading>
+          <p className={s.partnerText}>
+            {open ? 'Join the BuySub partner programme and get a link of your own.' : 'We’re not taking new partner applications at the moment. Please check back soon.'}
+          </p>
           <div className={s.partnerBtns}>
-            <ButtonLink href={ROUTES.partner.apply} size="xl" iconRight="arrowRight">Become a partner</ButtonLink>
+            {open && <ButtonLink href={ROUTES.partner.apply} size="xl" iconRight="arrowRight">Become a partner</ButtonLink>}
             <ButtonLink href={ROUTES.loginNext(ROUTES.partner.home)} size="xl" variant="secondary">Partner sign in</ButtonLink>
           </div>
         </div>
