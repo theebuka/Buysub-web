@@ -49,10 +49,10 @@ function Review({ app, onClose, onDone }: { app: PartnerApp | null; onClose: () 
           </FormSection>
           <FormSection title="Business">
             <DL rows={[
-              ['Legal name', app.legal_name], ['Store name', app.store_name], ['CAC number', app.cac_number || '-'],
+              ['Store name', app.store_name], ['Sells on', app.social_media || '-'],
+              ['Legal name', app.legal_name || '-'], ['CAC number', app.cac_number || '-'], ['Registered', app.registration_year ? String(app.registration_year) : '-'],
               ['Email', app.business_email || '-'], ['Phone', app.business_phone || '-'],
               ['Address', [app.address, app.lga, app.state].filter(Boolean).join(', ') || '-'],
-              ['Social', app.social_media || '-'],
             ]} />
           </FormSection>
           <FormSection title="Owner">
@@ -62,7 +62,11 @@ function Review({ app, onClose, onDone }: { app: PartnerApp | null; onClose: () 
             ]} />
           </FormSection>
           <FormSection title="Payout">
+            {!app.payout_method && !app.bank_name && !app.wallet_address && (
+              <p className={s.secondary}>Not added yet. Partners add payout details in their portal after approval, and payouts wait until they do.</p>
+            )}
             <DL rows={[
+              ['AML declaration', app.aml_accepted ? 'Accepted' : 'Not yet'],
               ['Method', human(app.payout_method)], ['Frequency', human(app.payout_frequency)],
               ['Bank', app.bank_name || ''], ['Account name', app.account_name || ''], ['Account number', app.account_number ? mask(app.account_number) : ''],
               ['Crypto', app.crypto_token ? `${app.crypto_token}${app.crypto_chain ? ` on ${app.crypto_chain}` : ''}` : ''],
@@ -86,7 +90,7 @@ export function PartnersTab() {
   const [open, setOpen] = useState<PartnerApp | null>(null)
   const status = list.params.status || ''
   const columns: DTColumn<PartnerApp>[] = [
-    { key: 'store', header: 'Business', cell: a => <div className={s.clip}><CellTitle title={a.store_name || a.legal_name} sub={a.store_name && a.legal_name !== a.store_name ? a.legal_name : a.business_email} /></div> },
+    { key: 'store', header: 'Business', cell: a => <div className={s.clip}><CellTitle title={a.store_name || a.legal_name} sub={a.legal_name && a.legal_name !== a.store_name ? a.legal_name : a.business_email || a.owner_email} /></div> },
     { key: 'owner', header: 'Owner', cell: a => <div className={s.clip}><CellTitle title={a.owner_name} sub={a.owner_email} /></div> },
     { key: 'where', header: 'Location', cell: a => <span className={s.secondary}>{[a.lga, a.state].filter(Boolean).join(', ') || '-'}</span> },
     { key: 'payout', header: 'Payout', cell: a => <span className={s.secondary}>{human(a.payout_method)}</span> },

@@ -1,14 +1,14 @@
 'use client'
 
 import Link from 'next/link'
-import { Skeleton, CommissionBadge } from '@/components/ui'
+import { Icon, Skeleton, CommissionBadge } from '@/components/ui'
 import { useApi } from '@/lib/useApi'
 import { fmtDate, fmtNGN } from '@/lib/format'
 import { ROUTES } from '@/lib/routes'
 import { PageHead, PanelEmpty, PanelError, RowsSkeleton } from '@/components/account/AccountShell'
 import { MainLink } from './PartnerShell'
 import { ClicksChart } from './ClicksChart'
-import { usePartner, type Commission, type PartnerStats, type Tier } from './usePartner'
+import { setupSteps, usePartner, type Commission, type PartnerProfile, type PartnerStats, type Tier } from './usePartner'
 import s from '@/components/account/account.module.css'
 
 export function CommissionRow({ c }: { c: Commission }) {
@@ -50,8 +50,33 @@ function TierCard({ tier }: { tier: Tier }) {
   )
 }
 
+/** Shown until payouts can be made: payout details and the AML declaration. */
+function SetupCard({ profile }: { profile: PartnerProfile }) {
+  const steps = setupSteps(profile)
+  const left = steps.filter(x => !x.done).length
+  if (!left) return null
+  return (
+    <div className={`${s.panel} ${s.panelPad}`} style={{ display: 'grid', gap: 'var(--bs-space-4)' }}>
+      <div style={{ display: 'grid', gap: 4 }}>
+        <h2 className={s.h2}>Finish setting up to get paid</h2>
+        <p className={s.secondary}>Your link already works and your commission is counted. We hold payouts until {left === 1 ? 'this is' : 'these are'} done.</p>
+      </div>
+      <ul className={s.setupList}>
+        {steps.map(x => (
+          <li key={x.key} className={`${s.setupItem} ${x.done ? s.setupDone : ''}`}>
+            <span className={s.setupMark} aria-hidden="true"><Icon name="check" size={14} /></span>
+            {x.done
+              ? <span className={s.setupLabel}>{x.label}<span className="sr-only"> (done)</span></span>
+              : <Link href={x.href} className={s.textLink} style={{ fontSize: 'var(--bs-text-md)' }}>{x.label}</Link>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
 export default function PartnerOverview() {
-  const { affiliate } = usePartner()
+  const { affiliate, profile } = usePartner()
   const stats = useApi<PartnerStats>('/v2/partners/me/stats')
   const recent = useApi<Commission[]>('/v2/affiliates/me/commissions?limit=5')
   const st = stats.data
@@ -77,6 +102,8 @@ export default function PartnerOverview() {
         {affiliate && <MainLink code={affiliate.referral_code} />}
         <p className={s.muted}>Shoppers who open it are linked to you for 30 days. <Link className={s.textLink} href={ROUTES.partner.links}>Link to a product or category</Link></p>
       </section>
+
+      {profile && <SetupCard profile={profile} />}
 
       {stats.error ? <div className={s.panel}><PanelError message={stats.error} onRetry={stats.reload} /></div> : (
         <div className={`${s.panel} ${s.stats}`}>

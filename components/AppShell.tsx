@@ -396,13 +396,11 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   })()
 )}
 
-      {/* isNoShell means no navbar. The footer is a separate decision: this was
-          `!isAdmin`, which let it render on /partners and /dashboard despite
-          them being no-shell routes. /partners/apply is the one exception — a
-          public application form whose only navigation IS the footer.
-          /partners/dashboard (a redirect stub) keeps no chrome. The /partners
-          landing page has the full shell. */}
-      {(!isNoShell || pathname.startsWith('/partners/apply')) && <SiteFooter />}
+      {/* isNoShell means no header and no footer. /partners/apply uses the
+          sign-in frame (AuthLayout), like /signup. /partners/dashboard (a
+          redirect stub) keeps no chrome. The /partners landing page has the
+          full shell. */}
+      {!isNoShell && <SiteFooter />}
     </>
   )
 }

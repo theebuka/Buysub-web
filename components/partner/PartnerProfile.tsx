@@ -1,11 +1,13 @@
 'use client'
 
-// Partner profile. Identity fields from the application (legal name, store,
-// owner) are read-only here: changing them needs a fresh review. Everything
-// PATCH /v2/partners/me accepts is editable, one section and save at a time.
+// Partner profile. Store and owner are read-only here: changing them needs a
+// fresh review. Registered-business details (legal name, CAC number, year) can
+// be added once, then read-only. Everything else PATCH /v2/partners/me
+// accepts is editable, one section and save at a time. Payout details and the
+// AML declaration are what payouts wait on (setupSteps in usePartner).
 
 import { useState, type ReactNode } from 'react'
-import { Button, Field, Input, Select } from '@/components/ui'
+import { Button, Checkbox, Field, Input, Select } from '@/components/ui'
 import { authFetch } from '@/lib/apiAuth'
 import { invalidate } from '@/lib/useApi'
 import { PageHead } from '@/components/account/AccountShell'
@@ -18,13 +20,14 @@ function Section({ id, title, desc, keys, profile, children }: {
   id?: string; title: string; desc: ReactNode; keys: (keyof P)[]; profile: P
   children: (d: Draft, set: (k: keyof P) => (e: { target: { value: string } }) => void) => ReactNode
 }) {
-  const initial = () => Object.fromEntries(keys.map(k => [k, (profile[k] as string) ?? ''])) as Draft
+  const str = (k: keyof P) => (profile[k] == null ? '' : String(profile[k]))
+  const initial = () => Object.fromEntries(keys.map(k => [k, str(k)])) as Draft
   const [d, setD] = useState<Draft>(initial)
   const [busy, setBusy] = useState(false)
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
 
   const set = (k: keyof P) => (e: { target: { value: string } }) => { setD(p => ({ ...p, [k]: e.target.value })); setMsg(null) }
-  const changed = keys.filter(k => (d[k] ?? '') !== ((profile[k] as string) ?? ''))
+  const changed = keys.filter(k => (d[k] ?? '') !== str(k))
 
   const save = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -77,16 +80,40 @@ export default function PartnerProfile() {
       <div className={s.settings}>
         <section className={s.setRow}>
           <div>
-            <h2 className={s.h2}>Business</h2>
+            <h2 className={s.h2}>Store</h2>
             <p className={s.secondary} style={{ marginTop: 4, lineHeight: 1.5 }}>From your application. Contact us to change these, as they need a new review.</p>
           </div>
           <div className={s.setForm} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
-            <ReadOnly label="Legal name" value={profile.legal_name} />
             <ReadOnly label="Store name" value={profile.store_name} />
             <ReadOnly label="Owner" value={profile.owner_name} />
             <ReadOnly label="Owner email" value={profile.owner_email} />
           </div>
         </section>
+
+        {profile.legal_name && profile.cac_number && profile.registration_year ? (
+          <section className={s.setRow}>
+            <div>
+              <h2 className={s.h2}>Registered business</h2>
+              <p className={s.secondary} style={{ marginTop: 4, lineHeight: 1.5 }}>Contact us to change these, as they need a new review.</p>
+            </div>
+            <div className={s.setForm} style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))' }}>
+              <ReadOnly label="Legal name" value={profile.legal_name} />
+              <ReadOnly label="CAC number" value={profile.cac_number} />
+              <ReadOnly label="Registration year" value={profile.registration_year ? String(profile.registration_year) : null} />
+            </div>
+          </section>
+        ) : (
+          <Section title="Registered business" desc="Optional. Only if your store is registered with the CAC. Each one can be added once; after that, changes go through us." profile={profile}
+            keys={['legal_name', 'cac_number', 'registration_year']}>
+            {(d, set) => <>
+              <Field label="Legal business name">{p => <Input {...p} value={d.legal_name || ''} onChange={set('legal_name')} disabled={!!profile.legal_name} />}</Field>
+              <div style={{ display: 'grid', gap: 'var(--bs-space-4)', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))' }}>
+                <Field label="CAC number">{p => <Input {...p} value={d.cac_number || ''} onChange={set('cac_number')} placeholder="e.g. RC1234567" disabled={!!profile.cac_number} />}</Field>
+                <Field label="Registration year">{p => <Input {...p} inputMode="numeric" maxLength={4} disabled={!!profile.registration_year} value={d.registration_year || ''} onChange={e => set('registration_year')({ target: { value: e.target.value.replace(/\D/g, '') } })} />}</Field>
+              </div>
+            </>}
+          </Section>
+        )}
 
         <Section title="Contact" desc="How customers and BuySub reach your business." profile={profile}
           keys={['business_email', 'business_phone', 'alternate_phone', 'owner_phone', 'contact_method', 'social_media']}>
@@ -148,7 +175,47 @@ export default function PartnerProfile() {
             </>}
           </>}
         </Section>
+
+        <Declaration accepted={!!profile.aml_accepted} />
       </div>
     </>
+  )
+}
+
+/** The AML declaration. Payouts wait for it; once given it can't be withdrawn here. */
+function Declaration({ accepted }: { accepted: boolean }) {
+  const [checked, setChecked] = useState(false)
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+  const confirm = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setBusy(true); setError('')
+    const r = await authFetch('/v2/partners/me', { method: 'PATCH', body: { aml_accepted: true } })
+    setBusy(false)
+    if (!r.ok) return setError(r.error || 'Couldn’t save. Try again.')
+    invalidate('/v2/partners/me')
+    invalidate('/v2/partners/me/payouts')
+  }
+  return (
+    <section className={s.setRow} id="declaration" style={{ scrollMarginTop: 'calc(var(--bs-header-h) + 16px)' }}>
+      <div>
+        <h2 className={s.h2}>Declaration</h2>
+        <p className={s.secondary} style={{ marginTop: 4, lineHeight: 1.5 }}>Needed once before your first payout.</p>
+      </div>
+      {accepted ? (
+        <div className={s.setForm}>
+          <p className={s.secondary}>You’ve confirmed that you comply with anti-money-laundering rules and that funds you receive are from legitimate sources.</p>
+        </div>
+      ) : (
+        <form className={s.setForm} onSubmit={confirm}>
+          <Checkbox checked={checked} onChange={e => setChecked(e.target.checked)}
+            label="I comply with AML/CFT regulations, and all funds are from legitimate sources." />
+          <div className={s.setActions}>
+            <Button type="submit" size="md" variant="secondary" loading={busy} disabled={!checked}>Confirm</Button>
+            {error && <span className={s.err} role="status">{error}</span>}
+          </div>
+        </form>
+      )}
+    </section>
   )
 }

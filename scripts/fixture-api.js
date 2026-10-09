@@ -41,7 +41,9 @@
  *   FIXTURE_WALLET=zero        wallet balance is 0
  *   FIXTURE_PARTNER=pending    partner status: approved (default) | pending |
  *                              rejected | none. `none` returns no profile, which
- *                              is the "No partner profile" branch.
+ *                              is the "No partner profile" branch. `new` is
+ *                              approved after the short form: no business
+ *                              details, no payout details, no AML declaration.
  *   FIXTURE_VERIFY=failed      /v2/pay/verify outcome: verified (default) | failed
  *   FIXTURE_BANNER=short       AppShell's banner message: long (default) | short
  *   FIXTURE_MAINTENANCE=on     /v2/status reports maintenance mode (the storefront
@@ -263,10 +265,19 @@ const PARTNER_PROFILE = PARTNER === 'none' ? null : {
   account_number: '0123456789',
   crypto_token: '', crypto_chain: '', wallet_address: '',
   social_media: 'Instagram: @okonkwodigital',
+  cac_number: 'RC1234567', registration_year: 2019,
+  aml_accepted: true,
 }
+// Approved through the short signup (migration 23): only what that form asks.
+if (PARTNER === 'new' && PARTNER_PROFILE) Object.assign(PARTNER_PROFILE, {
+  legal_name: null, business_email: null, business_phone: null, address: null, lga: null, state: null,
+  owner_location: null, contact_method: null, payout_frequency: null, payout_method: null,
+  bank_name: null, account_name: null, account_number: null, crypto_token: null, crypto_chain: null, wallet_address: null,
+  cac_number: null, registration_year: null, aml_accepted: false, social_media: 'Physical shop: Shop 12, Computer Village, Ikeja',
+})
 
 // Only an approved partner has an affiliate record.
-const PARTNER_AFFILIATE = PARTNER === 'approved' ? {
+const PARTNER_AFFILIATE = PARTNER_STATUS === 'approved' ? {
   id: 'aff-1',
   referral_code: 'OKONKWO-DIGITAL-2026',   // long enough to test wrapping
   status: 'active',
@@ -786,7 +797,10 @@ let CART = { items: [{ product_id: 'p-spotify', period: 'quarterly', qty: 1 }], 
 const PAYOUTS = {
   enabled: true, min_ngn: 5000, hold_days: 14,
   frequency: 'Quarterly', next_payout_date: '2027-01-01', cutoff_at: '2026-12-17T23:00:00Z',
-  next_ngn: 12300, later_ngn: 1850, has_details: true,
+  next_ngn: 12300, later_ngn: 1850,
+  get has_details() { const p = PARTNER_PROFILE || {}; return p.payout_method === 'Crypto' ? !!p.wallet_address : !!(p.bank_name && p.account_number) || !!p.wallet_address },
+  get aml_accepted() { return !!(PARTNER_PROFILE && PARTNER_PROFILE.aml_accepted) },
+  get setup_complete() { return this.has_details && this.aml_accepted },
   open: [
     { id: 'po3', amount_ngn: 9400, status: 'pending', period_start: '2026-07-01', period_end: '2026-10-01', frequency: 'Quarterly', created_at: '2026-10-01T08:00:00Z', processed_at: null, admin_note: null, reference: null },
   ],
@@ -883,6 +897,11 @@ const supportPost = (id, sender, body) => {
 
 // Writes that the UI reads a response from. Everything else is acknowledged.
 const POST_ROUTES = [
+  // Partner application (short form) and partner profile edits (PATCH).
+  [/^\/v2\/partners$/, b => (!b.store_name || !b.owner_email || !b.password
+    ? { ok: false, error: 'Missing required field' }
+    : { ok: true, data: { id: 'pa-new', status: 'pending_review', verification_email_sent: true } })],
+  [/^\/v2\/partners\/me$/, b => { if (PARTNER_PROFILE) Object.assign(PARTNER_PROFILE, b); return { ok: true, data: PARTNER_PROFILE } }],
   [/^\/v2\/me\/support$/, (body) => {
     const t = { id: `st${Date.now()}`, audience: body.audience === 'partner' ? 'partner' : 'customer', subject: body.subject, order_ref: body.order_ref || null, status: 'open', user_unread: 0, admin_unread: 0, last_sender: 'user', created_at: new Date().toISOString(),
       user: { full_name: 'Ada Okonkwo', email: 'ada.okonkwo@example.com' }, messages: [] }

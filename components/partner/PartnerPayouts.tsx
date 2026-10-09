@@ -14,7 +14,7 @@ import { fmtDate, fmtNGN, fmtPayoutPeriod } from '@/lib/format'
 import { payoutStatus } from '@/lib/status'
 import { ROUTES } from '@/lib/routes'
 import { PageHead, PanelEmpty, PanelError, RowsSkeleton } from '@/components/account/AccountShell'
-import { usePartner, type Commission } from './usePartner'
+import { hasPayoutDetails, usePartner, type Commission } from './usePartner'
 import s from '@/components/account/account.module.css'
 
 type Payout = {
@@ -26,6 +26,8 @@ type Payouts = {
   enabled: boolean; min_ngn: number; hold_days: number
   frequency: string; next_payout_date: string; cutoff_at: string
   next_ngn: number; later_ngn: number; has_details: boolean
+  /** Missing on an API older than migration 23's release. */
+  aml_accepted?: boolean
   open: Payout[]; history: Payout[]
 }
 
@@ -47,6 +49,7 @@ function SchedulePanel({ p }: { p: Payouts }) {
   let status: React.ReactNode = null
   if (!p.enabled) status = <p className={s.secondary}>Payouts are paused right now. Your commission is safe and will be paid when they resume.</p>
   else if (!p.has_details) status = <p className={s.secondary}>Add your payout details below so we can pay you on {fmtDate(cal(p.next_payout_date))}.</p>
+  else if (p.aml_accepted === false) status = <p className={s.secondary}>Confirm the <Link href={`${ROUTES.partner.profile}#declaration`} className={s.textLink}>anti-money-laundering declaration</Link> so we can pay you on {fmtDate(cal(p.next_payout_date))}.</p>
   else if (p.next_ngn < p.min_ngn) status = <p className={s.secondary}>Payouts start at {fmtNGN(p.min_ngn)}. Anything below that carries over to the next payout.</p>
 
   return (
@@ -73,7 +76,7 @@ export default function PartnerPayouts() {
   const paid = (comms.data || []).filter(c => c.status === 'paid')
   const p = payouts.data
   const isCrypto = /crypto/i.test(profile?.payout_method || '')
-  const hasDetails = isCrypto ? !!profile?.wallet_address : !!profile?.account_number
+  const hasDetails = !!profile && hasPayoutDetails(profile)
   const paidTotal = paid.reduce((sum, c) => sum + (Number(c.amount_ngn) || 0), 0)
   const money = (v: number | undefined) => payouts.loading && !p ? <Skeleton width={90} height={28} /> : fmtNGN(v ?? 0)
 

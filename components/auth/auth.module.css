@@ -16,7 +16,8 @@
 .title { font-size: 24px; font-weight: var(--bs-weight-bold); letter-spacing: -.015em; line-height: var(--bs-leading-tight); }
 .sub { margin-top: 6px; font-size: var(--bs-text-md); color: var(--bs-text-secondary); line-height: var(--bs-leading-snug); }
 .form { margin-top: var(--bs-space-6); display: grid; gap: var(--bs-space-4); }
-.row2 { display: grid; gap: var(--bs-space-3); grid-template-columns: 1fr 1fr; }
+.row2 { display: grid; gap: var(--bs-space-3); grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+@media (max-width: 359px) { .row2 { grid-template-columns: minmax(0, 1fr); } }
 .labelRow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--bs-space-2); }
 .label { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-medium); color: var(--bs-text-primary); }
 .inlineLink { font-size: var(--bs-text-sm); color: var(--bs-text-secondary); background: none; border: none; padding: 0; font-family: inherit; cursor: pointer; border-radius: var(--bs-radius-sm); }
@@ -41,3 +42,4 @@
 .checking { display: flex; align-items: center; gap: var(--bs-space-3); font-size: var(--bs-text-md); color: var(--bs-text-secondary); }
 
 .top :focus-visible, .card :focus-visible, .switch :focus-visible, .legal :focus-visible { outline: none; box-shadow: var(--bs-ring); }
+.hintError { font-size: var(--bs-text-xs); color: var(--bs-error); }
