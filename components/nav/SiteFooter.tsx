@@ -12,11 +12,17 @@ import Link from 'next/link'
 import { Icon } from '@/components/ui'
 import { Logo } from './SiteHeader'
 import { ROUTES, EXTERNAL } from '@/lib/routes'
+import { useEffect } from 'react'
+import { useSession, loadPartner } from '@/lib/useSession'
 import css from './nav.module.css'
 
 type L = { label: string; href?: string; onClick?: () => void; external?: boolean }
+type Auth = 'loading' | 'signed_out' | 'signed_in'
 
-const COLUMNS: { title: string; links: L[] }[] = [
+// Sign-in links only for visitors who are signed out; signed-in visitors get
+// their account and, if they have one, their partner portal. While the
+// session loads (server render included) neither appears, so nothing flips.
+const columns = (auth: Auth, partner: boolean): { title: string; links: L[] }[] => [
   {
     title: 'Shop',
     links: [
@@ -30,8 +36,10 @@ const COLUMNS: { title: string; links: L[] }[] = [
   {
     title: 'Account',
     links: [
-      { label: 'Sign in', href: ROUTES.login },
-      { label: 'Create an account', href: ROUTES.signup },
+      ...(auth === 'signed_out' ? [
+        { label: 'Sign in', href: ROUTES.login },
+        { label: 'Create an account', href: ROUTES.signup },
+      ] : auth === 'signed_in' ? [{ label: 'Your account', href: ROUTES.account.home }] : []),
       { label: 'Orders', href: ROUTES.account.orders },
       { label: 'Wallet', href: ROUTES.account.wallet },
       { label: 'Saved', href: ROUTES.saved },
@@ -41,7 +49,8 @@ const COLUMNS: { title: string; links: L[] }[] = [
     title: 'Earn',
     links: [
       { label: 'Partner programme', href: ROUTES.partner.programme },
-      { label: 'Partner sign in', href: ROUTES.loginNext(ROUTES.partner.home) },
+      ...(auth === 'signed_out' ? [{ label: 'Partner sign in', href: ROUTES.loginNext(ROUTES.partner.home) }]
+        : auth === 'signed_in' && partner ? [{ label: 'Partner portal', href: ROUTES.partner.home }] : []),
     ],
   },
   {
@@ -68,6 +77,10 @@ function FooterLink({ l }: { l: L }) {
 }
 
 export default function SiteFooter() {
+  const session = useSession()
+  // Fetched once per session and shared with the header's menu.
+  useEffect(() => { if (session.status === 'signed_in') loadPartner() }, [session.status])
+  const cols = columns(session.status, !!session.partner)
   return (
     <footer className={css.footer}>
       <div className={css.footerInner}>
@@ -79,7 +92,7 @@ export default function SiteFooter() {
               bank transfer or WhatsApp order.
             </p>
           </div>
-          {COLUMNS.map(c => (
+          {cols.map(c => (
             <nav key={c.title} className={css.footerCol} aria-label={c.title}>
               <h3>{c.title}</h3>
               <ul>{c.links.map(l => <li key={l.label}><FooterLink l={l} /></li>)}</ul>
