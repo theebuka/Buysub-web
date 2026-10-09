@@ -1,9 +1,9 @@
 'use client'
 
 // /partners/dashboard was the partner dashboard. It now forwards to the
-// /partner portal, keeping the query and hash: partner sign-up confirmation
-// emails land here with #access_token=..., and this is the address on the
-// Supabase Auth redirect allow-list.
+// /partner portal, keeping the query and hash (#access_token=...). Kept for
+// old bookmarks. Partner verification links now go straight to /partner, which
+// is on the Supabase Auth redirect allow-list; this path never was.
 
 import { useEffect } from 'react'
 
