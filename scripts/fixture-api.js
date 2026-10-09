@@ -277,7 +277,7 @@ if (PARTNER === 'new' && PARTNER_PROFILE) Object.assign(PARTNER_PROFILE, {
 })
 
 // Only an approved partner has an affiliate record.
-const PARTNER_AFFILIATE = PARTNER_STATUS === 'approved' ? {
+const PARTNER_AFFILIATE = PARTNER_PROFILE && PARTNER_STATUS === 'approved' ? {
   id: 'aff-1',
   referral_code: 'OKONKWO-DIGITAL-2026',   // long enough to test wrapping
   status: 'active',
@@ -898,9 +898,10 @@ const supportPost = (id, sender, body) => {
 // Writes that the UI reads a response from. Everything else is acknowledged.
 const POST_ROUTES = [
   // Partner application (short form) and partner profile edits (PATCH).
-  [/^\/v2\/partners$/, b => (!b.store_name || !b.owner_email || !b.password
+  // Signed in, the form sends no owner_email/password (the account's are used).
+  [/^\/v2\/partners$/, b => (!b.store_name || !b.owner_phone
     ? { ok: false, error: 'Missing required field' }
-    : { ok: true, data: { id: 'pa-new', status: 'pending_review', verification_email_sent: true } })],
+    : { ok: true, data: { id: 'pa-new', status: 'pending_review', verification_email_sent: !!b.owner_email, existing_account: !b.owner_email } })],
   [/^\/v2\/partners\/me$/, b => { if (PARTNER_PROFILE) Object.assign(PARTNER_PROFILE, b); return { ok: true, data: PARTNER_PROFILE } }],
   [/^\/v2\/me\/support$/, (body) => {
     const t = { id: `st${Date.now()}`, audience: body.audience === 'partner' ? 'partner' : 'customer', subject: body.subject, order_ref: body.order_ref || null, status: 'open', user_unread: 0, admin_unread: 0, last_sender: 'user', created_at: new Date().toISOString(),

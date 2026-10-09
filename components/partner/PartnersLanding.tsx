@@ -71,10 +71,10 @@ const BENEFITS = [
 ]
 
 const FAQS = [
-  ['Who can become a partner?', 'Businesses, stores and creators whose customers or followers buy subscriptions. You apply with your business details, a contact person and an account for payouts.'],
+  ['Who can become a partner?', 'Gadget stores, other businesses and creators whose customers or followers buy subscriptions. CAC registration is optional. You apply with your store name, your contact details and where you sell. If you already shop on BuySub, sign in first and apply with that account.'],
   ['How much commission do I earn?', 'Your rate is set when your application is approved, and it shows in your partner portal. BuySub may revise rates with 30 days’ notice.'],
   ['How long does a referral count?', '30 days. When someone opens your link, orders they place on that device in the next 30 days count toward your commission.'],
-  ['When and how am I paid?', 'On the schedule you choose when you apply: monthly, quarterly, every six months or yearly. Payouts go to your bank account or a crypto wallet.'],
+  ['When and how am I paid?', 'On the schedule you choose in the partner portal after approval: monthly, quarterly, every six months or yearly. Payouts go to your bank account or a crypto wallet, once you’ve added it there.'],
   ['What happens if an order is refunded?', 'Commission on an order that is refunded or reversed is forfeited.'],
   ['Where can I share my link?', 'Anywhere: WhatsApp, social media, email or your own website. Your portal has a WhatsApp share button for every link.'],
 ]
