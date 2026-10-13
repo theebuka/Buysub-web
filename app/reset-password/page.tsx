@@ -15,6 +15,7 @@ import { useEffect, useState } from 'react';
 import { Button, ButtonLink, Spinner } from '@/components/ui';
 import { AuthAlert, AuthLayout, PasswordInput, authStyles as s } from '@/components/auth/AuthLayout';
 import { getSupabase } from '@/lib/session';
+import { authMessage } from '@/lib/authErrors';
 import { ROUTES } from '@/lib/routes';
 
 type Stage = 'checking' | 'ready' | 'saving' | 'done' | 'invalid';
@@ -32,7 +33,7 @@ export default function ResetPasswordPage() {
     const query = new URLSearchParams(window.location.search);
     const linkError = hash.get('error_description') || query.get('error_description');
     if (linkError) {
-      setError(linkError.replace(/\+/g, ' '));
+      setError(authMessage(linkError.replace(/\+/g, ' '), 'This reset link is invalid or has expired.'));
       setStage('invalid');
       return;
     }
@@ -46,7 +47,7 @@ export default function ResetPasswordPage() {
       const code = query.get('code');
       if (code) {
         const { error: exErr } = await supabase.auth.exchangeCodeForSession(code);
-        if (exErr) { setError(exErr.message); setStage('invalid'); return; }
+        if (exErr) { setError(authMessage(exErr, 'This reset link is invalid or has expired.')); setStage('invalid'); return; }
       }
       const { data } = await supabase.auth.getSession();
       if (data.session) markReady();
@@ -67,7 +68,7 @@ export default function ResetPasswordPage() {
     if (password !== confirm) { setError('The two passwords don’t match.'); return; }
     setStage('saving');
     const { error: upErr } = await supabase.auth.updateUser({ password });
-    if (upErr) { setError(upErr.message); setStage('ready'); return; }
+    if (upErr) { setError(authMessage(upErr, 'We couldn’t update your password. Please try again.')); setStage('ready'); return; }
     setStage('done');
   };
 

@@ -17,6 +17,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Button, Field, Input, Select, Spinner } from '@/components/ui'
 import { API_BASE } from '@/lib/config'
 import { getSupabase } from '@/lib/session'
+import { authMessage } from '@/lib/authErrors'
 import { ROUTES, isStaff } from '@/lib/routes'
 import { AuthAlert, AuthLayout, PasswordInput, authStyles as s } from './AuthLayout'
 
@@ -125,9 +126,7 @@ export default function AuthPage({ initialMode = 'login' }: { initialMode?: Auth
       if (/not confirmed/i.test(authErr.message)) {
         setError('Confirm your email before signing in. Use the link we sent you, or send a new one.')
         setUnconfirmed(email.trim())
-      } else if (/invalid login credentials/i.test(authErr.message)) {
-        setError('That email and password don’t match an account.')
-      } else setError(authErr.message)
+      } else setError(authMessage(authErr, 'We couldn’t sign you in. Please try again.'))
       return
     }
     if (data.session?.access_token) window.location.href = await landingFor(data.session.access_token, true)
@@ -140,7 +139,7 @@ export default function AuthPage({ initialMode = 'login' }: { initialMode?: Auth
     // forwards to /account keeping the #access_token.
     const { error: err } = await supabase.auth.resend({ type: 'signup', email: unconfirmed, options: { emailRedirectTo: `${window.location.origin}/dashboard` } })
     setBusy(false)
-    if (err) { setError(err.message); return }
+    if (err) { setError(authMessage(err, 'We couldn’t send the link. Please try again.')); return }
     setNotice(`We sent a new confirmation link to ${unconfirmed}.`)
     setUnconfirmed('')
   }
@@ -157,7 +156,7 @@ export default function AuthPage({ initialMode = 'login' }: { initialMode?: Auth
       email: email.trim(), password,
       options: { data: fields },
     })
-    if (authErr) { setBusy(false); setError(authErr.message); return }
+    if (authErr) { setBusy(false); setError(authMessage(authErr, 'We couldn’t create your account. Please try again.')); return }
     if (data.session?.access_token) {
       await completeProfile(data.session.access_token, fields)
       window.location.href = nextPath() || ROUTES.account.home
@@ -175,7 +174,7 @@ export default function AuthPage({ initialMode = 'login' }: { initialMode?: Auth
     setBusy(true); setError('')
     const { error: err } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: `${window.location.origin}/reset-password` })
     setBusy(false)
-    if (err) { setError(err.message); return }
+    if (err) { setError(authMessage(err, 'We couldn’t send the reset link. Please try again.')); return }
     setNotice(`If ${email.trim()} has an account, a reset link is on its way.`)
   }
 
