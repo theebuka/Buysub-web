@@ -312,7 +312,7 @@ export function LinkEditorDrawer({
       <style>{`@keyframes bsFadeIn { from{opacity:0} to{opacity:1} } @keyframes bsSlideIn { from{transform:translateX(100%)} to{transform:translateX(0)} }`}</style>
 
       {/* Drawer */}
-      <div style={{
+      <div className={s.appFont} style={{
         position: 'fixed', top: 0, right: 0, bottom: 0,
         width: 'min(560px, 100vw)',
         background: T.card,
@@ -1108,6 +1108,7 @@ function QrDialog({
         }}
       >
         <div
+          className={s.appFont}
           onClick={e => e.stopPropagation()}
           style={{
             background: T.card, border: `1px solid ${T.border}`,

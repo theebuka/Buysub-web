@@ -274,6 +274,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
               position: "absolute",
               top: "var(--bs-space-3)",
               right: "var(--bs-space-4)",
+              fontFamily: "inherit",
               fontSize: "var(--bs-text-xs)",
               color: "var(--bs-text-secondary)",
               background: "transparent",
@@ -355,6 +356,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 // through to the UA `buttontext` — the same defect that put
                 // black money values on the dark dashboard in Phase 2.
                 color: "var(--bs-text-primary)",
+                fontFamily: "inherit",
                 fontSize: "var(--bs-text-sm)",
                 height: "var(--bs-control-lg)",
                 padding: "0 var(--bs-space-4)",
@@ -381,6 +383,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 borderRadius: "var(--bs-radius-full)",
                 height: "var(--bs-control-lg)",
                 padding: "0 var(--bs-space-5)",
+                fontFamily: "inherit",
                 fontSize: "var(--bs-text-sm)",
                 fontWeight: 600,
                 cursor: "pointer"

@@ -6,6 +6,7 @@ import { useTheme as useThemeController } from '@/lib/theme'
 import { getAccessToken } from '@/lib/session'
 import { API_BASE } from '@/lib/config'
 
+import { adminStyles as s } from '@/components/admin/AdminUI'
 import { Customer, Discount, Order, Product, T, XIcon, apiFetch, fmt, sentenceCase } from '../_lib/shared'
 
 export const BILLING_PERIODS = ['Monthly', 'Quarterly', 'Biannual', 'Annual', 'One-time']
@@ -307,7 +308,7 @@ export function NewOrderDrawer({
       />
 
       {/* Drawer */}
-      <div style={{
+      <div className={s.appFont} style={{
         position:'fixed', top:0, right:0, bottom:0,
         width:'min(560px,100vw)',
         background: T.card,

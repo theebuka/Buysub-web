@@ -213,6 +213,9 @@ a.listRow:hover { background: var(--bs-bg-elevated); }
 .formActions { display: flex; gap: var(--bs-space-2); justify-content: flex-end; padding-top: var(--bs-space-2); }
 .sectionTitle { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); margin-bottom: var(--bs-space-3); }
 .hint { font-size: var(--bs-text-xs); color: var(--bs-text-muted); }
+/* The inline-styled editors (new order, links) set no font on their controls,
+   which left them in the UA default. */
+.appFont :where(button, input, select, textarea) { font-family: inherit; }
 .tierField { display: flex; flex-direction: column; gap: 4px; font-size: var(--bs-text-xs); color: var(--bs-text-muted); }
 
 /* ── Side panel (record editor) ────────────────────────────── */
