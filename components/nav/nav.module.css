@@ -10,6 +10,25 @@
   border-bottom: 1px solid var(--bs-border-default);
   color: var(--bs-text-primary);
 }
+/* On the partner programme page the header takes the hero's violet. The bar
+   re-points the tokens its own controls read, so the shared buttons, search
+   box and badges need no second set of rules. Every popover panel is a
+   .bs-theme boundary (lib/constants.ts), so the menus opened from here keep the
+   real theme; drawers and the palette are portalled out of the header.
+   backdrop-filter stays: it is what anchors the mega menu to the bar. */
+.onBrand { --ground: var(--bs-accent-fill); background: var(--ground); border-bottom-color: rgba(255, 255, 255, .22); color: #fff; }
+.onBrand .bar {
+  --bs-bg-base: var(--ground);
+  --bs-text-primary: #FFFFFF; --bs-text-secondary: #FFFFFF; --bs-text-muted: #FFFFFF;
+  /* Fills step darker, not lighter: white text on a lightened violet drops
+     under AA (3.7:1); on these it stays above 5.5:1. */
+  --bs-bg-elevated: rgba(11, 6, 48, .2); --bs-bg-muted: rgba(11, 6, 48, .32); --bs-bg-input: rgba(11, 6, 48, .18);
+  --bs-border-default: rgba(255, 255, 255, .3); --bs-border-strong: rgba(255, 255, 255, .6);
+  --bs-accent-fill: #FFFFFF; --bs-accent-hover: #ECE8FF; --bs-on-accent: #1A1A2E;
+  --bs-accent-rgb: 11, 6, 48; --bs-accent-on-surface: #FFFFFF;
+  --bs-ring: 0 0 0 3px rgba(255, 255, 255, .6);
+}
+.onBrand .skip { background: #fff; color: #1A1A2E; }
 .bar {
   height: 100%;
   max-width: var(--bs-page-max); margin: 0 auto;

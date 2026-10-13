@@ -32,7 +32,7 @@
 .lg { }
 .xl { height: var(--bs-control-xl); padding: 0 var(--bs-space-6); font-size: var(--bs-text-base); }
 
-.primary { background: var(--bs-accent-fill); color: #fff; }
+.primary { background: var(--bs-accent-fill); color: var(--bs-on-accent); }
 .primary:hover:not(:disabled) { background: var(--bs-accent-hover); }
 .secondary { background: var(--bs-bg-card); color: var(--bs-text-primary); border-color: var(--bs-border-default); }
 .secondary:hover:not(:disabled) { border-color: var(--bs-border-strong); background: var(--bs-bg-elevated); }
@@ -65,7 +65,7 @@
   position: absolute; top: 4px; right: 4px;
   min-width: 18px; height: 18px; padding: 0 5px;
   border-radius: var(--bs-radius-full);
-  background: var(--bs-accent-fill); color: #fff;
+  background: var(--bs-accent-fill); color: var(--bs-on-accent);
   font-size: var(--bs-text-2xs); font-weight: var(--bs-weight-bold);
   display: flex; align-items: center; justify-content: center;
   line-height: 1;

@@ -24,6 +24,7 @@ import { fromPrice } from '@/lib/pricing'
 import { useSiteStatus } from '@/lib/siteStatus'
 import { ROUTES } from '@/lib/routes'
 import { BRANDS, type Brand } from './brands'
+import BrandGlyph from './BrandGlyph'
 import s from './home.module.css'
 
 // The phone in the hero: a 3D mockup of the shop (shots.so, upscaled 4x with
@@ -66,18 +67,6 @@ function Device() {
       src={HERO_PHONE.src} width={HERO_PHONE.width} height={HERO_PHONE.height}
       alt="The BuySub shop on a phone" className={s.heroPhone} fetchPriority="high" decoding="async"
     />
-  )
-}
-
-const SNAPCHAT = 'Snapchat'
-
-/** A brand's Simple Icons glyph: white, except Snapchat, whose mark is a white ghost with a black outline. */
-function BrandGlyph({ b }: { b: Brand }) {
-  const snap = b.name === SNAPCHAT
-  return (
-    <svg viewBox="-1 -1 26 26" aria-hidden="true">
-      <path d={b.path} fill="currentColor" {...(snap ? { stroke: '#000', strokeWidth: 1.1, paintOrder: 'stroke', strokeLinejoin: 'round' as const } : {})} />
-    </svg>
   )
 }
 

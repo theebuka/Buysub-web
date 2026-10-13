@@ -238,7 +238,12 @@ export const calcDiscountAmount = (
 // Every route is themed, the storefront included, since components/shop/*
 // replaced the dark-only components/Marketplace.tsx (IA refactor Phase 2).
 export const CSS_VARS = `
-  :root {
+  /* .bs-theme re-declares every token on the element that carries it. A region
+     that re-points tokens for its own controls (the violet header on the
+     partner programme page, components/nav/nav.module.css .onBrand) would
+     otherwise pass them down into the menus it opens; a popover panel is a
+     .bs-theme boundary, so what is inside reads the real theme again. */
+  :root, .bs-theme {
     /* ── Colour ─────────────────────────────────────────────── */
     /* Cards lifted clearly off the page and near-white primary text. The
        earlier set (#050507 page, #0B0B0F cards, #F0F0F5 text) read as dull:
@@ -330,6 +335,10 @@ export const CSS_VARS = `
        both themes, like --bs-accent itself, and #fff sits on it in both.
        --bs-accent-hover already measures 5.44:1 and needs no sibling. */
     --bs-accent-fill: #7756FF;
+    /* Text and icons on an accent fill. White everywhere, except where a
+       region turns the fill itself white (the violet header's button and
+       count badge). */
+    --bs-on-accent: #FFFFFF;
 
     /* ── Status badges ──────────────────────────────────────────
        OPAQUE fills, not rgba() tints. A badge renders on three
@@ -484,7 +493,7 @@ export const CSS_VARS = `
      were ported from: #8896a6 measured 3.20:1 and #b0bac5 1.9:1 against
      --bs-bg-base, both failing AA. --bs-text-faint is for decorative and
      disabled use only, never for text a user has to read. */
-  [data-theme="light"] {
+  [data-theme="light"], [data-theme="light"] .bs-theme {
     /* The page is white, the same as a card. It was #F8F9FB, a grey page
        under white cards, which read as dull across the account, partner and
        admin areas. Cards and panels now separate from the page by their

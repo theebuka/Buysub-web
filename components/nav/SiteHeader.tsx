@@ -41,15 +41,15 @@ import css from './nav.module.css'
 // ── Logo ─────────────────────────────────────────────────────
 // `compact`: below 375px the header row can't fit the full mark beside its
 // four icon buttons, so it drops to the logomark.
-export function Logo({ compact = false }: { compact?: boolean }) {
+export function Logo({ compact = false, tone = 'tint' }: { compact?: boolean; tone?: 'tint' | 'white' }) {
   return (
     <Link href={ROUTES.home} className={css.logo} aria-label="BuySub home">
       {compact ? (
         <>
-          <span className={css.logoFull}><LogoFull height={30} title="BuySub" /></span>
-          <span className={css.logoMark}><LogoMark size={32} title="BuySub" /></span>
+          <span className={css.logoFull}><LogoFull height={30} title="BuySub" tone={tone} /></span>
+          <span className={css.logoMark}><LogoMark size={32} title="BuySub" tone={tone} /></span>
         </>
-      ) : <LogoFull height={30} title="BuySub" />}
+      ) : <LogoFull height={30} title="BuySub" tone={tone} />}
     </Link>
   )
 }
@@ -430,6 +430,9 @@ function isTypingTarget(el: EventTarget | null) {
 }
 
 export default function SiteHeader() {
+  // The partner programme page opens on a violet hero, and its header takes
+  // the same violet (nav.module.css .onBrand).
+  const onBrand = usePathname() === ROUTES.partner.programme
   const session = useSession()
   const cart = useCart()
   const [mounted, setMounted] = useState(false)
@@ -452,13 +455,13 @@ export default function SiteHeader() {
   }, [])
 
   return (
-    <header className={css.header}>
+    <header className={`${css.header} ${onBrand ? css.onBrand : ''}`}>
       <a href="#main" className={css.skip}>Skip to content</a>
       <div className={css.bar}>
         <span className={css.narrow}>
           <IconButton icon="menu" label="Open menu" onClick={() => setNavOpen(true)} />
         </span>
-        <Logo compact />
+        <Logo compact tone={onBrand ? 'white' : 'tint'} />
         <nav aria-label="Primary" className={`${css.primary} ${css.wide}`}>
           <BrowseMenu />
         </nav>

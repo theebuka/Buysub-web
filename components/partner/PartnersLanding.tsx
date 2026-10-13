@@ -3,9 +3,9 @@
 // ============================================================
 // BUYSUB — Partner programme landing page (/partners)
 // ============================================================
-// Opens with the partner section that used to close the home page
-// (PartnerPromo), then what partners get, questions, and a closing call to
-// action. The application form itself is /partners/apply.
+// Opens with the violet partner hero (PartnerPromo), then what partners get,
+// questions, and a closing call to action. The application form itself is
+// /partners/apply.
 //
 // Copy states only what the programme does today (see the terms in
 // app/partners/apply/page.tsx): the rate is set at approval, 30-day
@@ -16,6 +16,7 @@
 import Link from 'next/link'
 import { Icon, type IconName } from '@/components/ui'
 import { useSiteStatus } from '@/lib/siteStatus'
+import { useProducts } from '@/lib/useProducts'
 import { ROUTES } from '@/lib/routes'
 import PartnerPromo from './PartnerPromo'
 import h from '@/components/home/home.module.css'
@@ -83,10 +84,11 @@ export default function PartnersLanding() {
   const status = useSiteStatus()
   // Until /v2/status answers, applications count as open (lib/siteStatus.ts).
   const open = status.services.partner_applications
+  const { products } = useProducts()
 
   return (
     <div className={h.home}>
-      <PartnerPromo headingLevel="h1" open={open} className={s.top} />
+      <PartnerPromo headingLevel="h1" open={open} products={products} />
 
       <section className={h.band} aria-labelledby="benefits-title">
         <div className={h.head}><h2 id="benefits-title" className={h.h2}>What partners get</h2></div>

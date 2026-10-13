@@ -2,10 +2,6 @@
    (home.module.css, imported as `h` in the component); this file holds only
    what the page adds. */
 
-/* The partner section opens the page, so it sits closer to the header. */
-.top { padding-top: 32px; padding-bottom: 0; }
-@media (min-width: 1024px) { .top { padding-top: 48px; padding-bottom: 0; } }
-
 /* Benefit visuals */
 .stack { width: 100%; max-width: 320px; display: flex; flex-direction: column; gap: 10px; }
 .linkOut {

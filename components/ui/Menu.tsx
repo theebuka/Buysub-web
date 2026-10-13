@@ -54,7 +54,7 @@ export function Popover({ trigger, children, align = 'end', width, onOpenChange,
     <div ref={wrap} style={{ position: 'relative' }}>
       {trigger({ open, toggle: () => set(!open), props: { 'aria-expanded': open, 'aria-controls': id, 'aria-haspopup': true } })}
       {open && (
-        <div id={id} ref={panel} aria-label={panelLabel} className={cx(s.popover, align === 'end' ? s.popoverEnd : s.popoverStart, panelClassName)} style={{ width }}>
+        <div id={id} ref={panel} aria-label={panelLabel} className={cx(s.popover, 'bs-theme', align === 'end' ? s.popoverEnd : s.popoverStart, panelClassName)} style={{ width }}>
           {children(close)}
         </div>
       )}
