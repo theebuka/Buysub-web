@@ -16,7 +16,7 @@
    .bs-theme boundary (lib/constants.ts), so the menus opened from here keep the
    real theme; drawers and the palette are portalled out of the header.
    backdrop-filter stays: it is what anchors the mega menu to the bar. */
-.onBrand { --ground: var(--bs-accent-fill); background: var(--ground); border-bottom-color: rgba(255, 255, 255, .22); color: #fff; }
+.onBrand { --ground: var(--bs-accent-fill); background: var(--ground); border-bottom-color: transparent; color: #fff; }
 .onBrand .bar {
   --bs-bg-base: var(--ground);
   --bs-text-primary: #FFFFFF; --bs-text-secondary: #FFFFFF; --bs-text-muted: #FFFFFF;
