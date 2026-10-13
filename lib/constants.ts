@@ -275,6 +275,11 @@ export const CSS_VARS = `
     --bs-border-default: #2A2A33;
     --bs-border-subtle: #1E1E25;
     --bs-border-strong: #3E3E4A;
+    /* The outer edge of a panel that sits straight on the page. In dark the
+       panel's fill already lifts it off the page, so the faint line is
+       enough. In light the page and the panel are both white and the edge
+       is the only separation, so it takes the stronger line there. */
+    --bs-border-edge: #1E1E25;
     --bs-accent: #7C5CFF;
     --bs-accent-hover: #6B4EE6;
     --bs-success: #22C55E;
@@ -480,7 +485,11 @@ export const CSS_VARS = `
      --bs-bg-base, both failing AA. --bs-text-faint is for decorative and
      disabled use only, never for text a user has to read. */
   [data-theme="light"] {
-    --bs-bg-base: #F8F9FB;
+    /* The page is white, the same as a card. It was #F8F9FB, a grey page
+       under white cards, which read as dull across the account, partner and
+       admin areas. Cards and panels now separate from the page by their
+       border alone: see --bs-border-edge. */
+    --bs-bg-base: #FFFFFF;
     --bs-bg-card: #FFFFFF;
     --bs-bg-elevated: #F1F3F5;
     --bs-bg-input: #FFFFFF;
@@ -493,6 +502,7 @@ export const CSS_VARS = `
     --bs-border-default: #E2E5E9;
     --bs-border-subtle: #EEF0F3;
     --bs-border-strong: #D1D1D6;
+    --bs-border-edge: #E2E5E9;
     --bs-accent: #7C5CFF;
     --bs-accent-hover: #6B4EE6;
     --bs-success: #059669;

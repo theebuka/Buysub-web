@@ -216,7 +216,7 @@ export function ShopBanner({ ads }: { ads: Ad[] }) {
             position: 'relative',
             borderRadius: 'var(--bs-radius-xl)',
             overflow: 'hidden',
-            border: '1px solid var(--bs-border-subtle)',
+            border: '1px solid var(--bs-border-edge)',
             transition: 'border-color var(--bs-dur-1) var(--bs-ease-out)',
           }}
         >
@@ -313,7 +313,7 @@ export function ShopSidebar({ ads }: { ads: Ad[] }) {
               // panel / logo-tile / line-item step, which is what these are.
               borderRadius: 'var(--bs-radius-lg)',
               overflow: 'hidden',
-              border: '1px solid var(--bs-border-subtle)',
+              border: '1px solid var(--bs-border-edge)',
               background: 'var(--bs-bg-card)',
               transition: 'border-color var(--bs-dur-1) var(--bs-ease-out)',
             }}
@@ -375,7 +375,7 @@ export function SponsoredProductCard({
           // Marketplace leak Phases 7 and 8 removed elsewhere, so this stays
           // on the token and the divergence is logged for the Marketplace
           // phase instead. See REFACTOR.md.
-          border: '1px solid var(--bs-border-subtle)',
+          border: '1px solid var(--bs-border-edge)',
           position: 'relative',
           cursor: 'pointer',
           height: '100%',

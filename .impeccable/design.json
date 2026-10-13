@@ -75,8 +75,8 @@
       "paper": {
         "role": "neutral",
         "displayName": "Paper",
-        "canonical": "#F8F9FB",
-        "oklch": "oklch(98.2% 0.003 264.5)",
+        "canonical": "#FFFFFF",
+        "oklch": "oklch(100% 0 0)",
         "note": "--bs-bg-base (light). Dark: #09090C.",
         "tonalRamp": [
           "#0B0B0C",

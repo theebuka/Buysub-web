@@ -57,7 +57,7 @@
 .lede { margin-top: 6px; font-size: var(--bs-text-sm); line-height: 1.5; color: var(--bs-text-secondary); max-width: 760px; }
 .headActions { display: flex; gap: var(--bs-space-2); flex-wrap: wrap; align-items: center; }
 
-.panel { border: 1px solid var(--bs-border-subtle); border-radius: var(--bs-radius-lg); background: var(--bs-bg-card); min-width: 0; }
+.panel { border: 1px solid var(--bs-border-edge); border-radius: var(--bs-radius-lg); background: var(--bs-bg-card); min-width: 0; }
 .panelHead { display: flex; align-items: center; justify-content: space-between; gap: var(--bs-space-3); padding: var(--bs-space-3) var(--bs-space-4); border-bottom: 1px solid var(--bs-border-subtle); min-height: 48px; }
 .panelTitle { font-size: var(--bs-text-sm); font-weight: var(--bs-weight-semibold); color: var(--bs-text-primary); }
 .panelBody { padding: var(--bs-space-4); }
@@ -65,7 +65,7 @@
 .panelLink:hover { color: var(--bs-text-primary); }
 
 /* KPI strip: one panel, hairline-divided cells, no card per number. */
-.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--bs-border-subtle); border-radius: var(--bs-radius-lg); background: var(--bs-bg-card); overflow: hidden; }
+.stats { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); border: 1px solid var(--bs-border-edge); border-radius: var(--bs-radius-lg); background: var(--bs-bg-card); overflow: hidden; }
 @media (min-width: 768px) { .stats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
 .stat { padding: var(--bs-space-4); display: flex; flex-direction: column; gap: var(--bs-space-1); box-shadow: inset -1px 0 0 var(--bs-border-subtle), inset 0 -1px 0 var(--bs-border-subtle); min-width: 0; text-decoration: none; color: inherit; }
 a.stat:hover { background: var(--bs-bg-elevated); }
@@ -254,10 +254,10 @@ a.listRow:hover { background: var(--bs-bg-elevated); }
 .cardGrid { display: grid; gap: var(--bs-space-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 260px), 1fr)); padding: var(--bs-space-3); }
 .cardCell { min-width: 0; display: flex; }
 .cardCell > * { flex: 1; }
-.cardSkel { display: flex; flex-direction: column; gap: var(--bs-space-3); padding: var(--bs-space-4); border: 1px solid var(--bs-border-subtle); border-radius: var(--bs-radius-lg); min-height: 168px; }
+.cardSkel { display: flex; flex-direction: column; gap: var(--bs-space-3); padding: var(--bs-space-4); border: 1px solid var(--bs-border-edge); border-radius: var(--bs-radius-lg); min-height: 168px; }
 
 /* Product card (admin): the shop card's shape at admin density. */
-.pcard { position: relative; display: flex; flex-direction: column; gap: var(--bs-space-3); padding: var(--bs-space-4); border: 1px solid var(--bs-border-subtle); border-radius: var(--bs-radius-lg); background: var(--bs-bg-base); min-width: 0; transition: border-color var(--bs-dur-1) var(--bs-ease-out); }
+.pcard { position: relative; display: flex; flex-direction: column; gap: var(--bs-space-3); padding: var(--bs-space-4); border: 1px solid var(--bs-border-edge); border-radius: var(--bs-radius-lg); background: var(--bs-bg-base); min-width: 0; transition: border-color var(--bs-dur-1) var(--bs-ease-out); }
 .pcard:hover { border-color: var(--bs-border-strong); }
 .pcardOn { border-color: var(--bs-accent) !important; box-shadow: 0 0 0 1px var(--bs-accent); }
 .pcardDim { opacity: .72; }

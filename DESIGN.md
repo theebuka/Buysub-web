@@ -6,7 +6,7 @@ colors:
   violet-fill: "#7756FF"
   violet-hover: "#6B4EE6"
   violet-text: "#5B3FD4"
-  paper: "#F8F9FB"
+  paper: "#FFFFFF"
   card-white: "#FFFFFF"
   paper-elevated: "#F1F3F5"
   paper-muted: "#E8EAED"
@@ -156,14 +156,14 @@ components:
 
 **Creative North Star: "The Ruled Shopfront"**
 
-BuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is light paper, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.
+BuySub is a shop first. The home page proves it by running the real shop inside a phone on a ruled grid, and every other surface (catalog, cart, account, partner portal, admin console) is a calm, neutral working tool built from one token set. The ground is white, structure comes from 1px rules and tonal steps rather than shadow, and colour is rationed: violet marks what to press or what is selected, and the only other saturated colour on a page is a third-party brand's own.
 
 Two registers share the same tokens. The app register (Geist at text sizes, rounded cards at 16 to 20px, 48px controls) is dense, legible and quiet. The home register adds a Geist display face set tight and large, a visible ruled grid with an ink cross where rules meet, tighter corners (4 to 10px), and a violet call-to-action card to close. The home register is scoped to the home page; it is not a restyle of the app.
 
 Confirmed rejections from the owner: no gradients, no glows, no eyebrows or kickers; sentence case everywhere; no em dashes in visible copy; violet never used as decoration. Light is the default theme; a dark theme exists for every route through `[data-theme]`.
 
 **Key Characteristics:**
-- Light paper ground (`paper`), white cards, ink text with a slight cool cast.
+- White ground (`paper`) with white cards drawn on it by a 1px rule, ink text with a slight cool cast.
 - Violet only on primary actions and active states.
 - Depth by surface step and 1px border; shadows only for things that genuinely float.
 - Geist for everything; ₦ alone comes from Public Sans.
@@ -180,7 +180,7 @@ A cool neutral paper-and-ink palette with one violet accent and brand colours bo
 - **Violet Text** (`violet-text`): violet as text on light surfaces (6.76:1 on white). Raw Violet as text fails AA on white.
 
 ### Neutral
-- **Paper** (`paper`): the page ground; also no longer used as text on Ink.
+- **Paper** (`paper`): the page ground, white since October 2026 (it was a grey, `#F8F9FB`, which read as dull under white cards); also no longer used as text on Ink.
 - **Card White** (`card-white`): cards, inputs, secondary buttons, the how-it-works rows, the closer's button.
 - **Paper Elevated** (`paper-elevated`): hover fills, the media half of home category cards, table row hover.
 - **Paper Muted** (`paper-muted`): the body of home category cards, count pills, skeletons.
@@ -233,7 +233,7 @@ The home page runs full width and every band sets its own gutter. From 1024px th
 
 ## Elevation & Depth
 
-Flat by default. Surfaces separate by a tonal step (paper, white card, elevated, muted) and a 1px border. Shadows are reserved for things that float over the page (menus, drawers, modals) and for a few physical objects on the home page (the phone mockup's own baked shadow, the fanned logos in category cards). Focus is a 3px violet ring at 35% alpha, drawn as a box-shadow.
+Flat by default. A card is the same white as the page and separates by its 1px border alone; fills inside it step down in tone (elevated, muted). Shadows are reserved for things that float over the page (menus, drawers, modals) and for a few physical objects on the home page (the phone mockup's own baked shadow, the fanned logos in category cards). Focus is a 3px violet ring at 35% alpha, drawn as a box-shadow.
 
 ### Shadow Vocabulary
 - **Elevation 1** (`box-shadow: 0 1px 3px rgba(0,0,0,0.06)`): rare; a resting lift on small floating items.
@@ -243,7 +243,7 @@ Flat by default. Surfaces separate by a tonal step (paper, white card, elevated,
 - **Home object** (`box-shadow: 0 40px 80px -30px rgba(10,10,20,.45)`): the phone only.
 
 ### Named Rules
-**The Surface Before Shadow Rule.** If a surface sits in the page, a tone step and a 1px border separate it. Reach for a shadow only when something truly floats over the page.
+**The Surface Before Shadow Rule.** If a surface sits in the page, a 1px border separates it, with a tone step where the surface is a fill rather than a card. Reach for a shadow only when something truly floats over the page.
 
 ## Shapes
 
