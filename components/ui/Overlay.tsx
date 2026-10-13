@@ -20,6 +20,10 @@ function unlockScroll() {
   if (--lockCount <= 0) { lockCount = 0; document.body.style.overflow = '' }
 }
 
+// Open traps, oldest first. Only the newest answers the keyboard, so Escape in
+// a dialog opened from a panel closes the dialog and leaves the panel open.
+const traps: symbol[] = []
+
 export function useFocusTrap(open: boolean, ref: RefObject<HTMLElement>, onClose: () => void, initialFocus?: RefObject<HTMLElement>) {
   const closeRef = useRef(onClose)
   closeRef.current = onClose
@@ -27,10 +31,13 @@ export function useFocusTrap(open: boolean, ref: RefObject<HTMLElement>, onClose
   useEffect(() => {
     if (!open) return
     const prev = document.activeElement as HTMLElement | null
+    const id = Symbol('trap')
+    traps.push(id)
     lockScroll()
     const t = window.setTimeout(() => (initialFocus?.current ?? ref.current)?.focus(), 0)
 
     const onKey = (e: KeyboardEvent) => {
+      if (traps[traps.length - 1] !== id) return
       if (e.key === 'Escape') { e.stopPropagation(); closeRef.current(); return }
       if (e.key !== 'Tab' || !ref.current) return
       const els = Array.from(ref.current.querySelectorAll<HTMLElement>(FOCUSABLE)).filter(el => el.offsetParent !== null)
@@ -43,6 +50,8 @@ export function useFocusTrap(open: boolean, ref: RefObject<HTMLElement>, onClose
     return () => {
       window.clearTimeout(t)
       document.removeEventListener('keydown', onKey)
+      const i = traps.indexOf(id)
+      if (i >= 0) traps.splice(i, 1)
       unlockScroll()
       prev?.focus?.()
     }

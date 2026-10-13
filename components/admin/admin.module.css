@@ -216,7 +216,11 @@ a.listRow:hover { background: var(--bs-bg-elevated); }
 .tierField { display: flex; flex-direction: column; gap: 4px; font-size: var(--bs-text-xs); color: var(--bs-text-muted); }
 
 /* ── Side panel (record editor) ────────────────────────────── */
-.sheet { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1201; display: flex; flex-direction: column; background: var(--bs-bg-card); color: var(--bs-text-primary); border-left: 1px solid var(--bs-border-default); box-shadow: var(--bs-elev-3); outline: none; animation: bs-slide-right var(--bs-dur-3) var(--bs-ease-out); font-size: var(--bs-text-sm); }
+/* Sits below ui.module.css .scrim / .modalWrap (1100 / 1101), so a confirm
+   dialog opened from a panel stacks above it. The palette layers (1200) are
+   for the palette only. */
+.sheetScrim { position: fixed; inset: 0; z-index: 1090; background: rgba(0,0,0,.55); }
+.sheet { position: fixed; top: 0; right: 0; bottom: 0; z-index: 1091; display: flex; flex-direction: column; background: var(--bs-bg-card); color: var(--bs-text-primary); border-left: 1px solid var(--bs-border-default); box-shadow: var(--bs-elev-3); outline: none; animation: bs-slide-right var(--bs-dur-3) var(--bs-ease-out); font-size: var(--bs-text-sm); }
 .sheetHead { display: flex; align-items: flex-start; justify-content: space-between; gap: var(--bs-space-3); padding: var(--bs-space-4) var(--bs-space-4) var(--bs-space-4) var(--bs-space-6); border-bottom: 1px solid var(--bs-border-subtle); flex-shrink: 0; }
 .sheetTitle { font-size: var(--bs-text-base); font-weight: var(--bs-weight-semibold); line-height: var(--bs-leading-tight); overflow-wrap: anywhere; }
 .sheetBody { flex: 1; overflow-y: auto; }

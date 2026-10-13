@@ -93,7 +93,7 @@ export function SidePanel({ open, onClose, title, subtitle, footer, children, wi
   if (!open) return null
   return createPortal(
     <>
-      <div className={s.palScrim} onClick={onClose} aria-hidden="true" />
+      <div className={s.sheetScrim} onClick={onClose} aria-hidden="true" />
       <div ref={ref} role="dialog" aria-modal="true" aria-label={typeof title === 'string' ? title : 'Editor'} tabIndex={-1}
         className={s.sheet} style={{ width: `min(${width}px, 100vw)` }}>
         <div className={s.sheetHead}>
