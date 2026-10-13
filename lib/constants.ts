@@ -550,6 +550,17 @@ export const CSS_VARS = `
        They must stay dark/identical under light — see the note in :root. */
   }
 
+  /* The catalog (components/shop/ShopPage.tsx: /shop, a category, search
+     results) keeps the grey page the rest of light gave up, so a wall of
+     white product cards has a ground to sit on. It marks its root with
+     data-ground="tint". Done with :has() so the server render is already
+     right and nothing flips after hydration; a browser without :has() gets
+     the white page. */
+  [data-theme="light"]:has([data-ground="tint"]) {
+    --bs-bg-base: #F8F9FB;
+    --bs-border-edge: #EEF0F3;
+  }
+
   @media (min-width: 768px)  { :root { --bs-page-gutter: 24px; } }
   @media (min-width: 1280px) { :root { --bs-page-gutter: 32px; } }
 

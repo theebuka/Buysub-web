@@ -254,7 +254,7 @@ export default function ShopPage({ initialCategory }: { initialCategory?: string
   const panelProps = { f, set, cats, counts, total: products.length, activeCount: active.length, onClear: clearAll }
 
   return (
-    <div className={s.page}>
+    <div className={s.page} data-ground="tint">
       {msg && <Notice tone="warn" onClose={clearMsg}>{msg}</Notice>}
       {affiliateInfo && (
         <div style={{ marginBottom: 'var(--bs-space-4)' }}>

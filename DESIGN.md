@@ -180,7 +180,7 @@ A cool neutral paper-and-ink palette with one violet accent and brand colours bo
 - **Violet Text** (`violet-text`): violet as text on light surfaces (6.76:1 on white). Raw Violet as text fails AA on white.
 
 ### Neutral
-- **Paper** (`paper`): the page ground, white since October 2026 (it was a grey, `#F8F9FB`, which read as dull under white cards); also no longer used as text on Ink.
+- **Paper** (`paper`): the page ground, white since October 2026 (it was a grey, `#F8F9FB`, which read as dull under white cards). The catalog (`/shop`, a category, search results) is the one exception and keeps that grey under its product grid; also no longer used as text on Ink.
 - **Card White** (`card-white`): cards, inputs, secondary buttons, the how-it-works rows, the closer's button.
 - **Paper Elevated** (`paper-elevated`): hover fills, the media half of home category cards, table row hover.
 - **Paper Muted** (`paper-muted`): the body of home category cards, count pills, skeletons.
