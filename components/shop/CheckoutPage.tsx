@@ -25,7 +25,7 @@ type Done = { ref?: string; url: string }
 
 function WhatsAppDone({ done }: { done: Done }) {
   return (
-    <div className={s.page} style={{ maxWidth: 640 }}>
+    <div className={s.page} style={{ maxWidth: 640, marginInline: 'auto' }}>
       <EmptyState icon="check" title="Order created"
         action={
           <div style={{ display: 'flex', gap: 'var(--bs-space-2)', flexWrap: 'wrap', justifyContent: 'center' }}>
