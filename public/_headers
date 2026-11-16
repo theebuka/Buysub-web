@@ -1,0 +1,9 @@
+# Cloudflare Pages response headers for every route.
+# No Content-Security-Policy yet: the app relies on inline styles and an
+# inline theme script, so a policy needs its own pass.
+/*
+  X-Content-Type-Options: nosniff
+  X-Frame-Options: SAMEORIGIN
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=(), payment=(self)
+  Strict-Transport-Security: max-age=31536000; includeSubDomains

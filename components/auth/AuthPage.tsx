@@ -27,7 +27,12 @@ export type AuthMode = 'login' | 'signup' | 'forgot'
 function nextPath(): string | null {
   try {
     const n = new URLSearchParams(window.location.search).get('next') || ''
-    return n.startsWith('/') && !n.startsWith('//') && !n.startsWith('/login') && !n.startsWith('/signup') ? n : null
+    // Browsers read "/\host" as "//host", so a prefix check alone lets
+    // ?next=/\evil.com leave the site. Resolve it and compare origins.
+    if (!n.startsWith('/') || /[\\\s]/.test(n)) return null
+    const u = new URL(n, window.location.origin)
+    if (u.origin !== window.location.origin) return null
+    return !u.pathname.startsWith('/login') && !u.pathname.startsWith('/signup') ? `${u.pathname}${u.search}${u.hash}` : null
   } catch { return null }
 }
 
